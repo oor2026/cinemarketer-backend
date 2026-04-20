@@ -53,7 +53,6 @@ public class TmdbMovieDto {
         try {
             return LocalDate.parse(this.releaseDate, DateTimeFormatter.ISO_LOCAL_DATE);
         } catch (Exception e) {
-            System.out.println("⚠️ Error parseando fecha: " + this.releaseDate);
             return null;
         }
     }
