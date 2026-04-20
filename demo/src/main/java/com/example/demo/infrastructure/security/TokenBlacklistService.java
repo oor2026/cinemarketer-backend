@@ -15,7 +15,6 @@ public class TokenBlacklistService {
      */
     public void blacklistToken(String token) {
         blacklistedTokens.add(token);
-        System.out.println("🔴 Token agregado a blacklist: " + token.substring(0, Math.min(20, token.length())) + "...");
     }
 
     /**
