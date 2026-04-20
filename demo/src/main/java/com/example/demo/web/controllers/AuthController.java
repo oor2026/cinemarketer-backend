@@ -22,6 +22,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,6 +39,8 @@ public class AuthController {
     private final JwtService jwtService;
     private final TokenBlacklistService tokenBlacklistService;
     private final SubscriptionService subscriptionService;
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     // Constructor actualizado
     public AuthController(
@@ -264,7 +267,7 @@ public class AuthController {
         userRepository.save(user);
 
         // Redirigir al frontend (login)
-        String redirectUrl = "http://localhost:63342/src/login.html?verified=true";
+        String redirectUrl = frontendUrl + "/login.html?verified=true";
         return ResponseEntity
                 .status(HttpStatus.FOUND)
                 .header("Location", redirectUrl)
