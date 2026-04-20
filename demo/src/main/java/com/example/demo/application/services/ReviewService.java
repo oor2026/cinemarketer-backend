@@ -244,13 +244,6 @@ public class ReviewService {
         if (levelChanged) {
             userService.updateUserLevel(user.getId(), user.getLevel());
 
-            System.out.println(String.format(
-                    "⭐ Usuario %s (ID: %d) subió de nivel: %s → %s por actividad",
-                    user.getEmail(),
-                    user.getId(),
-                    oldLevel.getDisplayName(),
-                    user.getLevel().getDisplayName()
-            ));
         }
     }
 }
