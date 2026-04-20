@@ -23,7 +23,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin/redemptions")
-@CrossOrigin(origins = "http://localhost:63342")
 @PreAuthorize("hasAuthority('ADMIN')")
 public class AdminRedemptionController {
 
@@ -42,13 +41,9 @@ public class AdminRedemptionController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        System.out.println("📥 Admin solicitando canjes - page: " + page + ", size: " + size);
-
         try {
             Page<Redemption> pageResult = redemptionRepository.findAll(
                     PageRequest.of(page, size, Sort.by("redemptionDate").descending()));
-
-            System.out.println("📊 Total canjes encontrados: " + pageResult.getTotalElements());
 
             List<RedemptionAdminDto> redemptions = pageResult.getContent().stream()
                     .map(this::toDto)
@@ -63,8 +58,6 @@ public class AdminRedemptionController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            System.err.println("❌ Error al obtener canjes: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
