@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/users/me/points")
-@CrossOrigin(origins = "http://localhost:63342")
 public class PointTransactionController {
 
     private final PointTransactionService pointTransactionService;
