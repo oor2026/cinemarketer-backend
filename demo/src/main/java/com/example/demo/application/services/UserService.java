@@ -221,7 +221,6 @@ public class UserService {
             user.setAvatarUrl(avatarUrl);
         } catch (Exception e) {
             // Si no hay avatar configurado, no hacemos nada (se usará el genérico)
-            System.out.println("⚠️ No se pudo asignar avatar por defecto: " + e.getMessage());
         }
     }
 
