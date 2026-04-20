@@ -1,0 +1,16 @@
+// AdminUserUpdateRequest.java
+package com.example.demo.application.dtos;
+
+import com.example.demo.domain.user.UserRole;
+import lombok.Data;
+
+@Data
+public class AdminUserUpdateRequest {
+    private String name;
+    private String email;
+    private String dni;
+    private String phone;
+    private UserRole role;
+    private Integer totalPoints;
+    private Boolean active;
+}

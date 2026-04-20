@@ -1,0 +1,390 @@
+package com.example.demo.web.controllers;
+
+import com.example.demo.application.dtos.UserProfileResponse;
+import com.example.demo.application.dtos.UserLevelWithAvatarDto;
+import com.example.demo.application.services.AvatarService;
+import com.example.demo.application.services.EmailService;
+import com.example.demo.application.services.UserDeletionService;
+import com.example.demo.application.services.UserService;
+import com.example.demo.application.services.LevelCalculatorService;
+import com.example.demo.domain.comment.CommentRepository;
+import com.example.demo.domain.redemption.RedemptionRepository;
+import com.example.demo.domain.review.ReviewRepository;
+import com.example.demo.domain.sweepstake.SweepstakeEntryRepository;
+import com.example.demo.domain.sweepstake.WinnerRepository;
+import com.example.demo.domain.user.User;
+import com.example.demo.domain.user.UserLevel;
+import com.example.demo.domain.user.UserRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/users")
+@CrossOrigin(origins = "http://localhost:63342")
+public class UserController {
+
+    private final UserRepository userRepository;
+    private final ReviewRepository reviewRepository;
+    private final RedemptionRepository redemptionRepository;
+    private final CommentRepository commentRepository;
+    private final SweepstakeEntryRepository sweepstakeEntryRepository;
+    private final WinnerRepository winnerRepository;
+    private final EmailService emailService;
+    private final PasswordEncoder passwordEncoder;
+    private final UserDeletionService userDeletionService;
+
+    // ==============================================
+    // DEPENDENCIAS
+    // ==============================================
+    private final UserService userService;
+    private final LevelCalculatorService levelCalculatorService;
+    private final AvatarService avatarService;
+
+    public UserController(
+            UserRepository userRepository,
+            ReviewRepository reviewRepository,
+            RedemptionRepository redemptionRepository,
+            CommentRepository commentRepository,
+            SweepstakeEntryRepository sweepstakeEntryRepository,
+            WinnerRepository winnerRepository,
+            EmailService emailService,
+            PasswordEncoder passwordEncoder,
+            UserDeletionService userDeletionService,
+            UserService userService,
+            LevelCalculatorService levelCalculatorService,
+            AvatarService avatarService) {
+        this.userRepository = userRepository;
+        this.reviewRepository = reviewRepository;
+        this.redemptionRepository = redemptionRepository;
+        this.commentRepository = commentRepository;
+        this.sweepstakeEntryRepository = sweepstakeEntryRepository;
+        this.winnerRepository = winnerRepository;
+        this.emailService = emailService;
+        this.passwordEncoder = passwordEncoder;
+        this.userDeletionService = userDeletionService;
+        this.userService = userService;
+        this.levelCalculatorService = levelCalculatorService;
+        this.avatarService = avatarService;
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserProfileResponse> getCurrentUser() {
+        User user = getAuthenticatedUser();
+
+        long reviewsCount     = reviewRepository.countByUserId(user.getId());
+        long redemptionsCount = redemptionRepository.countByUserId(user.getId());
+        long commentsCount    = commentRepository.countCommentsByUserId(user.getId());
+
+        UserProfileResponse response = new UserProfileResponse();
+        response.setEmail(user.getEmail());
+        response.setName(user.getName());
+        response.setRole(user.getRole().name());
+        response.setTotalPoints(user.getTotalPoints());
+        response.setEmailVerified(user.isEmailVerified());
+        response.setCreatedAt(user.getCreatedAt());
+        response.setLastLoginAt(user.getLastLoginAt());
+        response.setReviewsCount((int) reviewsCount);
+        response.setRedemptionsCount((int) redemptionsCount);
+        response.setCommentsCount((int) commentsCount);
+        response.setDni(user.getDni());
+        response.setPhone(user.getPhone());
+
+        // ==============================================
+        // CAMPOS DE AVATAR Y NIVEL
+        // ==============================================
+        response.setAvatarUrl(user.getEffectiveAvatarUrl());
+
+        // Nombre del avatar seleccionado (null si es personalizado o no encontrado en BD)
+        avatarService.getAvatarNameByUrl(user.getEffectiveAvatarUrl())
+                .ifPresent(response::setAvatarName);
+
+        response.setLevel(user.getLevel());
+        response.setLevelDisplayName(user.getLevel().getDisplayName());
+        response.setLevelEmoji(user.getLevel().getEmoji());
+        response.setLevelUpdatedAt(user.getLevelUpdatedAt());
+
+        // Calcular progreso hacia el siguiente nivel
+        LevelCalculatorService.LevelProgress progress =
+                levelCalculatorService.getProgressToNextLevel(user);
+
+        if (progress.hasNextLevel()) {
+            response.setNextLevel(progress.getNextLevel());
+            response.setNextLevelDisplayName(progress.getNextLevel().getDisplayName());
+            response.setPointsToNextLevel(progress.getPointsNeeded());
+            response.setLevelProgress(progress.getProgress());
+            response.setCanLevelUp(levelCalculatorService.canLevelUp(user));
+            response.setPremium(user.isActivePremium());
+            response.setPremiumUntil(user.getPremiumUntil());
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<Map<String, String>> updateCurrentUser(@RequestBody Map<String, String> fields) {
+        User user = getAuthenticatedUser();
+        boolean emailChanged = false;
+
+        if (fields.containsKey("name")) {
+            String name = fields.get("name").trim();
+            if (name.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "El nombre no puede estar vacío."));
+            }
+            user.setName(name);
+        }
+
+        if (fields.containsKey("email")) {
+            String newEmail = fields.get("email").trim().toLowerCase();
+            if (!newEmail.equals(user.getEmail())) {
+                if (userRepository.existsByEmail(newEmail)) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT)
+                            .body(Map.of("message", "El email ya está siendo utilizado por otra cuenta."));
+                }
+                user.setEmail(newEmail);
+                user.setEmailVerified(false);
+                user.setVerificationToken(UUID.randomUUID().toString());
+                emailChanged = true;
+            }
+        }
+
+        if (fields.containsKey("phone")) {
+            String phone = fields.get("phone").trim();
+            if (phone.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "El teléfono no puede estar vacío."));
+            }
+            user.setPhone(phone);
+        }
+
+        if (fields.containsKey("dni")) {
+            String dni = fields.get("dni").trim();
+            user.setDni(dni);
+        }
+
+        userRepository.save(user);
+
+        if (emailChanged) {
+            try {
+                emailService.sendEmailChangeVerification(user.getEmail(), user.getVerificationToken());
+            } catch (Exception e) {
+                System.err.println("Error enviando email de verificación: " + e.getMessage());
+            }
+            return ResponseEntity.ok(Map.of(
+                    "message", "email_changed",
+                    "email", user.getEmail()
+            ));
+        }
+
+        return ResponseEntity.ok(Map.of("message", "ok"));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<Map<String, String>> deleteCurrentUser(@RequestBody Map<String, String> body) {
+        String password = body.getOrDefault("password", "").trim();
+
+        if (password.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "La contraseña es obligatoria para confirmar la eliminación."));
+        }
+
+        User user = getAuthenticatedUser();
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "La contraseña ingresada es incorrecta."));
+        }
+
+        userDeletionService.deleteAllUserData(user);
+
+        return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente."));
+    }
+
+    // ── Cambiar contraseña ────────────────────────────────────────────────────
+    @PatchMapping("/me/password")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> body) {
+        User user = getAuthenticatedUser();
+
+        String currentPassword = body.get("currentPassword");
+        String newPassword     = body.get("newPassword");
+
+        if (currentPassword == null || newPassword == null) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Datos inválidos."));
+        }
+
+        if (!newPassword.matches("(?=.*[A-Z])(?=.*\\d)[A-Za-z\\d@!_-]{8,}$")) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message",
+                            "La contraseña debe tener al menos 8 caracteres, una mayúscula y un número. Solo se permiten letras, números y los caracteres @ ! - _"));
+        }
+
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "La contraseña actual es incorrecta."));
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of("message", "Contraseña actualizada correctamente."));
+    }
+
+    // ==============================================
+    // ENDPOINTS PARA AVATAR
+    // ==============================================
+
+    /**
+     * Actualiza el avatar del usuario (avatar predefinido)
+     * POST /api/users/me/avatar/{avatarId}
+     */
+    @PostMapping("/me/avatar/{avatarId}")
+    public ResponseEntity<?> updateAvatar(@PathVariable Long avatarId) {
+        User user = getAuthenticatedUser();
+        User updatedUser = userService.updateAvatar(user.getId(), avatarId);
+        return ResponseEntity.ok(Map.of(
+                "message", "Avatar actualizado correctamente",
+                "avatarUrl", updatedUser.getAvatarUrl()
+        ));
+    }
+
+    /**
+     * Sube un avatar personalizado con validaciones
+     * POST /api/users/me/avatar/upload
+     */
+    @PostMapping(value = "/me/avatar/upload", consumes = "multipart/form-data")
+    public ResponseEntity<?> uploadCustomAvatar(@RequestParam("file") MultipartFile file) {
+
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "El archivo no puede estar vacío"));
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Solo se permiten archivos de imagen (JPEG, PNG, GIF, etc.)"));
+        }
+
+        if (file.getSize() > 5 * 1024 * 1024) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "El archivo no puede superar los 5MB"));
+        }
+
+        try {
+            User user = getAuthenticatedUser();
+            User updatedUser = userService.uploadCustomAvatar(user.getId(), file);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Avatar personalizado subido correctamente",
+                    "avatarUrl", updatedUser.getAvatarUrl(),
+                    "success", true
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "message", "Error al subir el avatar: " + e.getMessage(),
+                            "success", false
+                    ));
+        }
+    }
+
+    /**
+     * Restablece al avatar por defecto del nivel actual
+     * POST /api/users/me/avatar/reset
+     */
+    @PostMapping("/me/avatar/reset")
+    public ResponseEntity<?> resetToDefaultAvatar() {
+        User user = getAuthenticatedUser();
+        User updatedUser = userService.resetToDefaultAvatar(user.getId());
+        return ResponseEntity.ok(Map.of(
+                "message", "Avatar restablecido correctamente",
+                "avatarUrl", updatedUser.getAvatarUrl()
+        ));
+    }
+
+    /**
+     * Elimina el avatar personalizado (vuelve al por defecto)
+     * DELETE /api/users/me/avatar
+     */
+    @DeleteMapping("/me/avatar")
+    public ResponseEntity<?> removeAvatar() {
+        User user = getAuthenticatedUser();
+        user.removeAvatar();
+        userRepository.save(user);
+
+        User updatedUser = userService.resetToDefaultAvatar(user.getId());
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Avatar eliminado",
+                "avatarUrl", updatedUser.getAvatarUrl()
+        ));
+    }
+
+    // ==============================================
+    // ENDPOINTS PARA NIVEL
+    // ==============================================
+
+    /**
+     * Obtiene información detallada del nivel y progreso
+     * GET /api/users/me/level
+     */
+    @GetMapping("/me/level")
+    public ResponseEntity<UserLevelWithAvatarDto> getLevelInfo() {
+        User user = getAuthenticatedUser();
+
+        LevelCalculatorService.LevelProgress progress =
+                levelCalculatorService.getProgressToNextLevel(user);
+
+        UserLevelWithAvatarDto dto = new UserLevelWithAvatarDto();
+        dto.setUserId(user.getId());
+        dto.setUserName(user.getName());
+        dto.setCurrentLevel(user.getLevel());
+        dto.setCurrentLevelDisplay(user.getLevel().getDisplayName());
+        dto.setCurrentLevelEmoji(user.getLevel().getEmoji());
+
+        if (progress.hasNextLevel()) {
+            dto.setNextLevel(progress.getNextLevel());
+            dto.setNextLevelDisplay(progress.getNextLevel().getDisplayName());
+            dto.setNextLevelEmoji(progress.getNextLevel().getEmoji());
+            dto.setProgress(progress.getProgress());
+            dto.setPointsToNextLevel(progress.getPointsNeeded());
+            dto.setCanLevelUp(levelCalculatorService.canLevelUp(user));
+        }
+
+        return ResponseEntity.ok(dto);
+    }
+
+    /**
+     * Solicita recalcular el nivel del usuario
+     * POST /api/users/me/level/recalculate
+     */
+    @PostMapping("/me/level/recalculate")
+    public ResponseEntity<?> recalculateLevel() {
+        User user = getAuthenticatedUser();
+        User updatedUser = userService.recalculateLevel(user.getId());
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Nivel recalculado",
+                "level", updatedUser.getLevel().name(),
+                "levelDisplay", updatedUser.getLevel().getDisplayName(),
+                "levelEmoji", updatedUser.getLevel().getEmoji()
+        ));
+    }
+
+    private User getAuthenticatedUser() {
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext()
+                .getAuthentication().getPrincipal();
+        return userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    }
+}

@@ -1,0 +1,26 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Compilados
+*.class
+target/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Configuración sensible
+application-prod.properties
+application-dev.properties
+*.key
+*.pem
+
+# Temp
+*.tmp
+*.temp
