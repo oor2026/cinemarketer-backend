@@ -38,11 +38,6 @@ public class TmdbService {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(apiToken);
 
-        System.out.println("=== DEBUG TMDB ===");
-        System.out.println("Token siendo usado: " + apiToken.substring(0, 20) + "...");
-        System.out.println("Headers: " + headers);
-        System.out.println("==================");
-
         return headers;
     }
 
@@ -104,8 +99,6 @@ public class TmdbService {
     public TmdbMovieDto getMovieDetails(Long movieId) {
         String path = "/movie/" + movieId;
         String url = buildUrl(path);
-        System.out.println("🎬 Solicitando detalle de película ID: " + movieId);
-        System.out.println("🔍 URL detalles: " + url);
         HttpEntity<String> entity = new HttpEntity<>(createHeaders());
         ResponseEntity<TmdbMovieDto> response = restTemplate.exchange(
                 url, HttpMethod.GET, entity, TmdbMovieDto.class);
@@ -141,7 +134,6 @@ public class TmdbService {
             builder.queryParam(entry.getKey(), entry.getValue());
         }
         String url = builder.build().toUriString();
-        System.out.println("📡 URL SEARCH: " + url);
         HttpEntity<String> entity = new HttpEntity<>(createHeaders());
         ResponseEntity<TmdbPageResponseDto> response = restTemplate.exchange(
                 url, HttpMethod.GET, entity, TmdbPageResponseDto.class);
@@ -167,8 +159,6 @@ public class TmdbService {
         }
 
         String url = builder.build().toUriString();
-        System.out.println("🔍 URL DISCOVER: " + url);
-        System.out.println("📦 Parámetros: " + params);
 
         HttpEntity<String> entity = new HttpEntity<>(createHeaders());
 
