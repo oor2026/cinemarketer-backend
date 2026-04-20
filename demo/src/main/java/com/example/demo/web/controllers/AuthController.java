@@ -29,7 +29,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:63342")
 public class AuthController {
 
     private final UserRepository userRepository;
@@ -125,7 +124,6 @@ public class AuthController {
             emailService.sendVerificationEmail(user.getEmail(), verificationToken);
         } catch (Exception e) {
             // Log del error pero no fallamos el registro
-            System.err.println("Error enviando email: " + e.getMessage());
             return ResponseEntity
                     .status(HttpStatus.CREATED)
                     .body(new RegisterResponse(
@@ -281,7 +279,6 @@ public class AuthController {
 
         // Verificar que el token existe y tiene el formato correcto
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            System.out.println("🚫 Intento de logout sin token válido");
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)  // 401 en lugar de 400
                     .body(Map.of(
@@ -308,9 +305,6 @@ public class AuthController {
             // Agregar a blacklist
             tokenBlacklistService.blacklistToken(token);
 
-            System.out.println("🔓 Logout exitoso - Token blacklisted. Total: " +
-                    tokenBlacklistService.getBlacklistSize());
-
             return ResponseEntity.ok()
                     .body(Map.of(
                             "message", "Sesión cerrada exitosamente",
@@ -319,7 +313,6 @@ public class AuthController {
                     ));
 
         } catch (Exception e) {
-            System.err.println("❌ Error en logout: " + e.getMessage());
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of(
@@ -346,7 +339,7 @@ public class AuthController {
             try {
                 emailService.sendPasswordResetEmail(user.getEmail(), token);
             } catch (Exception e) {
-                System.err.println("⚠️ Error enviando mail reset: " + e.getMessage());
+
             }
         });
 
