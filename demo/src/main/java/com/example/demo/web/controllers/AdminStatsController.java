@@ -55,9 +55,6 @@ public class AdminStatsController {
     public ResponseEntity<StatsResponseDto> getStats(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        org.springframework.security.core.context.SecurityContextHolder.getContext()
-                .getAuthentication().getAuthorities()
-                .forEach(auth -> System.out.println("Autoridad: " + auth.getAuthority()));
         // Si no se proporcionan fechas, usar mes actual
         if (startDate == null) {
             startDate = LocalDate.now().withDayOfMonth(1);
