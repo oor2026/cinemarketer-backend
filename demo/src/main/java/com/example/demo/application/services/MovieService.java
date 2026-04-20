@@ -122,11 +122,9 @@ public class MovieService {
 
         if (filter.usarSearch()) {
             // Solo búsqueda por texto - usar /search/movie
-            System.out.println("📌 Usando endpoint SEARCH para: " + params);
             return tmdbService.searchMovies(params);
         } else {
             // Hay filtros avanzados - usar /discover/movie
-            System.out.println("📌 Usando endpoint DISCOVER para: " + params);
             return tmdbService.discoverMovies(params);
         }
     }
