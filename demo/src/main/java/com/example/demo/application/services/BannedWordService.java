@@ -40,7 +40,6 @@ public class BannedWordService {
         for (String palabra : blockWords) {
             String palabraNormalizada = normalizar(palabra);
             if (contienepalabra(textoNormalizado, palabraNormalizada)) {
-                System.out.println("🚫 Palabra BLOCK detectada: " + palabra);
                 return MatchResult.BLOCK;
             }
         }
@@ -50,7 +49,6 @@ public class BannedWordService {
         for (String palabra : reviewWords) {
             String palabraNormalizada = normalizar(palabra);
             if (contienepalabra(textoNormalizado, palabraNormalizada)) {
-                System.out.println("⚠️ Palabra REVIEW detectada: " + palabra);
                 return MatchResult.REVIEW;
             }
         }
