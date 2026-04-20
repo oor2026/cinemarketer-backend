@@ -27,7 +27,6 @@ public class DataInitializer implements ApplicationRunner {
         insertIfNotExists(PointAction.VOTE_CINEMA,   15, "Puntos por votar un cine");
         insertIfNotExists(PointAction.COMMENT_MOVIE, 10, "Puntos por comentar una película");
 
-        System.out.println("✅ PointConfig seed completado");
     }
 
     private void insertIfNotExists(PointAction action, int points, String description) {
@@ -38,7 +37,6 @@ public class DataInitializer implements ApplicationRunner {
             config.setDescription(description);
             config.setActive(true);
             pointConfigRepository.save(config);
-            System.out.println("📌 PointConfig insertado: " + action + " → " + points + " pts");
         }
     }
 }
