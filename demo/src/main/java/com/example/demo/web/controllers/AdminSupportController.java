@@ -22,7 +22,6 @@ import java.util.Map;
 @RequestMapping("/api/admin/support")
 @PreAuthorize("hasAuthority('ADMIN')")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:63342")
 public class AdminSupportController {
 
     private final SupportTicketRepository ticketRepository;
