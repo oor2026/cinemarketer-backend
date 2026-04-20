@@ -20,7 +20,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/admin/supervision")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:63342")
 public class AdminSupervisionController {
 
     private final CommentRepository          commentRepository;
@@ -151,7 +150,7 @@ public class AdminSupervisionController {
             mensaje.setReadByUser(false);
             supportMessageRepository.save(mensaje);
         } catch (Exception e) {
-            System.err.println("⚠️ Error creando ticket de soporte: " + e.getMessage());
+
         }
 
         // Notificar por email
@@ -163,7 +162,7 @@ public class AdminSupervisionController {
                 request.getReason()
             );
         } catch (Exception e) {
-            System.err.println("⚠️ Error enviando email de notificacion: " + e.getMessage());
+
         }
 
         return ResponseEntity.ok(Map.of("message", "Comentario eliminado y usuario notificado"));
