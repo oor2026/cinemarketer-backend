@@ -285,11 +285,9 @@ public class AdminUserController {
 
             // 1. Primero comments (dependen directamente del user)
             commentRepository.deleteByUser(user);
-            System.out.println("✅ Comments del usuario eliminados");
 
             // 2. Luego reviews (dependen del user)
             if (user.getReviews() != null && !user.getReviews().isEmpty()) {
-                System.out.println("🗑️ Eliminando " + user.getReviews().size() + " reviews del usuario");
                 reviewRepository.deleteAll(user.getReviews());
             } else {
 
