@@ -1,0 +1,65 @@
+# ==============================================
+# ARCHIVO DE PRODUCCIÓN - PLANTILLA
+# ==============================================
+# Copiar este archivo como application-prod.properties
+# y completar con los valores reales del servidor
+# NO subir application-prod.properties a GitHub
+# ==============================================
+
+# BASE DE DATOS
+DB_URL=jdbc:mysql://localhost:3306/cinemarketer?useSSL=true&serverTimezone=UTC
+DB_USERNAME=tu_usuario
+DB_PASSWORD=tu_contraseña
+DB_DDL_AUTO=validate
+DB_SHOW_SQL=false
+
+# LOGGING (en producción solo WARN/ERROR)
+LOG_LEVEL_SECURITY=WARN
+LOG_LEVEL_WEB=WARN
+LOG_LEVEL_APP=WARN
+
+# ERRORES
+ERROR_STACKTRACE=never
+ERROR_MESSAGE=always
+
+# MERCADO PAGO (PRODUCCIÓN)
+MP_ACCESS_TOKEN=tu_access_token_produccion
+MP_PUBLIC_KEY=tu_public_key_produccion
+MP_WEBHOOK_SECRET=tu_webhook_secret_produccion
+MP_SANDBOX=false
+
+# EMAIL (PRODUCCIÓN - ej: SendGrid, Amazon SES, Gmail SMTP)
+MAIL_HOST=smtp.tu-proveedor.com
+MAIL_PORT=587
+MAIL_USERNAME=tu_usuario_email
+MAIL_PASSWORD=tu_contraseña_email
+MAIL_SMTP_AUTH=true
+MAIL_SMTP_TLS=true
+
+# URLS
+APP_BASE_URL=https://tu-dominio.com
+APP_FRONTEND_URL=https://tu-frontend.com
+
+# JWT
+JWT_SECRET=tu_clave_secreta_jwt_muy_larga_y_segura
+JWT_EXPIRATION=86400000
+
+# CORS
+CORS_ALLOWED_ORIGINS=https://tu-frontend.com
+CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,PATCH,OPTIONS
+CORS_ALLOWED_HEADERS=*
+CORS_ALLOW_CREDENTIALS=true
+
+# TMDB API
+TMDB_API_TOKEN=tu_token_tmdb
+TMDB_API_URL=https://api.themoviedb.org/3
+TMDB_IMAGE_BASE_URL=https://image.tmdb.org/t/p
+
+# CLOUDINARY
+CLOUDINARY_CLOUD_NAME=tu_cloud_name
+CLOUDINARY_API_KEY=tu_api_key
+CLOUDINARY_API_SECRET=tu_api_secret
+
+# MULTIPART
+MAX_FILE_SIZE=5MB
+MAX_REQUEST_SIZE=5MB
