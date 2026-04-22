@@ -12,8 +12,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "avatars")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -103,7 +102,7 @@ public class Avatar {
     }
 
     // ==============================================
-    // MÉTODOS DE UTILIDAD
+    // MÉTODOS DE UTILIDAD (NO GETTERS/SETTERS)
     // ==============================================
 
     /**
@@ -133,8 +132,8 @@ public class Avatar {
     // INNER CLASS PARA DTO BÁSICO
     // ==============================================
 
-    @lombok.Data
-    @lombok.AllArgsConstructor
+    @Data
+    @AllArgsConstructor
     public static class AvatarBasicDto {
         private Long id;
         private String name;
