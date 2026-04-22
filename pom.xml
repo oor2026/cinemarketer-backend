@@ -117,7 +117,7 @@
 				<version>3.13.0</version>
 				<configuration>
 					<!-- Forzar procesamiento de anotaciones (requerido para JDK 23) -->
-					<proc>none</proc>
+					<proc>full</proc>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>org.projectlombok</groupId>
