@@ -28,7 +28,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins = "http://localhost:63342")
 public class UserController {
 
     private final UserRepository userRepository;
@@ -176,7 +175,7 @@ public class UserController {
             try {
                 emailService.sendEmailChangeVerification(user.getEmail(), user.getVerificationToken());
             } catch (Exception e) {
-                System.err.println("Error enviando email de verificación: " + e.getMessage());
+
             }
             return ResponseEntity.ok(Map.of(
                     "message", "email_changed",

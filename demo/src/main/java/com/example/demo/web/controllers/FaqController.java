@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/faq")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:63342")
 public class FaqController {
 
     private final FaqRepository faqRepository;

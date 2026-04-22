@@ -19,7 +19,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin/rewards")
-@CrossOrigin(origins = "http://localhost:63342")
 @PreAuthorize("hasAuthority('ADMIN')")
 public class AdminRewardController {
 
@@ -55,7 +54,6 @@ public class AdminRewardController {
         Reward reward = new Reward();
         mapRequestToReward(request, reward);
         rewardRepository.save(reward);
-        System.out.println("✅ Premio creado: " + reward.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(reward, 0));
     }
 
@@ -72,7 +70,6 @@ public class AdminRewardController {
 
         mapRequestToReward(request, reward);
         rewardRepository.save(reward);
-        System.out.println("✅ Premio actualizado: " + reward.getName());
         return ResponseEntity.ok(toDto(reward, 0));
     }
 
@@ -98,11 +95,9 @@ public class AdminRewardController {
             reward.setImageUrl(imageUrl);
             rewardRepository.save(reward);
 
-            System.out.println("🖼️ Imagen subida para premio: " + reward.getName());
             return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
 
         } catch (Exception e) {
-            System.err.println("❌ Error subiendo imagen: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error al subir la imagen: " + e.getMessage()));
         }
@@ -120,7 +115,6 @@ public class AdminRewardController {
 
         reward.setActive(false);
         rewardRepository.save(reward);
-        System.out.println("🗑️ Premio desactivado: " + reward.getName());
         return ResponseEntity.ok(Map.of("message", "Premio desactivado correctamente"));
     }
 

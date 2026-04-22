@@ -151,15 +151,6 @@ public class PointTransactionService {
             // Persistir el cambio de nivel
             userService.updateUserLevel(user.getId(), user.getLevel());
 
-            // Log para auditoría
-            System.out.println(String.format(
-                    "⭐ El usuario %s (ID: %d) cambió de nivel: %s → %s",
-                    user.getEmail(),
-                    user.getId(),
-                    oldLevel.getDisplayName(),
-                    user.getLevel().getDisplayName()
-            ));
-
             // Aquí se podría enviar notificación al usuario
             // notifyLevelUp(user, oldLevel, user.getLevel());
         }

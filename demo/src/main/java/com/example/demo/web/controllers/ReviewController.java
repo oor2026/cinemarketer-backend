@@ -26,7 +26,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/reviews")
-@CrossOrigin(origins = "http://localhost:63342")
 public class ReviewController {
 
     private final ReviewRepository reviewRepository;
@@ -61,13 +60,7 @@ public class ReviewController {
             @RequestBody VoteRequest voteRequest,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        System.out.println("\n========== DEBUG VOTO ==========");
-        System.out.println("📍 MovieId: " + movieId);
-        System.out.println("👤 Usuario autenticado: " + (userDetails != null ? userDetails.getUsername() : "NO"));
-        System.out.println("🎯 Tipo de voto: " + voteRequest.getVoteType());
-
         if (userDetails == null) {
-            System.out.println("❌ userDetails es NULL - Devolviendo 401");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
@@ -88,7 +81,6 @@ public class ReviewController {
 
         if (existingMovie.isEmpty()) {
             try {
-                System.out.println("🎬 Película no encontrada en BD. Consultando TMDB para ID: " + movieId);
 
                 TmdbMovieDto tmdbMovie = movieService.getMovieDetails(movieId);
 
@@ -106,15 +98,12 @@ public class ReviewController {
                     newMovie.setActive(true);
 
                     movieRepository.save(newMovie);
-                    System.out.println("✅ Película guardada en BD: " + tmdbMovie.getTitle());
                 }
             } catch (Exception e) {
-                System.out.println("❌ Error al obtener película de TMDB: " + e.getMessage());
-                e.printStackTrace();
                 // No impedimos el voto, pero registramos el error
             }
         } else {
-            System.out.println("✅ Película ya existe en BD: " + existingMovie.get().getTitle());
+
         }
 
         // 4. Consultar puntos desde point_config
@@ -130,7 +119,6 @@ public class ReviewController {
             Review review = existingVote.get();
             review.setVote(voteType);
             reviewRepository.save(review);
-            System.out.println("🔄 Voto actualizado: " + voteType);
         } else {
             // Si no votó, creamos nuevo voto y sumamos puntos
             Review review = new Review();
@@ -156,9 +144,6 @@ public class ReviewController {
                     movieId,
                     "Voto en película: " + movieTitle
             );
-
-            System.out.println("⭐ Puntos sumados al usuario: " + points);
-            System.out.println("✅ Nuevo voto registrado: " + voteType);
         }
 
         // 6. Obtener estadísticas actualizadas

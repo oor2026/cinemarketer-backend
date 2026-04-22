@@ -23,7 +23,6 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/admin/stats")
-@CrossOrigin(origins = "http://localhost:63342")
 @PreAuthorize("hasAuthority('ADMIN')")
 public class AdminStatsController {
 
@@ -56,9 +55,6 @@ public class AdminStatsController {
     public ResponseEntity<StatsResponseDto> getStats(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        org.springframework.security.core.context.SecurityContextHolder.getContext()
-                .getAuthentication().getAuthorities()
-                .forEach(auth -> System.out.println("Autoridad: " + auth.getAuthority()));
         // Si no se proporcionan fechas, usar mes actual
         if (startDate == null) {
             startDate = LocalDate.now().withDayOfMonth(1);
@@ -176,7 +172,7 @@ public class AdminStatsController {
             if (row[0] != null) {
                 dailyTrend.put(row[0].toString(), ((Number) row[1]).longValue());
             } else {
-                System.out.println("⚠️ Warning: Fecha null en dailyVotes, valor ignorado: " + row[1]);
+
             }
         }
         stats.setDailyTrend(dailyTrend);
@@ -316,11 +312,10 @@ public class AdminStatsController {
                 if (dayIndex >= 0 && dayIndex < weekdays.length) {
                     weekdayDist.put(weekdays[dayIndex], ((Number) row[1]).longValue());
                 } else {
-                    System.out.println("⚠️ Warning: Índice de día inválido: " + dayIndex);
                     weekdayDist.put("Día " + dayIndex, ((Number) row[1]).longValue());
                 }
             } else {
-                System.out.println("⚠️ Warning: Día null en weekdayVotes, valor ignorado: " + row[1]);
+
             }
         }
         stats.setWeekdayDistribution(weekdayDist);
@@ -332,7 +327,7 @@ public class AdminStatsController {
             if (row[0] != null) {
                 hourDist.put(row[0].toString() + ":00", ((Number) row[1]).longValue());
             } else {
-                System.out.println("⚠️ Warning: Hora null en hourVotes, valor ignorado: " + row[1]);
+
             }
         }
         stats.setHourDistribution(hourDist);
@@ -368,7 +363,7 @@ public class AdminStatsController {
                     cleanMap.put(entry.getKey(), entry.getValue());
                     hasValidEntry = true;
                 } else {
-                    System.out.println("⚠️ [sanitizeMapList] Eliminada entrada con clave null, valor: " + entry.getValue());
+
                 }
             }
 

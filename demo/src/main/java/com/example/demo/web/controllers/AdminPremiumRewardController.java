@@ -16,7 +16,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/admin/premium/rewards")
-@CrossOrigin(origins = "http://localhost:63342")
 @PreAuthorize("hasAuthority('ADMIN')")
 public class AdminPremiumRewardController {
 

@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/rewards")
-@CrossOrigin(origins = "http://localhost:63342")
 public class RewardController {
 
     private final RewardRepository rewardRepository;

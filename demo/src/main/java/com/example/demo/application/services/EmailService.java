@@ -60,7 +60,7 @@ public class EmailService {
 
     public void sendPasswordResetEmail(String to, String token) {
         String subject = "Cinemarketer - Restablecer contraseña";
-        String resetUrl = "http://localhost:63342/src/reset-password.html?token=" + token;
+        String resetUrl = baseUrl + "/reset-password.html?token=" + token;
         String message = String.format(
                 "Hola,\n\n" +
                         "Recibimos una solicitud para restablecer la contraseña de tu cuenta en Cinemarketer.\n\n" +

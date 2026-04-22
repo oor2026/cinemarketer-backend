@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/comments")
-@CrossOrigin(origins = "http://localhost:63342")
 public class CommentController {
 
     private static final int AUTO_HIDE_THRESHOLD = 5;

@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin/subscriptions")
-@CrossOrigin(origins = "http://localhost:63342")
 @PreAuthorize("hasAuthority('ADMIN')")
 public class AdminSubscriptionController {
 

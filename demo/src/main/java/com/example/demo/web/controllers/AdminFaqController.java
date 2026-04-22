@@ -17,7 +17,6 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/admin/faq")
 @PreAuthorize("hasAuthority('ADMIN')")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:63342")
 public class AdminFaqController {
 
     private final FaqRepository faqRepository;

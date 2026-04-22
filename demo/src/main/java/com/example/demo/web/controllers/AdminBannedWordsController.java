@@ -14,7 +14,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/banned-words")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:63342")
 public class AdminBannedWordsController {
 
     private final BannedWordRepository bannedWordRepository;

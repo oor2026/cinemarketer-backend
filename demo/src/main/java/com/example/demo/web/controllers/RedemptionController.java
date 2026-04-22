@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/redemptions")
-@CrossOrigin(origins = "http://localhost:63342")
 public class RedemptionController {
 
     private final RedemptionRepository redemptionRepository;
@@ -136,10 +135,7 @@ public class RedemptionController {
             user.setLevel(newLevel);
             user.setLevelUpdatedAt(LocalDateTime.now());
             userRepository.save(user);
-            System.out.println("🎖️ Usuario " + user.getEmail() + " subió de nivel: " + oldLevel + " → " + newLevel);
         }
-
-        System.out.println("🎁 Canje realizado: " + reward.getName() + " | Código: " + code);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(redemption));
     }

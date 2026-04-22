@@ -156,9 +156,8 @@ public class AdminUserController {
         // Enviar mail de verificación con el mismo template del registro
         try {
             emailService.sendVerificationEmail(user.getEmail(), verificationToken);
-            System.out.println("✉️ Mail de verificación enviado al nuevo usuario: " + user.getEmail());
         } catch (Exception e) {
-            System.err.println("⚠️ Error enviando mail de verificación: " + e.getMessage());
+
         }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(user));
@@ -216,9 +215,7 @@ public class AdminUserController {
 
             try {
                 emailService.sendEmailChangeVerification(nuevoEmail, verificationToken);
-                System.out.println("✉️ Mail de verificación enviado al nuevo email: " + nuevoEmail);
             } catch (Exception e) {
-                System.err.println("⚠️ Error enviando mail de verificación: " + e.getMessage());
                 // No frenamos la operación, el usuario fue guardado igual
             }
         } else {
@@ -272,50 +269,39 @@ public class AdminUserController {
     @PreAuthorize("hasAuthority('ADMIN')")
     @Transactional
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
-        System.out.println("🔍 Admin intenta eliminar usuario ID: " + id);
 
         try {
             User user = userRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
 
-            System.out.println("👤 Usuario encontrado: " + user.getEmail() + " | Rol: " + user.getRole());
-
             // Solo evitar que un admin se elimine a sí mismo
             User currentUser = getCurrentUser();
             if (currentUser != null && currentUser.getId().equals(id)) {
-                System.out.println("⛔ Admin intenta eliminarse a sí mismo - BLOQUEADO");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(Map.of("error", "No puedes eliminar tu propia cuenta"));
             }
 
             // 🔥 ELIMINACIÓN EN CASCADA COMPLETA
-            System.out.println("🗑️ Iniciando eliminación en cascada para usuario ID: " + id);
 
             // 1. Primero comments (dependen directamente del user)
             commentRepository.deleteByUser(user);
-            System.out.println("✅ Comments del usuario eliminados");
 
             // 2. Luego reviews (dependen del user)
             if (user.getReviews() != null && !user.getReviews().isEmpty()) {
-                System.out.println("🗑️ Eliminando " + user.getReviews().size() + " reviews del usuario");
                 reviewRepository.deleteAll(user.getReviews());
             } else {
-                System.out.println("ℹ️ No hay reviews para eliminar");
+
             }
 
             // 3. Luego redemptions (dependen del user)
             if (user.getRedemptions() != null && !user.getRedemptions().isEmpty()) {
-                System.out.println("🗑️ Eliminando " + user.getRedemptions().size() + " canjes del usuario");
                 redemptionRepository.deleteAll(user.getRedemptions());
             } else {
-                System.out.println("ℹ️ No hay canjes para eliminar");
             }
 
             // 4. Eliminar point_transactions
             // Como el repositorio no tiene deleteByUser, obtenemos las transacciones y las eliminamos
-            System.out.println("🗑️ Eliminando transacciones de puntos del usuario");
             pointTransactionRepository.deleteAll(pointTransactionRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), PageRequest.of(0, Integer.MAX_VALUE)).getContent());
-            System.out.println("✅ Transacciones de puntos eliminadas");
 
             // 5. Eliminar support tickets y sus mensajes
             List<SupportTicket> tickets = ticketRepository.findByUserId(user.getId());
@@ -323,11 +309,9 @@ public class AdminUserController {
                 messageRepository.deleteByTicketId(ticket.getId());
             }
             ticketRepository.deleteAll(tickets);
-            System.out.println("✅ Tickets de soporte y mensajes eliminados");
 
             // 6. Finalmente el usuario
             userRepository.delete(user);
-            System.out.println("✅ Usuario eliminado correctamente por admin: " + id);
 
             return ResponseEntity.ok(Map.of(
                     "message", "Usuario eliminado correctamente",
@@ -335,8 +319,6 @@ public class AdminUserController {
             ));
 
         } catch (Exception e) {
-            System.err.println("❌ Error eliminando usuario: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error interno al eliminar usuario: " + e.getMessage()));
         }

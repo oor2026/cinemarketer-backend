@@ -17,7 +17,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/premium/rewards")
-@CrossOrigin(origins = "http://localhost:63342")
 public class PremiumRewardController {
 
     private final UserRepository userRepository;

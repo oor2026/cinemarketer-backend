@@ -17,7 +17,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/subscriptions")
-@CrossOrigin(origins = "http://localhost:63342")
 public class SubscriptionController {
 
     private final UserRepository userRepository;
