@@ -1,0 +1,8 @@
+[build]
+builder = "NIXPACKS"
+
+[build.env]
+NIXPACKS_DEBUG = "1"
+
+[deploy]
+startCommand = "java -jar target/*.jar"
