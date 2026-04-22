@@ -6,3 +6,5 @@ NIXPACKS_DEBUG = "1"
 
 [deploy]
 startCommand = "java -jar target/*.jar"
+healthcheckPath = "/api/movies/popular?page=1"
+initialDelay = 180
