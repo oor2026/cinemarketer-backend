@@ -47,7 +47,6 @@ public class AdminUserController {
     private final SupportTicketRepository ticketRepository;
     private final SupportMessageRepository messageRepository;
 
-    // Constructor actualizado con PointTransactionRepository
     public AdminUserController(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
@@ -69,10 +68,6 @@ public class AdminUserController {
         this.emailService = emailService;
     }
 
-    /**
-     * Obtener todos los usuarios (con paginación)blo
-     * GET /api/admin/users?page=0&size=20&search=
-     */
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
@@ -105,10 +100,6 @@ public class AdminUserController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Obtener usuario por ID
-     * GET /api/admin/users/{id}
-     */
     @GetMapping("/{id}")
     public ResponseEntity<AdminUserDto> getUserById(@PathVariable Long id) {
         User user = userRepository.findById(id)
@@ -116,21 +107,15 @@ public class AdminUserController {
         return ResponseEntity.ok(toDto(user));
     }
 
-    /**
-     * Crear nuevo usuario (equivalente a registro)
-     * POST /api/admin/users
-     */
     @PostMapping
     @Transactional
     public ResponseEntity<?> createUser(@RequestBody AdminUserUpdateRequest request) {
-        // Verificar si el email ya existe
         if (userRepository.existsByEmail(request.getEmail())) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "El email " + request.getEmail() + " ya está registrado por otro usuario."));
         }
 
-        // Verificar si el DNI ya existe
         if (request.getDni() != null && !request.getDni().isBlank() && userRepository.existsByDni(request.getDni())) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
@@ -142,31 +127,25 @@ public class AdminUserController {
         user.setEmail(request.getEmail());
         user.setDni(request.getDni());
         user.setPhone(request.getPhone());
-        user.setPassword(passwordEncoder.encode("temporal123")); // Contraseña temporal
+        user.setPassword(passwordEncoder.encode("temporal123"));
         user.setRole(request.getRole() != null ? request.getRole() : UserRole.USER);
         user.setActive(request.getActive() != null ? request.getActive() : true);
 
-        // Generar token de verificación — el usuario debe confirmar su email
         String verificationToken = UUID.randomUUID().toString();
         user.setVerificationToken(verificationToken);
         user.setEmailVerified(false);
 
         userRepository.save(user);
 
-        // Enviar mail de verificación con el mismo template del registro
         try {
             emailService.sendVerificationEmail(user.getEmail(), verificationToken);
         } catch (Exception e) {
-
+            // Silencio - no interrumpir el flujo
         }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(user));
     }
 
-    /**
-     * Actualizar usuario
-     * PUT /api/admin/users/{id}
-     */
     @PutMapping("/{id}")
     @Transactional
     public ResponseEntity<?> updateUser(
@@ -176,7 +155,6 @@ public class AdminUserController {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // ── Control de email duplicado ────────────────────────────────────────
         String nuevoEmail = request.getEmail();
         boolean emailCambio = nuevoEmail != null && !nuevoEmail.equalsIgnoreCase(user.getEmail());
 
@@ -188,7 +166,6 @@ public class AdminUserController {
             }
         }
 
-        // ── Control de DNI duplicado ──────────────────────────────────────────
         String nuevoDni = request.getDni();
         boolean dniCambio = nuevoDni != null && !nuevoDni.equalsIgnoreCase(user.getDni());
 
@@ -206,7 +183,6 @@ public class AdminUserController {
         if (request.getTotalPoints() != null) user.setTotalPoints(request.getTotalPoints());
         if (request.getActive() != null) user.setActive(request.getActive());
 
-        // ── Si el email cambió: marcar no verificado y enviar mail ────────────
         if (emailCambio) {
             String verificationToken = UUID.randomUUID().toString();
             user.setVerificationToken(verificationToken);
@@ -216,7 +192,7 @@ public class AdminUserController {
             try {
                 emailService.sendEmailChangeVerification(nuevoEmail, verificationToken);
             } catch (Exception e) {
-                // No frenamos la operación, el usuario fue guardado igual
+                // Silencio
             }
         } else {
             userRepository.save(user);
@@ -225,10 +201,6 @@ public class AdminUserController {
         return ResponseEntity.ok(toDto(user));
     }
 
-    /**
-     * Suspender usuario (inhabilitar)
-     * POST /api/admin/users/{id}/suspend
-     */
     @PostMapping("/{id}/suspend")
     @Transactional
     public ResponseEntity<AdminUserDto> suspendUser(
@@ -245,10 +217,6 @@ public class AdminUserController {
         return ResponseEntity.ok(toDto(user));
     }
 
-    /**
-     * Reactivar usuario (quitar suspensión)
-     * POST /api/admin/users/{id}/unsuspend
-     */
     @PostMapping("/{id}/unsuspend")
     @Transactional
     public ResponseEntity<AdminUserDto> unsuspendUser(@PathVariable Long id) {
@@ -261,10 +229,6 @@ public class AdminUserController {
         return ResponseEntity.ok(toDto(user));
     }
 
-    /**
-     * Eliminar usuario (permanente) - CON ELIMINACIÓN EN CASCADA COMPLETA
-     * DELETE /api/admin/users/{id}
-     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ADMIN')")
     @Transactional
@@ -274,43 +238,30 @@ public class AdminUserController {
             User user = userRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
 
-            // Solo evitar que un admin se elimine a sí mismo
             User currentUser = getCurrentUser();
             if (currentUser != null && currentUser.getId().equals(id)) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(Map.of("error", "No puedes eliminar tu propia cuenta"));
             }
 
-            // 🔥 ELIMINACIÓN EN CASCADA COMPLETA
-
-            // 1. Primero comments (dependen directamente del user)
             commentRepository.deleteByUser(user);
 
-            // 2. Luego reviews (dependen del user)
             if (user.getReviews() != null && !user.getReviews().isEmpty()) {
                 reviewRepository.deleteAll(user.getReviews());
-            } else {
-
             }
 
-            // 3. Luego redemptions (dependen del user)
             if (user.getRedemptions() != null && !user.getRedemptions().isEmpty()) {
                 redemptionRepository.deleteAll(user.getRedemptions());
-            } else {
             }
 
-            // 4. Eliminar point_transactions
-            // Como el repositorio no tiene deleteByUser, obtenemos las transacciones y las eliminamos
             pointTransactionRepository.deleteAll(pointTransactionRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), PageRequest.of(0, Integer.MAX_VALUE)).getContent());
 
-            // 5. Eliminar support tickets y sus mensajes
             List<SupportTicket> tickets = ticketRepository.findByUserId(user.getId());
             for (SupportTicket ticket : tickets) {
                 messageRepository.deleteByTicketId(ticket.getId());
             }
             ticketRepository.deleteAll(tickets);
 
-            // 6. Finalmente el usuario
             userRepository.delete(user);
 
             return ResponseEntity.ok(Map.of(
@@ -324,10 +275,6 @@ public class AdminUserController {
         }
     }
 
-    /**
-     * Estadísticas
-     * GET /api/admin/users/stats
-     */
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
         long total = userRepository.count();
@@ -355,19 +302,18 @@ public class AdminUserController {
         dto.setPhone(user.getPhone());
         dto.setRole(user.getRole());
         dto.setTotalPoints(user.getTotalPoints());
-        dto.setActive(user.getActive());
+        // 🔧 CORREGIDO: usar isActive() en lugar de getActive()
+        dto.setActive(user.isActive());
         dto.setSuspended(user.isSuspended());
         dto.setSuspensionReason(user.getSuspensionReason());
         dto.setSuspendedAt(user.getSuspendedAt());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setLastLoginAt(user.getLastLoginAt());
+        // 🔧 CORREGIDO: usar isEmailVerified() en lugar de getEmailVerified()
         dto.setEmailVerified(user.isEmailVerified());
         return dto;
     }
 
-    /**
-     * Obtener el usuario actualmente autenticado
-     */
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
