@@ -1,7 +1,5 @@
 {
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "cd demo && ./mvnw clean package -DskipTests"
-  },
-  "startCommand": "cd demo && java -jar target/*.jar"
+    "builder": "NIXPACKS"
+  }
 }
