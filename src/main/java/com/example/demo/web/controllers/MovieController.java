@@ -1,10 +1,7 @@
 package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.MovieFilterDto;
-import com.example.demo.application.dtos.external.tmdb.TmdbGenreListResponseDto;
-import com.example.demo.application.dtos.external.tmdb.TmdbMovieDto;
-import com.example.demo.application.dtos.external.tmdb.TmdbPageResponseDto;
-import com.example.demo.application.dtos.external.tmdb.TmdbPersonSearchResponseDto;
+import com.example.demo.application.dtos.external.tmdb.*;
 import com.example.demo.application.services.MovieService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -128,6 +125,19 @@ public class MovieController {
             @RequestParam String query,
             @RequestParam(required = false, defaultValue = "1") Integer page) {
         TmdbPersonSearchResponseDto response = movieService.searchPeople(query, page);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Obtener videos (tráilers) de una película
+     * GET /api/movies/{id}/videos
+     *
+     * @param id ID de la película en TMDB
+     * @return TmdbVideoDto con la lista de videos (tráilers, teasers, etc.)
+     */
+    @GetMapping("/{id}/videos")
+    public ResponseEntity<TmdbVideoDto> getMovieVideos(@PathVariable Long id) {
+        TmdbVideoDto response = movieService.getMovieVideos(id);
         return ResponseEntity.ok(response);
     }
 }
