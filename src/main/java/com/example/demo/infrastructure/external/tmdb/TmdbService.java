@@ -1,9 +1,6 @@
 package com.example.demo.infrastructure.external.tmdb;
 
-import com.example.demo.application.dtos.external.tmdb.TmdbGenreListResponseDto;
-import com.example.demo.application.dtos.external.tmdb.TmdbMovieDto;
-import com.example.demo.application.dtos.external.tmdb.TmdbPageResponseDto;
-import com.example.demo.application.dtos.external.tmdb.TmdbPersonSearchResponseDto;
+import com.example.demo.application.dtos.external.tmdb.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -209,6 +206,27 @@ public class TmdbService {
                 HttpMethod.GET,
                 entity,
                 TmdbPersonSearchResponseDto.class
+        );
+
+        return response.getBody();
+    }
+
+    /**
+     * Obtener videos (tráilers, teasers, etc.) de una película por ID
+     * @param movieId ID de la película en TMDB
+     * @return TmdbVideoDto con la lista de videos
+     */
+    public TmdbVideoDto getMovieVideos(Long movieId) {
+        String path = "/movie/" + movieId + "/videos";
+        String url = buildUrl(path);
+
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+
+        ResponseEntity<TmdbVideoDto> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                entity,
+                TmdbVideoDto.class
         );
 
         return response.getBody();

@@ -1,11 +1,7 @@
 package com.example.demo.application.services;
 
 import com.example.demo.application.dtos.MovieFilterDto;
-import com.example.demo.application.dtos.external.tmdb.TmdbGenreListResponseDto;  // 👈 IMPORT NUEVO
-import com.example.demo.application.dtos.external.tmdb.TmdbMovieDto;
-import com.example.demo.application.dtos.external.tmdb.TmdbPageResponseDto;
-import com.example.demo.application.dtos.external.tmdb.TmdbPersonDto;
-import com.example.demo.application.dtos.external.tmdb.TmdbPersonSearchResponseDto;
+import com.example.demo.application.dtos.external.tmdb.*;
 import com.example.demo.infrastructure.external.tmdb.TmdbService;
 import java.util.Comparator;
 import java.util.List;
@@ -186,5 +182,17 @@ public class MovieService {
      */
     public String getBackdropUrl(String path) {
         return getImageUrl(path, "original");
+    }
+
+    /**
+     * Obtener videos (tráilers) de una película desde TMDB
+     * @param movieId ID de la película en TMDB
+     * @return TmdbVideoDto con la lista de videos
+     */
+    public TmdbVideoDto getMovieVideos(Long movieId) {
+        if (movieId == null || movieId <= 0) {
+            throw new IllegalArgumentException("ID de película inválido");
+        }
+        return tmdbService.getMovieVideos(movieId);
     }
 }

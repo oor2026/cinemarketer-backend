@@ -9,12 +9,11 @@ import com.example.demo.application.services.PointTransactionService;
 import com.example.demo.domain.movie.Movie;
 import com.example.demo.domain.movie.MovieRepository;
 import com.example.demo.domain.pointconfig.PointAction;
-import com.example.demo.domain.review.Review;
-import com.example.demo.domain.review.ReviewRepository;
-import com.example.demo.domain.review.ReviewType;
-import com.example.demo.domain.review.VoteType;
+import com.example.demo.domain.review.*;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -35,12 +34,14 @@ public class ReviewController {
     private final MovieService movieService;
     private final MovieRepository movieRepository;
 
-    public ReviewController(ReviewRepository reviewRepository,
-                            UserRepository userRepository,
-                            PointConfigService pointConfigService,
-                            PointTransactionService pointTransactionService,
-                            MovieService movieService,
-                            MovieRepository movieRepository) {
+    public ReviewController(
+            ReviewRepository reviewRepository,
+            UserRepository userRepository,
+            PointConfigService pointConfigService,
+            PointTransactionService pointTransactionService,
+            MovieService movieService,
+            MovieRepository movieRepository
+    ) {
         this.reviewRepository = reviewRepository;
         this.userRepository = userRepository;
         this.pointConfigService = pointConfigService;
@@ -49,10 +50,6 @@ public class ReviewController {
         this.movieRepository = movieRepository;
     }
 
-    /**
-     * Votar una película
-     * POST /api/reviews/movies/{movieId}
-     */
     @PostMapping("/movies/{movieId}")
     @Transactional
     public ResponseEntity<MovieStatsDto> voteMovie(
@@ -64,11 +61,34 @@ public class ReviewController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // 1. Obtener usuario autenticado
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // 2. Validar tipo de voto
+        Optional<Review> existingVote = reviewRepository
+                .findByUserIdAndReviewTypeAndTargetId(user.getId(), ReviewType.MOVIE, movieId);
+
+        if (existingVote.isPresent()) {
+            Review existing = existingVote.get();
+
+            VoteType newVoteType;
+            try {
+                newVoteType = VoteType.valueOf(voteRequest.getVoteType().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Si el voto es el mismo, no hacer nada
+            if (existing.getVote() == newVoteType) {
+                return getMovieStats(movieId, userDetails);
+            }
+
+            // Si el voto es diferente, solo cambiar el tipo (sin sumar puntos)
+            existing.setVote(newVoteType);
+            reviewRepository.save(existing);
+
+            return getMovieStats(movieId, userDetails);
+        }
+
         VoteType voteType;
         try {
             voteType = VoteType.valueOf(voteRequest.getVoteType().toUpperCase());
@@ -76,89 +96,73 @@ public class ReviewController {
             return ResponseEntity.badRequest().build();
         }
 
-        // 3. 👉 VERIFICAR Y GUARDAR LA PELÍCULA SI ES NECESARIO
-        Optional<Movie> existingMovie = movieRepository.findByTmdbId(movieId);
+        // ✅ Obtener o crear película correctamente
+        Movie movie = movieRepository.findByTmdbId(movieId).orElse(null);
 
-        if (existingMovie.isEmpty()) {
-            try {
+        if (movie == null) {
+            TmdbMovieDto tmdbMovie = movieService.getMovieDetails(movieId);
 
-                TmdbMovieDto tmdbMovie = movieService.getMovieDetails(movieId);
+            if (tmdbMovie != null) {
+                Movie newMovie = new Movie();
+                newMovie.setTmdbId(tmdbMovie.getId());
+                newMovie.setTitle(tmdbMovie.getTitle());
+                newMovie.setOverview(tmdbMovie.getOverview());
+                newMovie.setPosterPath(tmdbMovie.getPosterPath());
+                newMovie.setBackdropPath(tmdbMovie.getBackdropPath());
+                newMovie.setReleaseDate(tmdbMovie.getReleaseDateAsLocalDate());
+                newMovie.setVoteAverage(tmdbMovie.getVoteAverage());
+                newMovie.setVoteCount(tmdbMovie.getVoteCount());
+                newMovie.setPopularity(tmdbMovie.getPopularity());
+                newMovie.setActive(true);
 
-                if (tmdbMovie != null) {
-                    Movie newMovie = new Movie();
-                    newMovie.setTmdbId(tmdbMovie.getId());
-                    newMovie.setTitle(tmdbMovie.getTitle());
-                    newMovie.setOverview(tmdbMovie.getOverview());
-                    newMovie.setPosterPath(tmdbMovie.getPosterPath());
-                    newMovie.setBackdropPath(tmdbMovie.getBackdropPath());
-                    newMovie.setReleaseDate(tmdbMovie.getReleaseDateAsLocalDate());
-                    newMovie.setVoteAverage(tmdbMovie.getVoteAverage());
-                    newMovie.setVoteCount(tmdbMovie.getVoteCount());
-                    newMovie.setPopularity(tmdbMovie.getPopularity());
-                    newMovie.setActive(true);
-
-                    movieRepository.save(newMovie);
+                try {
+                    movie = movieRepository.save(newMovie);
+                } catch (DataIntegrityViolationException e) {
+                    // 🔥 otro thread la creó primero
+                    movie = movieRepository.findByTmdbId(movieId)
+                            .orElseThrow(() -> new RuntimeException("Error concurrente al crear película"));
                 }
-            } catch (Exception e) {
-                // No impedimos el voto, pero registramos el error
             }
-        } else {
-
         }
 
-        // 4. Consultar puntos desde point_config
         int basePoints = pointConfigService.getPoints(PointAction.VOTE_MOVIE);
         int points = user.isActivePremium() ? basePoints * 2 : basePoints;
 
-        // 5. Buscar si el usuario ya votó esta película
-        Optional<Review> existingVote = reviewRepository
-                .findByUserIdAndReviewTypeAndTargetId(user.getId(), ReviewType.MOVIE, movieId);
+        Review review = new Review();
+        review.setUser(user);
+        review.setReviewType(ReviewType.MOVIE);
+        review.setTargetId(movieId);
+        review.setVote(voteType);
+        review.setPointsAwarded(points);
+        reviewRepository.save(review);
 
-        if (existingVote.isPresent()) {
-            // Si ya votó, solo actualizamos el tipo de voto (sin sumar puntos de nuevo)
-            Review review = existingVote.get();
-            review.setVote(voteType);
-            reviewRepository.save(review);
-        } else {
-            // Si no votó, creamos nuevo voto y sumamos puntos
-            Review review = new Review();
-            review.setUser(user);
-            review.setReviewType(ReviewType.MOVIE);
-            review.setTargetId(movieId);
-            review.setVote(voteType);
-            review.setPointsAwarded(points);
-            reviewRepository.save(review);
+        user.addPoints(points);
+        userRepository.save(user);
 
-            user.addPoints(points);
-            userRepository.save(user);
+        String movieTitle = movie != null ? movie.getTitle() : ("Película #" + movieId);
 
-            // Registrar transacción de puntos
-            String movieTitle = movieRepository.findByTmdbId(movieId)
-                    .map(Movie::getTitle)
-                    .orElse("Película #" + movieId);
+        pointTransactionService.registerEarned(
+                user,
+                PointAction.VOTE_MOVIE,
+                points,
+                movieId,
+                "Voto en película: " + movieTitle
+        );
 
-            pointTransactionService.registerEarned(
-                    user,
-                    PointAction.VOTE_MOVIE,
-                    points,
-                    movieId,
-                    "Voto en película: " + movieTitle
-            );
-        }
-
-        // 6. Obtener estadísticas actualizadas
         long likes = reviewRepository.countByReviewTypeAndTargetIdAndVote(
                 ReviewType.MOVIE, movieId, VoteType.LIKE);
+
         long dislikes = reviewRepository.countByReviewTypeAndTargetIdAndVote(
                 ReviewType.MOVIE, movieId, VoteType.DISLIKE);
-        long totalVotes = likes + dislikes;
-        double positivePercentage = totalVotes > 0 ? (likes * 100.0 / totalVotes) : 0;
 
-        // 7. Verificar voto del usuario para el frontend
+        long totalVotes = likes + dislikes;
+
+        double positivePercentage = totalVotes > 0
+                ? (likes * 100.0 / totalVotes)
+                : 0;
+
         Optional<Review> updatedVote = reviewRepository
                 .findByUserIdAndReviewTypeAndTargetId(user.getId(), ReviewType.MOVIE, movieId);
-        boolean userVoted = updatedVote.isPresent();
-        String userVoteType = updatedVote.map(r -> r.getVote().name()).orElse(null);
 
         MovieStatsDto stats = new MovieStatsDto(
                 movieId,
@@ -166,51 +170,48 @@ public class ReviewController {
                 dislikes,
                 positivePercentage,
                 totalVotes,
-                userVoted,
-                userVoteType
+                updatedVote.isPresent(),
+                updatedVote.map(r -> r.getVote().name()).orElse(null)
         );
 
         return ResponseEntity.ok(stats);
     }
 
-    /**
-     * Obtener estadísticas de votación de una película
-     * GET /api/reviews/movies/{movieId}/stats
-     */
     @GetMapping("/movies/{movieId}/stats")
     public ResponseEntity<MovieStatsDto> getMovieStats(
             @PathVariable Long movieId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        // 1. Obtener usuario autenticado (si existe)
         User user = null;
         if (userDetails != null) {
             user = userRepository.findByEmail(userDetails.getUsername()).orElse(null);
         }
 
-        // 2. Contar likes y dislikes
         long likes = reviewRepository.countByReviewTypeAndTargetIdAndVote(
                 ReviewType.MOVIE, movieId, VoteType.LIKE);
+
         long dislikes = reviewRepository.countByReviewTypeAndTargetIdAndVote(
                 ReviewType.MOVIE, movieId, VoteType.DISLIKE);
-        long totalVotes = likes + dislikes;
-        double positivePercentage = totalVotes > 0 ? (likes * 100.0 / totalVotes) : 0;
 
-        // 3. Verificar si el usuario actual ya votó
+        long totalVotes = likes + dislikes;
+
+        double positivePercentage = totalVotes > 0
+                ? (likes * 100.0 / totalVotes)
+                : 0;
+
         boolean userVoted = false;
         String userVoteType = null;
 
         if (user != null) {
-            Optional<Review> userVote = reviewRepository
+            Optional<Review> vote = reviewRepository
                     .findByUserIdAndReviewTypeAndTargetId(user.getId(), ReviewType.MOVIE, movieId);
 
-            if (userVote.isPresent()) {
+            if (vote.isPresent()) {
                 userVoted = true;
-                userVoteType = userVote.get().getVote().name();
+                userVoteType = vote.get().getVote().name();
             }
         }
 
-        // 4. Crear respuesta
         MovieStatsDto stats = new MovieStatsDto(
                 movieId,
                 likes,
