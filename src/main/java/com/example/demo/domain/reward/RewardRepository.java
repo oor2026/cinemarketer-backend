@@ -70,4 +70,6 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
     // Promedio de puntos requeridos por premio
     @Query("SELECT AVG(r.pointsRequired) FROM Reward r WHERE r.active = true")
     Double getAveragePointsRequired();
+
+    List<Reward> findByDeletedFalse();
 }

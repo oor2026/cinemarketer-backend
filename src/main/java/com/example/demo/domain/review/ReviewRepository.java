@@ -102,16 +102,18 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
                                      @Param("end") LocalDateTime end);
 
     // Distribución por día de la semana
-    @Query("SELECT FUNCTION('DAYOFWEEK', r.createdAt) as dayOfWeek, COUNT(r) as count " +
-            "FROM Review r WHERE r.createdAt BETWEEN :start AND :end " +
-            "GROUP BY FUNCTION('DAYOFWEEK', r.createdAt) ORDER BY dayOfWeek")
+    @Query(value = "SELECT EXTRACT(DOW FROM created_at) as dayOfWeek, COUNT(id) as count " +
+            "FROM reviews WHERE created_at BETWEEN :start AND :end " +
+            "GROUP BY EXTRACT(DOW FROM created_at) ORDER BY dayOfWeek",
+            nativeQuery = true)
     List<Object[]> getVoteDistributionByWeekday(@Param("start") LocalDateTime start,
                                                 @Param("end") LocalDateTime end);
 
     // Distribución por hora del día
-    @Query("SELECT FUNCTION('HOUR', r.createdAt) as hour, COUNT(r) as count " +
-            "FROM Review r WHERE r.createdAt BETWEEN :start AND :end " +
-            "GROUP BY FUNCTION('HOUR', r.createdAt) ORDER BY hour")
+    @Query(value = "SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(id) as count " +
+            "FROM reviews WHERE created_at BETWEEN :start AND :end " +
+            "GROUP BY EXTRACT(HOUR FROM created_at) ORDER BY hour",
+            nativeQuery = true)
     List<Object[]> getVoteDistributionByHour(@Param("start") LocalDateTime start,
                                              @Param("end") LocalDateTime end);
 

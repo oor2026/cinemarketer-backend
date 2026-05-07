@@ -37,7 +37,7 @@ public class AdminRewardController {
      */
     @GetMapping
     public ResponseEntity<List<RewardDto>> getAllRewards() {
-        List<Reward> rewards = rewardRepository.findAll();
+        List<Reward> rewards = rewardRepository.findByDeletedFalse();
         List<RewardDto> dtos = rewards.stream()
                 .map(r -> toDto(r, 0))
                 .collect(Collectors.toList());
@@ -116,6 +116,21 @@ public class AdminRewardController {
         reward.setActive(false);
         rewardRepository.save(reward);
         return ResponseEntity.ok(Map.of("message", "Premio desactivado correctamente"));
+    }
+
+    /**
+     * Borrado lógico (ocultar para siempre del front)
+     * DELETE /api/admin/rewards/{id}/delete
+     */
+    @DeleteMapping("/{id}/delete")
+    @Transactional
+    public ResponseEntity<?> deleteReward(@PathVariable Long id) {
+        Reward reward = rewardRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Premio no encontrado"));
+
+        reward.setDeleted(true);
+        rewardRepository.save(reward);
+        return ResponseEntity.ok(Map.of("message", "Premio eliminado correctamente"));
     }
 
     /**
