@@ -9,4 +9,9 @@ public interface PremiumRewardRepository extends JpaRepository<PremiumReward, Lo
     List<PremiumReward> findByActiveTrue();
     List<PremiumReward> findByActiveTrueAndType(PremiumRewardType type);
     List<PremiumReward> findByDeletedFalse();
+    long countByActiveTrue();
+    long countByType(PremiumRewardType type);
+    long countByTypeAndDrawExecutedTrue(PremiumRewardType type);
+    long countByTypeAndDrawExecutedFalse(PremiumRewardType type);
+    long countByTypeAndActiveTrue(PremiumRewardType type);
 }

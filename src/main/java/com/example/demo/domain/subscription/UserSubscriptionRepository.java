@@ -21,4 +21,13 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
     Optional<UserSubscription> findByMpPreapprovalId(String mpPreapprovalId);
 
     Optional<UserSubscription> findTopByUserIdAndStatusOrderByCreatedAtDesc(Long userId, SubscriptionStatus status);
+
+    long countByStatus(SubscriptionStatus status);
+
+    @Query("SELECT COUNT(s) FROM UserSubscription s WHERE s.createdAt BETWEEN :start AND :end")
+    long countByCreatedAtBetween(@Param("start") java.time.LocalDateTime start,
+                                 @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT COUNT(DISTINCT s.user.id) FROM UserSubscription s WHERE s.status = 'ACTIVE'")
+    long countDistinctActiveUsers();
 }
