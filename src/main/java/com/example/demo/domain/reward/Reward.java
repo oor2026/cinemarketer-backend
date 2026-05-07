@@ -50,6 +50,9 @@ public class Reward {
     @Column(nullable = false)
     private Boolean active = true;  // visible para canje
 
+    @Column(nullable = false)
+    private Boolean deleted = false;
+
     @Column(name = "terms_conditions", columnDefinition = "TEXT")
     private String termsConditions;  // Términos específicos del premio
 

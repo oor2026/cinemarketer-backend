@@ -42,7 +42,7 @@ public class AdminRedemptionController {
             @RequestParam(defaultValue = "20") int size) {
 
         try {
-            Page<Redemption> pageResult = redemptionRepository.findAll(
+            Page<Redemption> pageResult = redemptionRepository.findByDeletedFalse(
                     PageRequest.of(page, size, Sort.by("redemptionDate").descending()));
 
             List<RedemptionAdminDto> redemptions = pageResult.getContent().stream()
@@ -70,7 +70,7 @@ public class AdminRedemptionController {
     public ResponseEntity<List<RedemptionAdminDto>> getRedemptionsByStatus(
             @PathVariable RedemptionStatus status) {
 
-        List<Redemption> redemptions = redemptionRepository.findByStatus(status);
+        List<Redemption> redemptions = redemptionRepository.findByStatusAndDeletedFalse(status);
         List<RedemptionAdminDto> dtos = redemptions.stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -116,6 +116,20 @@ public class AdminRedemptionController {
         }
 
         return ResponseEntity.ok(toDto(redemption));
+    }
+
+    /**
+     * DELETE /api/admin/redemptions/{id}/delete
+     * Borrado lógico
+     */
+    @DeleteMapping("/{id}/delete")
+    @Transactional
+    public ResponseEntity<?> deleteRedemption(@PathVariable Long id) {
+        Redemption redemption = redemptionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Canje no encontrado"));
+        redemption.setDeleted(true);
+        redemptionRepository.save(redemption);
+        return ResponseEntity.ok(Map.of("message", "Canje eliminado correctamente"));
     }
 
     // =============================================
