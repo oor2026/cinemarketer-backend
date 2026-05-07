@@ -18,6 +18,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import com.example.demo.domain.premium.PremiumRewardRepository;
 import com.example.demo.domain.premium.PremiumRewardType;
+import com.example.demo.domain.subscription.UserSubscriptionRepository;
+import com.example.demo.domain.subscription.SubscriptionStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -36,6 +38,7 @@ public class AdminStatsController {
     private final PointTransactionRepository pointTransactionRepository;
     private final SupportTicketRepository supportTicketRepository;
     private final PremiumRewardRepository premiumRewardRepository;
+    private final UserSubscriptionRepository subscriptionRepository;
 
     public AdminStatsController(
             UserRepository userRepository,
@@ -44,7 +47,9 @@ public class AdminStatsController {
             RedemptionRepository redemptionRepository,
             RewardRepository rewardRepository,
             PointTransactionRepository pointTransactionRepository,
-            SupportTicketRepository supportTicketRepository, PremiumRewardRepository premiumRewardRepository) {
+            SupportTicketRepository supportTicketRepository,
+            PremiumRewardRepository premiumRewardRepository,
+            UserSubscriptionRepository subscriptionRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.commentRepository = commentRepository;
@@ -53,6 +58,7 @@ public class AdminStatsController {
         this.pointTransactionRepository = pointTransactionRepository;
         this.supportTicketRepository = supportTicketRepository;
         this.premiumRewardRepository = premiumRewardRepository;
+        this.subscriptionRepository = subscriptionRepository;
     }
 
     @GetMapping
@@ -94,6 +100,15 @@ public class AdminStatsController {
         premiumStats.setTotalCanjeables(premiumRewardRepository.countByType(PremiumRewardType.CANJEABLE));
         premiumStats.setCanjeablesActivos(premiumRewardRepository.countByTypeAndActiveTrue(PremiumRewardType.CANJEABLE));
         response.setPremium(premiumStats);
+        // Subscription stats
+        SubscriptionStatsDto subscriptionStats = new SubscriptionStatsDto();
+        subscriptionStats.setTotalSuscripciones(subscriptionRepository.count());
+        subscriptionStats.setSuscripcionesActivas(subscriptionRepository.countByStatus(SubscriptionStatus.ACTIVE));
+        subscriptionStats.setSuscripcionesCanceladas(subscriptionRepository.countByStatus(SubscriptionStatus.CANCELLED));
+        subscriptionStats.setSuscripcionesPendientes(subscriptionRepository.countByStatus(SubscriptionStatus.PENDING));
+        subscriptionStats.setNuevasSuscripciones(subscriptionRepository.countByCreatedAtBetween(start, end));
+        subscriptionStats.setUsuariosSuscriptos(subscriptionRepository.countDistinctActiveUsers());
+        response.setSubscriptions(subscriptionStats);
         return ResponseEntity.ok(response);
     }
 

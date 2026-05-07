@@ -18,4 +18,5 @@ public class StatsResponseDto {
     private GrowthStatsDto growth;
     private String period;
     private PremiumStatsDto premium;
+    private SubscriptionStatsDto subscriptions;
 }
