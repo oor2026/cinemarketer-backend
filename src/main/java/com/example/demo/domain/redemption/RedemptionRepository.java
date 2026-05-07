@@ -23,7 +23,7 @@ public interface RedemptionRepository extends JpaRepository<Redemption, Long> {
     List<Redemption> findByRewardIdOrderByRedemptionDateDesc(Long rewardId);
 
     // Buscar por estado
-    List<Redemption> findByStatus(RedemptionStatus status);
+    List<Redemption> findByStatusAndDeletedFalse(RedemptionStatus status);
 
     // Buscar canjes pendientes por usuario
     List<Redemption> findByUserIdAndStatus(Long userId, RedemptionStatus status);
@@ -31,6 +31,9 @@ public interface RedemptionRepository extends JpaRepository<Redemption, Long> {
     // Buscar canjes expirados
     @Query("SELECT r FROM Redemption r WHERE r.expiresAt < :now AND r.status = 'PENDING'")
     List<Redemption> findExpiredRedemptions(@Param("now") LocalDateTime now);
+
+    // eliminar visualmente el registro en el admin
+    Page<Redemption> findByDeletedFalse(Pageable pageable);
 
     // Contar canjes por usuario
     long countByUserId(Long userId);
