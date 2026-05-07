@@ -8,4 +8,5 @@ import java.util.List;
 public interface PremiumRewardRepository extends JpaRepository<PremiumReward, Long> {
     List<PremiumReward> findByActiveTrue();
     List<PremiumReward> findByActiveTrueAndType(PremiumRewardType type);
+    List<PremiumReward> findByDeletedFalse();
 }

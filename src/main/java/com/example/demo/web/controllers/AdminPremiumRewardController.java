@@ -40,7 +40,7 @@ public class AdminPremiumRewardController {
      */
     @GetMapping
     public ResponseEntity<List<PremiumReward>> getAll() {
-        return ResponseEntity.ok(premiumRewardRepository.findAll());
+        return ResponseEntity.ok(premiumRewardRepository.findByDeletedFalse());
     }
 
     /**
@@ -132,6 +132,21 @@ public class AdminPremiumRewardController {
         reward.setActive(false);
         premiumRewardRepository.save(reward);
         return ResponseEntity.ok(Map.of("message", "Premio desactivado correctamente"));
+    }
+
+    /**
+     * DELETE /api/admin/premium/rewards/{id}/delete
+     * Borrado lógico
+     */
+    @DeleteMapping("/{id}/delete")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        Optional<PremiumReward> opt = premiumRewardRepository.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+
+        PremiumReward reward = opt.get();
+        reward.setDeleted(true);
+        premiumRewardRepository.save(reward);
+        return ResponseEntity.ok(Map.of("message", "Premio eliminado correctamente"));
     }
 
     /**
