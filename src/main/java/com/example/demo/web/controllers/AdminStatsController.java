@@ -16,6 +16,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.example.demo.domain.premium.PremiumRewardRepository;
+import com.example.demo.domain.premium.PremiumRewardType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -33,6 +35,7 @@ public class AdminStatsController {
     private final RewardRepository rewardRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final SupportTicketRepository supportTicketRepository;
+    private final PremiumRewardRepository premiumRewardRepository;
 
     public AdminStatsController(
             UserRepository userRepository,
@@ -41,7 +44,7 @@ public class AdminStatsController {
             RedemptionRepository redemptionRepository,
             RewardRepository rewardRepository,
             PointTransactionRepository pointTransactionRepository,
-            SupportTicketRepository supportTicketRepository) {
+            SupportTicketRepository supportTicketRepository, PremiumRewardRepository premiumRewardRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.commentRepository = commentRepository;
@@ -49,6 +52,7 @@ public class AdminStatsController {
         this.rewardRepository = rewardRepository;
         this.pointTransactionRepository = pointTransactionRepository;
         this.supportTicketRepository = supportTicketRepository;
+        this.premiumRewardRepository = premiumRewardRepository;
     }
 
     @GetMapping
@@ -80,7 +84,16 @@ public class AdminStatsController {
         response.setPoints(calculatePointStats(start, end));
         response.setSupport(calculateSupportStats());
         response.setGrowth(calculateGrowthStats(start, end, prevStart, prevEnd));
-
+// Premium stats
+        PremiumStatsDto premiumStats = new PremiumStatsDto();
+        premiumStats.setTotalPremiumRewards(premiumRewardRepository.count());
+        premiumStats.setActivePremiumRewards(premiumRewardRepository.countByActiveTrue());
+        premiumStats.setTotalSorteos(premiumRewardRepository.countByType(PremiumRewardType.SORTEO));
+        premiumStats.setSorteosEjecutados(premiumRewardRepository.countByTypeAndDrawExecutedTrue(PremiumRewardType.SORTEO));
+        premiumStats.setSorteosPendientes(premiumRewardRepository.countByTypeAndDrawExecutedFalse(PremiumRewardType.SORTEO));
+        premiumStats.setTotalCanjeables(premiumRewardRepository.countByType(PremiumRewardType.CANJEABLE));
+        premiumStats.setCanjeablesActivos(premiumRewardRepository.countByTypeAndActiveTrue(PremiumRewardType.CANJEABLE));
+        response.setPremium(premiumStats);
         return ResponseEntity.ok(response);
     }
 
