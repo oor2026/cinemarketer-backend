@@ -16,6 +16,9 @@ public class EmailService {
     @Value("${app.mail.from:info@cinemarketer.com.ar}")
     private String mailFrom;
 
+    @Value("${app.frontend.url:http://localhost:63342/cinemarketer-front/src}")
+    private String frontendUrl;
+
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
@@ -63,7 +66,7 @@ public class EmailService {
 
     public void sendPasswordResetEmail(String to, String token) {
         String subject = "Cinemarketer - Restablecer contraseña";
-        String resetUrl = baseUrl + "/reset-password.html?token=" + token;
+        String resetUrl = frontendUrl + "/reset-password.html?token=" + token;
         String message = String.format(
                 "Hola,\n\n" +
                         "Recibimos una solicitud para restablecer la contraseña de tu cuenta en Cinemarketer.\n\n" +
