@@ -126,6 +126,10 @@ public class AuthController {
         try {
             emailService.sendVerificationEmail(user.getEmail(), verificationToken);
         } catch (Exception e) {
+
+            System.err.println("ERROR ENVIANDO MAIL: " + e.getMessage());
+            e.printStackTrace();
+
             // Log del error pero no fallamos el registro
             return ResponseEntity
                     .status(HttpStatus.CREATED)

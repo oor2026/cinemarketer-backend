@@ -13,6 +13,9 @@ public class EmailService {
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
 
+    @Value("${app.mail.from:info@cinemarketer.com.ar}")
+    private String mailFrom;
+
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
@@ -31,9 +34,9 @@ public class EmailService {
 
         SimpleMailMessage email = new SimpleMailMessage();
         email.setTo(to);
+        email.setFrom(mailFrom);
         email.setSubject(subject);
         email.setText(message);
-
         mailSender.send(email);
     }
 
@@ -52,9 +55,9 @@ public class EmailService {
 
         SimpleMailMessage email = new SimpleMailMessage();
         email.setTo(to);
+        email.setFrom(mailFrom);
         email.setSubject(subject);
         email.setText(message);
-
         mailSender.send(email);
     }
 
@@ -73,15 +76,12 @@ public class EmailService {
 
         SimpleMailMessage email = new SimpleMailMessage();
         email.setTo(to);
+        email.setFrom(mailFrom);
         email.setSubject(subject);
         email.setText(message);
-
         mailSender.send(email);
     }
 
-    /**
-     * Notifica al usuario que su comentario fue eliminado por violar las políticas de convivencia.
-     */
     public void sendCommentRemovedEmail(String to, String userName, String commentContent, String adminReason) {
         String subject = "Cinemarketer - Tu comentario fue eliminado";
         String message = String.format(
@@ -100,9 +100,9 @@ public class EmailService {
 
         SimpleMailMessage email = new SimpleMailMessage();
         email.setTo(to);
+        email.setFrom(mailFrom);
         email.setSubject(subject);
         email.setText(message);
-
         mailSender.send(email);
     }
 }
