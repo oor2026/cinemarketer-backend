@@ -25,19 +25,22 @@ public class PremiumRewardService {
     private final UserRepository userRepository;
     private final SupportTicketRepository supportTicketRepository;
     private final SupportMessageRepository supportMessageRepository;
+    private final EmailService emailService;
 
     public PremiumRewardService(PremiumRewardRepository premiumRewardRepository,
                                 PremiumDrawEntryRepository drawEntryRepository,
                                 PremiumRedemptionRepository premiumRedemptionRepository,
                                 UserRepository userRepository,
                                 SupportTicketRepository supportTicketRepository,
-                                SupportMessageRepository supportMessageRepository) {
+                                SupportMessageRepository supportMessageRepository,
+                                EmailService emailService) {
         this.premiumRewardRepository = premiumRewardRepository;
         this.drawEntryRepository = drawEntryRepository;
         this.premiumRedemptionRepository = premiumRedemptionRepository;
         this.userRepository = userRepository;
         this.supportTicketRepository = supportTicketRepository;
         this.supportMessageRepository = supportMessageRepository;
+        this.emailService = emailService;
     }
 
     // ==============================================
@@ -96,6 +99,18 @@ public class PremiumRewardService {
         redemption.setRedemptionCode(code);
         redemption.setStatus(PremiumRedemptionStatus.PENDING);
         premiumRedemptionRepository.save(redemption);
+
+        // Disparar mail
+        try {
+            emailService.sendPremiumRedemptionEmail(
+                    user.getEmail(),
+                    user.getName(),
+                    reward.getName(),
+                    code
+            );
+        } catch (Exception e) {
+            log.warn("No se pudo enviar mail de canje premium: {}", e.getMessage());
+        }
 
         log.info("✅ Premio premium canjeado: {} por usuario: {}", reward.getName(), user.getEmail());
 
@@ -180,6 +195,13 @@ public class PremiumRewardService {
             message.setReadByUser(false);
             supportMessageRepository.save(message);
 
+            // Disparar mail al ganador
+            emailService.sendDrawWinnerEmail(
+                    winner.getEmail(),
+                    winner.getName(),
+                    reward.getName()
+            );
+
             log.info("📩 Notificación de sorteo enviada al ganador: {}", winner.getEmail());
         } catch (Exception e) {
             log.warn("⚠️ No se pudo enviar notificación al ganador: {}", e.getMessage());
@@ -223,7 +245,6 @@ public class PremiumRewardService {
             dto.setWinnerName(reward.getWinner().getName());
         }
 
-        // Campos calculados según el usuario
         if (reward.getType() == PremiumRewardType.CANJEABLE) {
             dto.setCanRedeem(user.isActivePremium()
                     && reward.hasStock()

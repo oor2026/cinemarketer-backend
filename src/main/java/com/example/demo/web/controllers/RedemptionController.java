@@ -2,6 +2,7 @@ package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.RedeemRequest;
 import com.example.demo.application.dtos.RedemptionDto;
+import com.example.demo.application.services.EmailService;
 import com.example.demo.application.services.LevelCalculatorService;
 import com.example.demo.application.services.PointTransactionService;
 import com.example.demo.domain.pointconfig.PointAction;
@@ -13,6 +14,8 @@ import com.example.demo.domain.reward.RewardRepository;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserLevel;
 import com.example.demo.domain.user.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,28 +33,29 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/redemptions")
 public class RedemptionController {
 
+    private static final Logger log = LoggerFactory.getLogger(RedemptionController.class);
+
     private final RedemptionRepository redemptionRepository;
     private final RewardRepository rewardRepository;
     private final UserRepository userRepository;
     private final PointTransactionService pointTransactionService;
     private final LevelCalculatorService levelCalculatorService;
+    private final EmailService emailService;
 
     public RedemptionController(RedemptionRepository redemptionRepository,
                                 RewardRepository rewardRepository,
                                 UserRepository userRepository,
                                 PointTransactionService pointTransactionService,
-                                LevelCalculatorService levelCalculatorService) {
+                                LevelCalculatorService levelCalculatorService,
+                                EmailService emailService) {
         this.redemptionRepository = redemptionRepository;
         this.rewardRepository = rewardRepository;
         this.userRepository = userRepository;
         this.pointTransactionService = pointTransactionService;
         this.levelCalculatorService = levelCalculatorService;
+        this.emailService = emailService;
     }
 
-    /**
-     * Obtener canjes del usuario autenticado
-     * GET /api/redemptions/me
-     */
     @GetMapping("/me")
     public ResponseEntity<List<RedemptionDto>> getMyRedemptions(
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -69,10 +73,6 @@ public class RedemptionController {
         return ResponseEntity.ok(dtos);
     }
 
-    /**
-     * Canjear un premio
-     * POST /api/redemptions
-     */
     @PostMapping
     @Transactional
     public ResponseEntity<?> redeemReward(
@@ -85,7 +85,6 @@ public class RedemptionController {
         Reward reward = rewardRepository.findById(request.getRewardId())
                 .orElseThrow(() -> new RuntimeException("Premio no encontrado"));
 
-        // Validaciones
         if (!reward.isAvailable()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "El premio no está disponible"));
@@ -128,7 +127,7 @@ public class RedemptionController {
                 "Canje: " + reward.getName()
         );
 
-        // Recalcular nivel inmediatamente después del canje
+        // Recalcular nivel
         UserLevel oldLevel = user.getLevel();
         UserLevel newLevel = levelCalculatorService.calculateUserLevel(user);
         if (oldLevel != newLevel) {
@@ -137,12 +136,21 @@ public class RedemptionController {
             userRepository.save(user);
         }
 
+        // Disparar mail de confirmación de canje
+        try {
+            emailService.sendRedemptionConfirmationEmail(
+                    user.getEmail(),
+                    user.getName(),
+                    reward.getName(),
+                    code
+            );
+        } catch (Exception e) {
+            log.warn("No se pudo enviar mail de confirmación de canje: {}", e.getMessage());
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(redemption));
     }
 
-    // =============================================
-    // HELPER
-    // =============================================
     private RedemptionDto toDto(Redemption r) {
         RedemptionDto dto = new RedemptionDto();
         dto.setId(r.getId());

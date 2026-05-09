@@ -1,6 +1,7 @@
 package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.PremiumRewardDto;
+import com.example.demo.application.services.EmailService;
 import com.example.demo.application.services.PremiumRewardService;
 import com.example.demo.application.services.SubscriptionService;
 import com.example.demo.domain.premium.PremiumRewardType;
@@ -22,13 +23,15 @@ public class PremiumRewardController {
     private final UserRepository userRepository;
     private final PremiumRewardService premiumRewardService;
     private final SubscriptionService subscriptionService;
+    private final EmailService emailService;
 
     public PremiumRewardController(UserRepository userRepository,
                                    PremiumRewardService premiumRewardService,
-                                   SubscriptionService subscriptionService) {
+                                   SubscriptionService subscriptionService, EmailService emailService) {
         this.userRepository = userRepository;
         this.premiumRewardService = premiumRewardService;
         this.subscriptionService = subscriptionService;
+        this.emailService = emailService;
     }
 
     /**
