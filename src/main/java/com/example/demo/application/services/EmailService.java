@@ -179,4 +179,22 @@ public class EmailService {
         email.setText(message);
         mailSender.send(email);
     }
+
+    public void sendPremiumRedemptionCompletedEmail(String to, String userName, String rewardName, String code) {
+        String subject = "Cinemarketer - Tu premio premium fue entregado";
+        String message = String.format(
+                "Hola %s,\n\n" +
+                        "Tu premio premium \"%s\" ya fue entregado y está en tu poder.\n\n" +
+                        "Código de canje: %s\n\n" +
+                        "Gracias por ser parte de Cinemarketer Premium. ¡Seguí disfrutando los beneficios!\n\n" +
+                        "Saludos,\nEquipo Cinemarketer",
+                userName, rewardName, code
+        );
+        SimpleMailMessage email = new SimpleMailMessage();
+        email.setTo(to);
+        email.setFrom(mailFrom);
+        email.setSubject(subject);
+        email.setText(message);
+        mailSender.send(email);
+    }
 }

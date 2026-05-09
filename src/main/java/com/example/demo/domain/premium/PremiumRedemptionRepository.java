@@ -8,4 +8,7 @@ import java.util.List;
 public interface PremiumRedemptionRepository extends JpaRepository<PremiumRedemption, Long> {
     List<PremiumRedemption> findByUserIdOrderByRedeemedAtDesc(Long userId);
     boolean existsByRewardIdAndUserId(Long rewardId, Long userId);
+    List<PremiumRedemption> findByDeletedFalse();
+    List<PremiumRedemption> findByStatusAndDeletedFalse(PremiumRedemptionStatus status);
+    long countByStatus(PremiumRedemptionStatus status);
 }

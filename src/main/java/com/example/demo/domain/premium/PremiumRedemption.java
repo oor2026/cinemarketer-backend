@@ -42,4 +42,7 @@ public class PremiumRedemption {
     protected void onCreate() {
         redeemedAt = LocalDateTime.now();
     }
+
+    @Column(nullable = false)
+    private boolean deleted = false;
 }
