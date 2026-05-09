@@ -9,4 +9,5 @@ public interface PremiumDrawEntryRepository extends JpaRepository<PremiumDrawEnt
     List<PremiumDrawEntry> findByRewardId(Long rewardId);
     boolean existsByRewardIdAndUserId(Long rewardId, Long userId);
     long countByRewardId(Long rewardId);
+    List<PremiumDrawEntry> findByUserIdOrderByEnteredAtDesc(Long userId);
 }

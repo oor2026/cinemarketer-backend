@@ -36,6 +36,9 @@ public class MercadoPagoService {
     @Value("${app.base-url}")
     private String appBaseUrl;
 
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
+
     public MercadoPagoService() {
         this.restClient = RestClient.builder()
                 .baseUrl(MP_BASE_URL)
@@ -61,7 +64,7 @@ public class MercadoPagoService {
                 "transaction_amount", getPlanPrice(),
                 "currency_id", "ARS"
         ));
-        body.put("back_url", appBaseUrl + "/src/dashboard.html?module=mi-cuenta");
+        body.put("back_url", frontendUrl + "/dashboard.html?module=mi-cuenta");
         body.put("payer_email", user.getEmail());
         body.put("status", "pending");
         body.put("notification_url", appBaseUrl + "/api/webhooks/mercadopago");

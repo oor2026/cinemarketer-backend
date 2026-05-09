@@ -4,6 +4,9 @@ import com.example.demo.application.dtos.PremiumRewardDto;
 import com.example.demo.application.services.EmailService;
 import com.example.demo.application.services.PremiumRewardService;
 import com.example.demo.application.services.SubscriptionService;
+import com.example.demo.domain.premium.PremiumDrawEntry;
+import com.example.demo.domain.premium.PremiumDrawEntryRepository;
+import com.example.demo.domain.premium.PremiumReward;
 import com.example.demo.domain.premium.PremiumRewardType;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
@@ -24,46 +27,38 @@ public class PremiumRewardController {
     private final PremiumRewardService premiumRewardService;
     private final SubscriptionService subscriptionService;
     private final EmailService emailService;
+    private final PremiumDrawEntryRepository drawEntryRepository;
 
     public PremiumRewardController(UserRepository userRepository,
                                    PremiumRewardService premiumRewardService,
-                                   SubscriptionService subscriptionService, EmailService emailService) {
+                                   SubscriptionService subscriptionService,
+                                   EmailService emailService,
+                                   PremiumDrawEntryRepository drawEntryRepository) {
         this.userRepository = userRepository;
         this.premiumRewardService = premiumRewardService;
         this.subscriptionService = subscriptionService;
         this.emailService = emailService;
+        this.drawEntryRepository = drawEntryRepository;
     }
 
-    /**
-     * GET /api/premium/rewards
-     * Catálogo de premios especiales — visible para todos
-     * El DTO indica si el usuario puede operar o no
-     */
     @GetMapping
     public ResponseEntity<List<PremiumRewardDto>> getCatalog(
             @RequestParam(required = false) PremiumRewardType type,
             @AuthenticationPrincipal UserDetails userDetails) {
-
         User user = getAuthenticatedUser(userDetails);
         boolean isPremium = user.isActivePremium();
         List<PremiumRewardDto> catalog = premiumRewardService.getCatalog(user, isPremium, type);
         return ResponseEntity.ok(catalog);
     }
 
-    /**
-     * POST /api/premium/rewards/{id}/redeem
-     * Canjear un premio CANJEABLE con puntos
-     */
     @PostMapping("/{id}/redeem")
     public ResponseEntity<?> redeem(@PathVariable Long id,
                                     @AuthenticationPrincipal UserDetails userDetails) {
         User user = getAuthenticatedUser(userDetails);
-
         if (!user.isActivePremium()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "Necesitás una suscripción Premium activa para canjear este premio"));
         }
-
         try {
             Map<String, Object> result = premiumRewardService.redeemReward(user, id);
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
@@ -73,20 +68,14 @@ public class PremiumRewardController {
         }
     }
 
-    /**
-     * POST /api/premium/rewards/{id}/enter
-     * Anotarse en un SORTEO gratuito
-     */
     @PostMapping("/{id}/enter")
     public ResponseEntity<?> enterDraw(@PathVariable Long id,
                                        @AuthenticationPrincipal UserDetails userDetails) {
         User user = getAuthenticatedUser(userDetails);
-
         if (!user.isActivePremium()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "Necesitás una suscripción Premium activa para participar en sorteos"));
         }
-
         try {
             premiumRewardService.enterDraw(user, id);
             return ResponseEntity.ok(Map.of("message", "¡Te anotaste al sorteo correctamente!"));
@@ -96,7 +85,30 @@ public class PremiumRewardController {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
+    @GetMapping("/draws/me")
+    public ResponseEntity<List<Map<String, Object>>> getMyDrawEntries(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = getAuthenticatedUser(userDetails);
+        List<PremiumDrawEntry> entries = drawEntryRepository.findByUserIdOrderByEnteredAtDesc(user.getId());
+
+        List<Map<String, Object>> result = entries.stream().map(e -> {
+            PremiumReward reward = e.getReward();
+            boolean gano = reward.getWinner() != null && reward.getWinner().getId().equals(user.getId());
+            return Map.<String, Object>of(
+                    "id", e.getId(),
+                    "rewardId", reward.getId(),
+                    "rewardName", reward.getName(),
+                    "rewardImageUrl", reward.getImageUrl() != null ? reward.getImageUrl() : "",
+                    "enteredAt", e.getEnteredAt().toString(),
+                    "drawExecuted", reward.isDrawExecuted(),
+                    "won", gano,
+                    "drawDate", reward.getDrawDate() != null ? reward.getDrawDate().toString() : ""
+            );
+        }).toList();
+
+        return ResponseEntity.ok(result);
+    }
+
     private User getAuthenticatedUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
