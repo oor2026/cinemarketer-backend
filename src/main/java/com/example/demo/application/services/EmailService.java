@@ -108,4 +108,75 @@ public class EmailService {
         email.setText(message);
         mailSender.send(email);
     }
+
+    public void sendRedemptionCompletedEmail(String to, String userName, String rewardName, String code) {
+        String subject = "Cinemarketer - Tu premio fue entregado";
+        String message = String.format(
+                "Hola %s,\n\n" +
+                        "Tu premio \"%s\" ya fue entregado y está en tu poder.\n\n" +
+                        "Código de canje: %s\n\n" +
+                        "Gracias por participar en Cinemarketer. ¡Seguí acumulando puntos!\n\n" +
+                        "Saludos,\nEquipo Cinemarketer",
+                userName, rewardName, code
+        );
+        SimpleMailMessage email = new SimpleMailMessage();
+        email.setTo(to);
+        email.setFrom(mailFrom);
+        email.setSubject(subject);
+        email.setText(message);
+        mailSender.send(email);
+    }
+
+    public void sendPremiumRedemptionEmail(String to, String userName, String rewardName, String code) {
+        String subject = "Cinemarketer - ¡Canjeaste un premio premium!";
+        String message = String.format(
+                "Hola %s,\n\n" +
+                        "¡Canjeaste exitosamente el premio premium \"%s\"!\n\n" +
+                        "Tu código de canje es: %s\n\n" +
+                        "Nuestro equipo se pondrá en contacto para coordinar la entrega.\n\n" +
+                        "Saludos,\nEquipo Cinemarketer",
+                userName, rewardName, code
+        );
+        SimpleMailMessage email = new SimpleMailMessage();
+        email.setTo(to);
+        email.setFrom(mailFrom);
+        email.setSubject(subject);
+        email.setText(message);
+        mailSender.send(email);
+    }
+
+    public void sendDrawWinnerEmail(String to, String userName, String rewardName) {
+        String subject = "Cinemarketer - ¡Ganaste el sorteo!";
+        String message = String.format(
+                "Hola %s,\n\n" +
+                        "¡Felicitaciones! Fuiste seleccionado como ganador del sorteo \"%s\".\n\n" +
+                        "Nuestro equipo se pondrá en contacto con vos a la brevedad para coordinar la entrega del premio.\n\n" +
+                        "Saludos,\nEquipo Cinemarketer",
+                userName, rewardName
+        );
+        SimpleMailMessage email = new SimpleMailMessage();
+        email.setTo(to);
+        email.setFrom(mailFrom);
+        email.setSubject(subject);
+        email.setText(message);
+        mailSender.send(email);
+    }
+
+    public void sendRedemptionConfirmationEmail(String to, String userName, String rewardName, String code) {
+        String subject = "Cinemarketer - ¡Canjeaste un premio!";
+        String message = String.format(
+                "Hola %s,\n\n" +
+                        "¡Canjeaste exitosamente el premio \"%s\"!\n\n" +
+                        "Tu código de canje es: %s\n\n" +
+                        "Nuestro equipo procesará tu solicitud a la brevedad y te notificará cuando esté listo para retirar.\n\n" +
+                        "Saludos,\nEquipo Cinemarketer",
+                userName, rewardName, code
+        );
+        SimpleMailMessage email = new SimpleMailMessage();
+        email.setTo(to);
+        email.setFrom(mailFrom);
+        email.setSubject(subject);
+        email.setText(message);
+        mailSender.send(email);
+    }
 }
