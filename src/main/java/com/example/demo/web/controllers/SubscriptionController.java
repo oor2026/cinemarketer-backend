@@ -37,15 +37,10 @@ public class SubscriptionController {
         this.subscriptionPlanRepository = subscriptionPlanRepository;
     }
 
-    /**
-     * GET /api/subscriptions/me
-     * Obtiene el estado de suscripción del usuario autenticado
-     */
     @GetMapping("/me")
     public ResponseEntity<?> getMySubscription(@AuthenticationPrincipal UserDetails userDetails) {
         User user = getAuthenticatedUser(userDetails);
 
-        // Primero buscar suscripción activa
         Optional<UserSubscription> activeSub = userSubscriptionRepository
                 .findByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE);
 
@@ -53,7 +48,6 @@ public class SubscriptionController {
             return ResponseEntity.ok(subscriptionService.toDto(activeSub.get()));
         }
 
-        // Si no hay activa, buscar la última cancelada (para mostrar info de vencimiento)
         Optional<UserSubscription> cancelledSub = userSubscriptionRepository
                 .findTopByUserIdAndStatusOrderByCreatedAtDesc(user.getId(), SubscriptionStatus.CANCELLED);
 
@@ -61,16 +55,11 @@ public class SubscriptionController {
             return ResponseEntity.ok(subscriptionService.toDto(cancelledSub.get()));
         }
 
-        // No tiene suscripción — devolver datos del plan disponible
         SubscriptionDto dto = subscriptionService.getPlanInfo();
         dto.setActive(false);
         return ResponseEntity.ok(dto);
     }
 
-    /**
-     * POST /api/subscriptions/subscribe
-     * Inicia el proceso de suscripción con Mercado Pago
-     */
     @PostMapping("/subscribe")
     public ResponseEntity<?> subscribe(@AuthenticationPrincipal UserDetails userDetails) {
         User user = getAuthenticatedUser(userDetails);
@@ -79,14 +68,23 @@ public class SubscriptionController {
                 .findByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE);
 
         if (existing.isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "Ya tenés una suscripción activa"));
+            UserSubscription sub = existing.get();
+            // Si la suscripción venció, marcarla como EXPIRED y permitir nueva suscripción
+            if (!sub.isActive()) {
+                sub.setStatus(SubscriptionStatus.EXPIRED);
+                userSubscriptionRepository.save(sub);
+                user.setPremium(false);
+                user.setPremiumUntil(null);
+                userRepository.save(user);
+            } else {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "Ya tenés una suscripción activa"));
+            }
         }
 
         try {
             Map<String, Object> mpResponse = mercadoPagoService.createSubscription(user);
 
-            // ── NUEVO: guardar suscripción local en estado PENDING ──
             String preapprovalId = (String) mpResponse.get("preapprovalId");
             if (preapprovalId != null) {
                 SubscriptionPlan plan = subscriptionService.getPlanInfo().getPlanId() != null
@@ -110,10 +108,6 @@ public class SubscriptionController {
         }
     }
 
-    /**
-     * POST /api/subscriptions/cancel
-     * Cancela la suscripción del usuario autenticado
-     */
     @PostMapping("/cancel")
     public ResponseEntity<?> cancel(@AuthenticationPrincipal UserDetails userDetails) {
         User user = getAuthenticatedUser(userDetails);
@@ -136,7 +130,6 @@ public class SubscriptionController {
         }
     }
 
-    // ── Helper ───────────────────────────────────────────────────────────────
     private User getAuthenticatedUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
