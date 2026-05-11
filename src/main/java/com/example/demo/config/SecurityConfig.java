@@ -43,6 +43,7 @@ public class SecurityConfig {
         return new CorsFilter(corsConfigurationSource());
     }
 
+    // CORS configuration v2
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
