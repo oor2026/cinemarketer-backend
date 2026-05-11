@@ -3,6 +3,7 @@ builder = "NIXPACKS"
 
 [build.env]
 NIXPACKS_DEBUG = "1"
+NIXPACKS_NO_CACHE = "1"
 
 [deploy]
 startCommand = "java -jar target/*.jar"
