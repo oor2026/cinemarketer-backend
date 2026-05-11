@@ -202,7 +202,18 @@ public class UserController {
                     .body(Map.of("message", "La contraseña ingresada es incorrecta."));
         }
 
+        // Guardar datos antes de eliminar
+        String userEmail = user.getEmail();
+        String userName = user.getName();
+
         userDeletionService.deleteAllUserData(user);
+
+        // Disparar mail de confirmación
+        try {
+            emailService.sendAccountDeletionEmail(userEmail, userName);
+        } catch (Exception e) {
+            // No interrumpir el flujo si el mail falla
+        }
 
         return ResponseEntity.ok(Map.of("message", "Cuenta eliminada exitosamente."));
     }

@@ -49,9 +49,9 @@ public class UserDeletionService {
 
         // 1. Support messages (hijo de support_tickets)
         entityManager.createNativeQuery(
-                        "DELETE sm FROM support_messages sm " +
-                                "JOIN support_tickets st ON sm.ticket_id = st.id " +
-                                "WHERE st.user_id = :uid")
+                        "DELETE FROM support_messages " +
+                                "WHERE ticket_id IN (" +
+                                "SELECT id FROM support_tickets WHERE user_id = :uid)")
                 .setParameter("uid", userId).executeUpdate();
 
         // 2. Support tickets
@@ -70,36 +70,43 @@ public class UserDeletionService {
         entityManager.createNativeQuery("DELETE FROM redemptions WHERE user_id = :uid")
                 .setParameter("uid", userId).executeUpdate();
 
-        // 6. Comments
+        // 6. Comment reports (hijo de comments)
+        entityManager.createNativeQuery(
+                        "DELETE FROM comment_reports " +
+                                "WHERE comment_id IN (" +
+                                "SELECT id FROM comments WHERE user_id = :uid)")
+                .setParameter("uid", userId).executeUpdate();
+
+        // 7. Comments
         entityManager.createNativeQuery("DELETE FROM comments WHERE user_id = :uid")
                 .setParameter("uid", userId).executeUpdate();
 
-        // 7. Reviews
+        // 8. Reviews
         entityManager.createNativeQuery("DELETE FROM reviews WHERE user_id = :uid")
                 .setParameter("uid", userId).executeUpdate();
 
-        // 8. PointTransactions
+        // 9. PointTransactions
         entityManager.createNativeQuery("DELETE FROM point_transactions WHERE user_id = :uid")
                 .setParameter("uid", userId).executeUpdate();
 
-        // 9. PremiumRedemptions
+        // 10. PremiumRedemptions
         entityManager.createNativeQuery("DELETE FROM premium_redemptions WHERE user_id = :uid")
                 .setParameter("uid", userId).executeUpdate();
 
-        // 10. PremiumDrawEntries (por las dudas)
+        // 11. PremiumDrawEntries (por las dudas)
         entityManager.createNativeQuery("DELETE FROM premium_draw_entries WHERE user_id = :uid")
                 .setParameter("uid", userId).executeUpdate();
 
-        // 11. Desvincular al usuario como ganador de premios premium
+        // 12. Desvincular al usuario como ganador de premios premium
         entityManager.createNativeQuery(
                         "UPDATE premium_rewards SET winner_user_id = NULL WHERE winner_user_id = :uid")
                 .setParameter("uid", userId).executeUpdate();
 
-        // 12. UserSubscriptions
+        // 13. UserSubscriptions
         entityManager.createNativeQuery("DELETE FROM user_subscriptions WHERE user_id = :uid")
                 .setParameter("uid", userId).executeUpdate();
 
-        // 13. Usuario — último
+        // 14. Usuario — último
         entityManager.createNativeQuery("DELETE FROM users WHERE id = :uid")
                 .setParameter("uid", userId).executeUpdate();
     }
