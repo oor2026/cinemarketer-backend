@@ -26,6 +26,8 @@ public class JwtService {
 
     // Obtener la clave de firma
     private Key getSigningKey() {
+        System.out.println("=== JWT SECRET LENGTH: " + secretKey.length() + " ===");
+        System.out.println("=== JWT SECRET STARTS: " + secretKey.substring(0, 10) + " ===");
         return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
