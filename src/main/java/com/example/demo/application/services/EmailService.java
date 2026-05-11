@@ -21,7 +21,7 @@ public class EmailService {
     @Value("${app.frontend.url:http://localhost:63342/cinemarketer-front/src}")
     private String frontendUrl;
 
-    private static final String LOGO_URL = "https://cinemarketer.com.ar/assets/images/isologotipo.webp";
+    private static final String LOGO_URL = "https://cinemarketer.com.ar/assets/images/isologotipoMail.jpg";
 
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
