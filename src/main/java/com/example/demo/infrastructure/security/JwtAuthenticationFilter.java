@@ -51,19 +51,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String jwt = authHeader.substring(7);
 
-        // 👇 NUEVO: Verificar si el token está en blacklist
+        // Verificar blacklist
         if (tokenBlacklistService.isBlacklisted(jwt)) {
+            System.out.println("=== TOKEN EN BLACKLIST ===");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("Token inválido o expirado");
             return;
         }
 
         final String userEmail = jwtService.extractUsername(jwt);
+        System.out.println("=== EMAIL EXTRAÍDO: " + userEmail + " ===");
+        System.out.println("=== METHOD: " + request.getMethod() + " PATH: " + request.getRequestURI() + " ===");
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+            System.out.println("=== USER CARGADO: " + userDetails.getUsername() + " ENABLED: " + userDetails.isEnabled() + " ===");
 
             if (jwtService.isTokenValid(jwt, userDetails)) {
+                System.out.println("=== TOKEN VÁLIDO - AUTENTICANDO ===");
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
@@ -72,8 +77,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             } else {
-
+                System.out.println("=== TOKEN INVÁLIDO para: " + userEmail + " ===");
             }
+        } else {
+            System.out.println("=== EMAIL NULL O YA AUTENTICADO: " + userEmail + " ===");
         }
 
         filterChain.doFilter(request, response);
