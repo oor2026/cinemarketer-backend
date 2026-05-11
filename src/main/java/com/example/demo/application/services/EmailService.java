@@ -40,8 +40,8 @@ public class EmailService {
                 "<table width='600' cellpadding='0' cellspacing='0' style='max-width:600px;width:100%;background-color:#ffffff;border-radius:8px;overflow:hidden;'>" +
 
                 // Banner
-                "<tr><td align='center' style='background-color:#111111;padding:28px 40px;'>" +
-                "<img src='" + LOGO_URL + "' alt='Cinemarketer' width='180' style='display:block;max-width:180px;height:auto;'/>" +
+                "<tr><td align='center' style='background-color:#ffffff;padding:28px 40px;border-bottom:1px solid #eeeeee;'>" +
+                "<img src='" + LOGO_URL + "' alt='Cinemarketer' width='260' style='display:block;max-width:260px;height:auto;'/>" +
                 "</td></tr>" +
 
                 // Contenido
