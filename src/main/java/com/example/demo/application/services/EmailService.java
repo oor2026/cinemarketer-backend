@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
- 
+
 @Service
 public class EmailService {
 
@@ -21,7 +21,7 @@ public class EmailService {
     @Value("${app.frontend.url:http://localhost:63342/cinemarketer-front/src}")
     private String frontendUrl;
 
-    private static final String LOGO_URL = "https://cinemarketer.com.ar/assets/images/isologotipoMail.jpg";
+    private static final String LOGO_URL = "https://cinemarketer.com.ar/assets/images/isologotipoMail.jpg?v=2";
 
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
