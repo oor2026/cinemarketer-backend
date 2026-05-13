@@ -1,6 +1,8 @@
 package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.UserProfileResponse;
+import com.example.demo.domain.pointbatch.PointBatch;
+import com.example.demo.domain.pointbatch.PointBatchRepository;
 import com.example.demo.application.dtos.UserLevelWithAvatarDto;
 import com.example.demo.application.services.AvatarService;
 import com.example.demo.application.services.EmailService;
@@ -45,6 +47,7 @@ public class UserController {
     // ==============================================
     private final UserService userService;
     private final LevelCalculatorService levelCalculatorService;
+    private final PointBatchRepository pointBatchRepository;
     private final AvatarService avatarService;
 
     public UserController(
@@ -59,7 +62,8 @@ public class UserController {
             UserDeletionService userDeletionService,
             UserService userService,
             LevelCalculatorService levelCalculatorService,
-            AvatarService avatarService) {
+            AvatarService avatarService,
+            PointBatchRepository pointBatchRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.redemptionRepository = redemptionRepository;
@@ -71,6 +75,7 @@ public class UserController {
         this.userDeletionService = userDeletionService;
         this.userService = userService;
         this.levelCalculatorService = levelCalculatorService;
+        this.pointBatchRepository = pointBatchRepository;
         this.avatarService = avatarService;
     }
 
@@ -82,11 +87,26 @@ public class UserController {
         long redemptionsCount = redemptionRepository.countByUserId(user.getId());
         long commentsCount    = commentRepository.countCommentsByUserId(user.getId());
 
+        // Puntos próximos a vencer (lotes FREE con expiry <= 30 días)
+        int expiringPts = 0;
+        if (!user.isActivePremium()) {
+            java.time.LocalDateTime in30 = java.time.LocalDateTime.now().plusDays(30);
+            expiringPts = pointBatchRepository.findActiveBatchesByUserId(user.getId())
+                    .stream()
+                    .filter(b -> b.getExpiresAt() != null && b.getExpiresAt().isBefore(in30))
+                    .mapToInt(PointBatch::getRemainingPoints)
+                    .sum();
+        }
+
         UserProfileResponse response = new UserProfileResponse();
         response.setEmail(user.getEmail());
         response.setName(user.getName());
         response.setRole(user.getRole().name());
-        response.setTotalPoints(user.getTotalPoints());
+        response.setAvailablePoints(user.getAvailablePoints());
+        response.setAccumulatedPoints(user.getAccumulatedPoints());
+        response.setTotalRedeemedPoints(user.getTotalRedeemedPoints());
+        response.setExpiringPoints(expiringPts);
+        response.setTotalPoints(user.getAvailablePoints());
         response.setEmailVerified(user.isEmailVerified());
         response.setCreatedAt(user.getCreatedAt());
         response.setLastLoginAt(user.getLastLoginAt());
@@ -111,17 +131,16 @@ public class UserController {
         response.setLevelUpdatedAt(user.getLevelUpdatedAt());
 
         // Calcular progreso hacia el siguiente nivel
-        LevelCalculatorService.LevelProgress progress =
-                levelCalculatorService.getProgressToNextLevel(user);
+        response.setLevelProgress(levelCalculatorService.getProgressToNextLevel(user));
+        response.setPointsToNextLevel(levelCalculatorService.getPointsToNextLevel(user));
+        response.setCanLevelUp(levelCalculatorService.canLevelUp(user));
+        response.setPremium(user.isActivePremium());
+        response.setPremiumUntil(user.getPremiumUntil());
 
-        if (progress.hasNextLevel()) {
-            response.setNextLevel(progress.getNextLevel());
-            response.setNextLevelDisplayName(progress.getNextLevel().getDisplayName());
-            response.setPointsToNextLevel(progress.getPointsNeeded());
-            response.setLevelProgress(progress.getProgress());
-            response.setCanLevelUp(levelCalculatorService.canLevelUp(user));
-            response.setPremium(user.isActivePremium());
-            response.setPremiumUntil(user.getPremiumUntil());
+        com.example.demo.domain.user.UserLevel nextLvl = user.getLevel().getNextLevel();
+        if (nextLvl != null) {
+            response.setNextLevel(nextLvl);
+            response.setNextLevelDisplayName(nextLvl.getDisplayName());
         }
 
         return ResponseEntity.ok(response);
@@ -352,9 +371,6 @@ public class UserController {
     public ResponseEntity<UserLevelWithAvatarDto> getLevelInfo() {
         User user = getAuthenticatedUser();
 
-        LevelCalculatorService.LevelProgress progress =
-                levelCalculatorService.getProgressToNextLevel(user);
-
         UserLevelWithAvatarDto dto = new UserLevelWithAvatarDto();
         dto.setUserId(user.getId());
         dto.setUserName(user.getName());
@@ -362,12 +378,13 @@ public class UserController {
         dto.setCurrentLevelDisplay(user.getLevel().getDisplayName());
         dto.setCurrentLevelEmoji(user.getLevel().getEmoji());
 
-        if (progress.hasNextLevel()) {
-            dto.setNextLevel(progress.getNextLevel());
-            dto.setNextLevelDisplay(progress.getNextLevel().getDisplayName());
-            dto.setNextLevelEmoji(progress.getNextLevel().getEmoji());
-            dto.setProgress(progress.getProgress());
-            dto.setPointsToNextLevel(progress.getPointsNeeded());
+        com.example.demo.domain.user.UserLevel nextLvl = user.getLevel().getNextLevel();
+        if (nextLvl != null) {
+            dto.setNextLevel(nextLvl);
+            dto.setNextLevelDisplay(nextLvl.getDisplayName());
+            dto.setNextLevelEmoji(nextLvl.getEmoji());
+            dto.setProgress(levelCalculatorService.getProgressToNextLevel(user));
+            dto.setPointsToNextLevel(levelCalculatorService.getPointsToNextLevel(user));
             dto.setCanLevelUp(levelCalculatorService.canLevelUp(user));
         }
 

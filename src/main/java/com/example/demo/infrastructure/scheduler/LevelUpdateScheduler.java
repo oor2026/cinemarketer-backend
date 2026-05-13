@@ -15,8 +15,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Tarea programada para actualizar los niveles de los usuarios
- * Se ejecuta periódicamente en segundo plano
+ * Scheduler para actualización de niveles de usuario.
+ * El nivel es una insignia acumulativa basada en totalRedeemedPoints — nunca baja.
  */
 @Component
 public class LevelUpdateScheduler {
@@ -35,54 +35,35 @@ public class LevelUpdateScheduler {
         this.levelCalculatorService = levelCalculatorService;
     }
 
-    // ==============================================
-    // TAREAS PROGRAMADAS
-    // ==============================================
-
     /**
-     * Actualización diaria de niveles
-     * Se ejecuta todos los días a las 3:00 AM
-     *
-     * CRON: segundo minuto hora día mes día-semana
-     * 0 0 3 * * * = todos los días a las 3:00:00
+     * Actualización diaria de niveles — todos los días a las 03:10 AM UTC (00:10 Argentina)
+     * Solo sube de nivel, nunca baja.
      */
-    @Scheduled(cron = "0 0 3 * * *")
+    @Scheduled(cron = "0 10 3 * * *", zone = "UTC")
     @Transactional
     public void updateAllLevelsDaily() {
         log.info("🔄 Iniciando actualización diaria de niveles - {}", LocalDateTime.now());
 
         try {
             List<User> allUsers = userRepository.findAll();
-            int updated = 0;
             int promoted = 0;
-            int demoted = 0;  // Aunque no bajamos de nivel, lo medimos igual
 
             for (User user : allUsers) {
                 UserLevel oldLevel = user.getLevel();
                 UserLevel newLevel = levelCalculatorService.calculateUserLevel(user);
 
-                if (oldLevel != newLevel) {
+                // Solo subir — nunca bajar
+                if (newLevel.ordinal() > oldLevel.ordinal()) {
                     user.setLevel(newLevel);
                     user.setLevelUpdatedAt(LocalDateTime.now());
-
-                    // Si subió de nivel, asignar avatar por defecto del nuevo nivel
-                    if (newLevel.ordinal() > oldLevel.ordinal()) {
-                        userService.resetToDefaultAvatar(user.getId());
-                        promoted++;
-                    } else {
-                        demoted++;
-                    }
-
+                    userService.resetToDefaultAvatar(user.getId());
                     userRepository.save(user);
-                    updated++;
-
-                    log.debug("  - Usuario {}: {} → {}",
-                            user.getEmail(), oldLevel, newLevel);
+                    promoted++;
+                    log.debug("  - Usuario {}: {} → {}", user.getEmail(), oldLevel, newLevel);
                 }
             }
 
-            log.info("✅ Actualización completada: {} usuarios actualizados ({} promovidos, {} degradados)",
-                    updated, promoted, demoted);
+            log.info("✅ Actualización completada: {} usuarios promovidos", promoted);
 
         } catch (Exception e) {
             log.error("❌ Error en actualización diaria de niveles", e);
@@ -90,12 +71,9 @@ public class LevelUpdateScheduler {
     }
 
     /**
-     * Actualización de usuarios elegibles para subir de nivel
-     * Se ejecuta cada 6 horas (más frecuente que la diaria)
-     *
-     * CRON: 0 0 6 * * * = cada 6 horas */
-
-    @Scheduled(cron = "0 0 */6 * * *")
+     * Verificación cada 6 horas de usuarios elegibles para subir de nivel.
+     */
+    @Scheduled(cron = "0 0 */6 * * *", zone = "UTC")
     @Transactional
     public void updateEligibleUsers() {
         log.info("🔄 Verificando usuarios elegibles para subir de nivel - {}", LocalDateTime.now());
@@ -108,13 +86,12 @@ public class LevelUpdateScheduler {
                 UserLevel oldLevel = user.getLevel();
                 UserLevel newLevel = levelCalculatorService.calculateUserLevel(user);
 
-                if (oldLevel != newLevel && newLevel.ordinal() > oldLevel.ordinal()) {
+                if (newLevel.ordinal() > oldLevel.ordinal()) {
                     user.setLevel(newLevel);
                     user.setLevelUpdatedAt(LocalDateTime.now());
                     userService.resetToDefaultAvatar(user.getId());
                     userRepository.save(user);
                     promoted++;
-
                     log.debug("  - Usuario {} promovido a {}", user.getEmail(), newLevel);
                 }
             }
@@ -127,58 +104,37 @@ public class LevelUpdateScheduler {
     }
 
     /**
-     * Tarea de mantenimiento: limpia usuarios inactivos o con datos inconsistentes
-     * Se ejecuta los domingos a las 4:00 AM
-     *
-     * CRON: 0 0 4 * * 0 = todos los domingos a las 4 AM
+     * Mantenimiento semanal — domingos a las 04:00 AM UTC.
+     * Corrige inconsistencias: si un usuario tiene totalRedeemedPoints
+     * suficientes para un nivel superior pero no fue actualizado.
      */
-    @Scheduled(cron = "0 0 4 * * 0")
+    @Scheduled(cron = "0 0 4 * * 0", zone = "UTC")
     @Transactional
     public void maintenanceTask() {
-        log.info("🛠️ Ejecutando tarea de mantenimiento de niveles - {}", LocalDateTime.now());
+        log.info("🛠️ Ejecutando mantenimiento de niveles - {}", LocalDateTime.now());
 
         try {
-            // Buscar usuarios con nivel inconsistente (ej: nivel alto pero puntos bajos)
-            List<User> inconsistentUsers = findUsersWithInconsistentLevels();
+            // Buscar usuarios con nivel inconsistente
+            // (tienen totalRedeemedPoints para Jurado Experto pero nivel menor)
+            List<User> inconsistentUsers = userRepository
+                    .findByLevelAndTotalRedeemedPointsLessThan(UserLevel.JURADO_EXPERTO, 60000);
 
+            int corrected = 0;
             for (User user : inconsistentUsers) {
                 UserLevel correctLevel = levelCalculatorService.calculateUserLevel(user);
-                if (user.getLevel() != correctLevel) {
+                // Solo corregir si el nivel calculado es mayor (no bajar)
+                if (correctLevel.ordinal() > user.getLevel().ordinal()) {
                     user.setLevel(correctLevel);
                     user.setLevelUpdatedAt(LocalDateTime.now());
                     userRepository.save(user);
-                    log.debug("  - Corregido nivel de usuario {}: {} → {}",
-                            user.getEmail(), user.getLevel(), correctLevel);
+                    corrected++;
                 }
             }
 
-            log.info("✅ Mantenimiento completado: {} usuarios corregidos", inconsistentUsers.size());
+            log.info("✅ Mantenimiento completado: {} usuarios corregidos", corrected);
 
         } catch (Exception e) {
             log.error("❌ Error en tarea de mantenimiento", e);
         }
-    }
-
-    // ==============================================
-    // MÉTODOS AUXILIARES
-    // ==============================================
-
-    /**
-     * Busca usuarios con niveles potencialmente inconsistentes
-     */
-    private List<User> findUsersWithInconsistentLevels() {
-        // Por ejemplo: Jurado Experto con menos de 1000 puntos
-        return userRepository.findByLevelAndTotalPointsLessThan(
-                UserLevel.JURADO_EXPERTO, 1000);
-    }
-
-    /**
-     * Tarea de prueba (ejecutar cada minuto) - Solo para desarrollo
-     * Comentar o eliminar en producción
-     */
-    // @Scheduled(fixedDelay = 60000)  // Cada 60 segundos
-    public void testTask() {
-        log.debug("🧪 Tarea de prueba ejecutándose...");
-        // Lógica de prueba
     }
 }

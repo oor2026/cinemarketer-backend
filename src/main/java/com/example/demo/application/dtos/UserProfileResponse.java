@@ -14,7 +14,23 @@ public class UserProfileResponse {
     private String email;
     private String name;
     private String role;
+
+    /** Puntos disponibles para canjear (liberados, no vencidos) */
+    private int availablePoints;
+
+    /** Puntos acumulados en el mes en curso, aún no liberados */
+    private int accumulatedPoints;
+
+    /** Total histórico de puntos canjeados (base para insignias) */
+    private int totalRedeemedPoints;
+
+    /** Puntos próximos a vencer en los próximos 30 días (solo FREE) */
+    private int expiringPoints;
+
+    /** @deprecated Usar availablePoints */
+    @Deprecated
     private int totalPoints;
+
     private boolean emailVerified;
     private LocalDateTime createdAt;
     private LocalDateTime lastLoginAt;

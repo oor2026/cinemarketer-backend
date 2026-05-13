@@ -180,7 +180,7 @@ public class AdminUserController {
         user.setDni(request.getDni());
         user.setPhone(request.getPhone());
         if (request.getRole() != null) user.setRole(request.getRole());
-        if (request.getTotalPoints() != null) user.setTotalPoints(request.getTotalPoints());
+        if (request.getTotalPoints() != null) user.setAvailablePoints(request.getTotalPoints());
         if (request.getActive() != null) user.setActive(request.getActive());
 
         if (emailCambio) {
@@ -301,7 +301,7 @@ public class AdminUserController {
         dto.setDni(user.getDni());
         dto.setPhone(user.getPhone());
         dto.setRole(user.getRole());
-        dto.setTotalPoints(user.getTotalPoints());
+        dto.setTotalPoints(user.getAvailablePoints());
         // 🔧 CORREGIDO: usar isActive() en lugar de getActive()
         dto.setActive(user.isActive());
         dto.setSuspended(user.isSuspended());

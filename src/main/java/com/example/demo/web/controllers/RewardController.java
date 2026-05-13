@@ -41,7 +41,7 @@ public class RewardController {
         List<Reward> rewards = rewardRepository.findAvailableRewards(LocalDate.now());
 
         List<RewardDto> dtos = rewards.stream()
-                .map(r -> toDto(r, user.getTotalPoints()))
+                .map(r -> toDto(r, user.getAvailablePoints()))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);
@@ -61,7 +61,7 @@ public class RewardController {
         List<Reward> rewards = rewardRepository.findByActiveTrueOrderByPointsRequiredAsc();
 
         List<RewardDto> dtos = rewards.stream()
-                .map(r -> toDto(r, user.getTotalPoints()))
+                .map(r -> toDto(r, user.getAvailablePoints()))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);

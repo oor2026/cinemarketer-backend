@@ -161,7 +161,7 @@ public class AdminStatsController {
         stats.setSuspendedUsers(userRepository.countBySuspendedTrue());
         stats.setVerifiedUsers(userRepository.countByEmailVerifiedTrue());
         stats.setNewUsers(userRepository.countByCreatedAtBetween(start, end));
-        stats.setUsersWithPoints(userRepository.countByTotalPointsGreaterThan(0));
+        stats.setUsersWithPoints(userRepository.countByAvailablePointsGreaterThan(0));
         stats.setInactiveUsers(calculateInactiveUsers());
 
         long newUsersPrevPeriod = userRepository.countByCreatedAtBetween(prevStart, prevEnd);

@@ -39,7 +39,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
-    long countByTotalPointsGreaterThan(int points);
+    long countByAvailablePointsGreaterThan(int points);
 
     @Query("SELECT COUNT(u) FROM User u WHERE u.lastLoginAt < :date OR u.lastLoginAt IS NULL")
     long countInactiveSince(@Param("date") LocalDateTime date);
@@ -132,11 +132,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u.level, COUNT(u) FROM User u GROUP BY u.level ORDER BY u.level")
     List<Object[]> countUsersByLevel();
 
-        /**
-         * Obtiene la distribución de niveles (más útil que el promedio)
-         */
-        @Query("SELECT u.level, COUNT(u) FROM User u GROUP BY u.level")
-        List<Object[]> getLevelDistribution();
+    /**
+     * Obtiene la distribución de niveles (más útil que el promedio)
+     */
+    @Query("SELECT u.level, COUNT(u) FROM User u GROUP BY u.level")
+    List<Object[]> getLevelDistribution();
 
     /**
      * Obtiene los usuarios con nivel más alto (JURADO_EXPERTO y CRITICO)
@@ -144,7 +144,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.level = 'JURADO_EXPERTO' OR u.level = 'CRITICO' " +
             "ORDER BY CASE u.level " +
             "   WHEN 'JURADO_EXPERTO' THEN 1 " +
-            "   WHEN 'CRITICO' THEN 2 END, u.totalPoints DESC")
+            "   WHEN 'CRITICO' THEN 2 END, u.totalRedeemedPoints DESC")
     List<User> findTopLevelUsers(Pageable pageable);
 
     // ==============================================
@@ -155,11 +155,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Actualiza el nivel de todos los usuarios según sus puntos
      * (Útil para recalcular niveles después de cambios en la lógica)
      */
+    @Modifying
     @Query("UPDATE User u SET u.level = " +
             "CASE " +
-            "  WHEN u.totalPoints >= 1000 THEN 'JURADO_EXPERTO' " +
-            "  WHEN u.totalPoints >= 500 THEN 'CRITICO' " +
-            "  WHEN u.totalPoints >= 100 THEN 'COLABORADOR' " +
+            "  WHEN u.totalRedeemedPoints >= 60000 THEN 'JURADO_EXPERTO' " +
+            "  WHEN u.totalRedeemedPoints >= 40000 THEN 'CRITICO' " +
+            "  WHEN u.totalRedeemedPoints >= 20000 THEN 'COLABORADOR' " +
             "  ELSE 'AMATEUR' " +
             "END, " +
             "u.levelUpdatedAt = CURRENT_TIMESTAMP, " +
@@ -178,7 +179,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /**
      * Busca usuarios por nivel que tengan puntos mayores a un mínimo
      */
-    List<User> findByLevelAndTotalPointsGreaterThanEqual(UserLevel level, int minPoints);
+    List<User> findByLevelAndAvailablePointsGreaterThanEqual(UserLevel level, int minPoints);
 
     /**
      * Busca usuarios que hayan actualizado su nivel en un rango de fechas
@@ -194,9 +195,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * (puntos suficientes para el siguiente nivel pero nivel no actualizado)
      */
     @Query("SELECT u FROM User u WHERE " +
-            "((u.level = 'AMATEUR' AND u.totalPoints >= 100) OR " +
-            " (u.level = 'COLABORADOR' AND u.totalPoints >= 500) OR " +
-            " (u.level = 'CRITICO' AND u.totalPoints >= 1000)) " +
+            "((u.level = 'AMATEUR' AND u.totalRedeemedPoints >= 20000) OR " +
+            " (u.level = 'COLABORADOR' AND u.totalRedeemedPoints >= 40000) OR " +
+            " (u.level = 'CRITICO' AND u.totalRedeemedPoints >= 60000)) " +
             "AND u.active = true")
     List<User> findUsersEligibleForLevelUp();
 
@@ -210,7 +211,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Busca usuarios de un nivel específico con puntos menores a un valor
      * Útil para encontrar inconsistencias (ej: Jurado Experto con pocos puntos)
      */
-    List<User> findByLevelAndTotalPointsLessThan(UserLevel level, int points);
+    List<User> findByLevelAndTotalRedeemedPointsLessThan(UserLevel level, int points);
 
     /**
      * Busca usuarios por nombre o email que contengan el texto (case insensitive)
