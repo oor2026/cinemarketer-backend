@@ -125,7 +125,7 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        user.addPoints(points);
+        user.addAccumulatedPoints(points);
 
         // Usar SOLO LevelCalculatorService para calcular el nivel
         UserLevel oldLevel = user.getLevel();
@@ -148,7 +148,7 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        user.subtractPoints(points);
+        user.redeemPoints(points);
         // No bajamos de nivel automáticamente
 
         return userRepository.save(user);
