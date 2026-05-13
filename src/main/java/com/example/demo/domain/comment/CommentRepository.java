@@ -47,6 +47,11 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     long countByUserId(Long userId);
 
+    // ── Antispam ──────────────────────────────────────────────────────────────
+
+    // Último comentario publicado por el usuario (para validar duplicados)
+    java.util.Optional<Comment> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
+
     // ── Moderación ────────────────────────────────────────────────────────────
 
     // Comentarios visibles en el frontend (excluye ocultos, eliminados y rechazados)
