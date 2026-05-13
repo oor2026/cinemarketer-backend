@@ -15,6 +15,23 @@ import java.util.Optional;
 
 /**
  * Servicio para gestionar reseñas y votaciones
+ package com.example.demo.application.services;
+
+ import com.example.demo.domain.review.Review;
+ import com.example.demo.domain.review.ReviewRepository;
+ import com.example.demo.domain.review.ReviewType;
+ import com.example.demo.domain.review.VoteType;
+ import com.example.demo.domain.user.User;
+ import com.example.demo.domain.user.UserLevel;
+ import com.example.demo.domain.user.UserRepository;
+ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+ import com.example.demo.domain.pointconfig.PointAction;
+
+ import java.util.Optional;
+
+ /**
+ * Servicio para gestionar reseñas y votaciones
  * Integra la lógica de niveles con la actividad de votación
  */
 @Service
@@ -79,15 +96,18 @@ public class ReviewService {
 
         // Si es nuevo voto, sumar puntos y registrar transacción
         if (isNewVote) {
-            // Sumar puntos al usuario
-            user.addPoints(pointsAwarded);
+            // Los puntos del voto son fijos según FREE/PREMIUM
+            int votePoints = user.isActivePremium() ? 40 : 20;
+
+            // Sumar a puntos ACUMULADOS (no disponibles aún)
+            user.addAccumulatedPoints(votePoints);
             userRepository.save(user);
 
             // Registrar transacción de puntos
             pointTransactionService.registerEarned(
                     user,
                     com.example.demo.domain.pointconfig.PointAction.VOTE_MOVIE,
-                    pointsAwarded,
+                    votePoints,
                     movieId,
                     "Voto en película #" + movieId
             );
@@ -110,15 +130,9 @@ public class ReviewService {
         if (existingVote.isPresent()) {
             Review review = existingVote.get();
 
-            // Restar los puntos que se habían otorgado
-            int pointsToSubtract = review.getPointsAwarded();
-
-            // Eliminar el voto
+            // Eliminar el voto — no se revierten puntos acumulados
+            // (los puntos acumulados se liberan el 1° del mes y ya no son reversibles)
             reviewRepository.delete(review);
-
-            // Restar puntos del usuario (no registramos transacción negativa)
-            user.subtractPoints(pointsToSubtract);
-            userRepository.save(user);
 
             // Verificar nivel (aunque no bajamos automáticamente)
             // checkAndUpdateLevel(user); // Opcional, comentado por ahora

@@ -124,9 +124,17 @@ public class CommentController {
                 ? ModerationStatus.PENDING_REVIEW
                 : ModerationStatus.APPROVED;
 
-        // ── Calcular puntos ───────────────────────────────────────────────────
-        int basePoints = pointConfigService.getPoints(PointAction.COMMENT_MOVIE);
-        int points = user.isActivePremium() ? basePoints * 2 : basePoints;
+        // ── Antispam: bloquear comentario idéntico al último del usuario ────────
+        commentRepository.findFirstByUserIdOrderByCreatedAtDesc(user.getId()).ifPresent(lastComment -> {
+            if (lastComment.getContent().trim().equalsIgnoreCase(request.getContent().trim())) {
+                throw new com.example.demo.web.handlers.DuplicateCommentException(
+                        "No podés publicar el mismo comentario dos veces seguidas.");
+            }
+        });
+
+        // ── Calcular puntos según FREE/PREMIUM ────────────────────────────────
+        int basePoints = user.isActivePremium() ? 80 : 40;
+        int points = basePoints;
 
         // ── Guardar comentario ────────────────────────────────────────────────
         Comment comment = new Comment();
@@ -138,8 +146,8 @@ public class CommentController {
         comment.setModerationStatus(moderationStatus);
         commentRepository.save(comment);
 
-        // ── Sumar puntos ──────────────────────────────────────────────────────
-        user.addPoints(points);
+        // ── Sumar a puntos ACUMULADOS (no disponibles aún) ───────────────────
+        user.addAccumulatedPoints(points);
         userRepository.save(user);
 
         String movieTitle = movieRepository.findByTmdbId(movieId)

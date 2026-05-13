@@ -43,8 +43,17 @@ public class User {
     @Column(nullable = false)
     private UserRole role = UserRole.USER;
 
-    @Column(name = "total_points", nullable = false)
-    private int totalPoints = 0;
+    @Column(name = "available_points", nullable = false)
+    private int availablePoints = 0;
+
+    @Column(name = "accumulated_points", nullable = false)
+    private int accumulatedPoints = 0;
+
+    @Column(name = "total_redeemed_points", nullable = false)
+    private int totalRedeemedPoints = 0;
+
+    @Column(name = "free_monthly_cap")
+    private Integer freeMonthlyCapOverride;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -115,16 +124,68 @@ public class User {
         updatedAt = LocalDateTime.now();
     }
 
-    public void addPoints(int points) {
-        this.totalPoints += points;
+    /**
+     * Suma puntos acumulados del mes en curso (no disponibles aún)
+     */
+    public void addAccumulatedPoints(int points) {
+        this.accumulatedPoints += points;
     }
 
-    public void subtractPoints(int points) {
-        if (this.totalPoints >= points) {
-            this.totalPoints -= points;
+    /**
+     * Descuenta puntos disponibles al momento del canje (FIFO se maneja en PointBatchService)
+     * También incrementa el contador histórico de canjeados (base para insignias)
+     */
+    public void redeemPoints(int points) {
+        if (this.availablePoints >= points) {
+            this.availablePoints -= points;
+            this.totalRedeemedPoints += points;
         } else {
-            throw new IllegalStateException("Puntos insuficientes");
+            throw new IllegalStateException("Puntos disponibles insuficientes");
         }
+    }
+
+    /**
+     * Suma puntos disponibles (llamado por el scheduler mensual al liberar lotes)
+     */
+    public void addAvailablePoints(int points) {
+        this.availablePoints += points;
+    }
+
+    /**
+     * Resta puntos acumulados (llamado por el scheduler al liberar — mueve acumulados a disponibles)
+     */
+    public void clearAccumulatedPoints(int pointsReleased) {
+        this.accumulatedPoints = Math.max(0, this.accumulatedPoints - pointsReleased);
+    }
+
+    /**
+     * @deprecated Usar addAccumulatedPoints() o redeemPoints() según el contexto
+     */
+    @Deprecated
+    public void addPoints(int points) {
+        this.accumulatedPoints += points;
+    }
+
+    /**
+     * @deprecated Usar redeemPoints() para canjes
+     */
+    @Deprecated
+    public void subtractPoints(int points) {
+        if (this.availablePoints >= points) {
+            this.availablePoints -= points;
+            this.totalRedeemedPoints += points;
+        } else {
+            throw new IllegalStateException("Puntos disponibles insuficientes");
+        }
+    }
+
+    /**
+     * Compatibilidad temporal — devuelve puntos disponibles
+     * @deprecated Usar getAvailablePoints()
+     */
+    @Deprecated
+    public int getTotalPoints() {
+        return this.availablePoints;
     }
 
     public boolean isAdmin() {
@@ -166,9 +227,14 @@ public class User {
         return profileImageUrl;
     }
 
+    /**
+     * Actualiza el nivel basándose en los puntos históricos canjeados.
+     * El nivel es una insignia acumulativa — nunca baja.
+     */
     public boolean updateLevelBasedOnPoints() {
-        UserLevel newLevel = UserLevel.getLevelByPoints(this.totalPoints);
-        if (this.level != newLevel) {
+        UserLevel newLevel = UserLevel.getLevelByPoints(this.totalRedeemedPoints);
+        // El nivel solo sube, nunca baja
+        if (newLevel.ordinal() > this.level.ordinal()) {
             this.level = newLevel;
             this.levelUpdatedAt = LocalDateTime.now();
             this.updatedAt = LocalDateTime.now();
@@ -190,7 +256,7 @@ public class User {
     }
 
     public int getPointsToNextLevel() {
-        return this.level.getPointsToNextLevel(this.totalPoints);
+        return this.level.getPointsToNextLevel(this.totalRedeemedPoints);
     }
 
     public double getProgressToNextLevel() {
@@ -200,9 +266,18 @@ public class User {
         }
         int currentLevelMin = this.level.getMinPoints();
         int nextLevelMin = next.getMinPoints();
-        int pointsInCurrentLevel = this.totalPoints - currentLevelMin;
+        int pointsInCurrentLevel = this.totalRedeemedPoints - currentLevelMin;
         int pointsNeededForNext = nextLevelMin - currentLevelMin;
         return (double) pointsInCurrentLevel / pointsNeededForNext * 100;
+    }
+
+    /**
+     * Retorna el tope mensual de liberación.
+     * FREE: 20.000 pts (o valor personalizado). PREMIUM: sin tope (null).
+     */
+    public Integer getEffectiveMonthlyCap() {
+        if (this.premium) return null;
+        return freeMonthlyCapOverride != null ? freeMonthlyCapOverride : 20000;
     }
 
     public boolean isActivePremium() {
