@@ -371,9 +371,6 @@ public class UserController {
     public ResponseEntity<UserLevelWithAvatarDto> getLevelInfo() {
         User user = getAuthenticatedUser();
 
-        LevelCalculatorService.LevelProgress progress =
-                levelCalculatorService.getProgressToNextLevel(user);
-
         UserLevelWithAvatarDto dto = new UserLevelWithAvatarDto();
         dto.setUserId(user.getId());
         dto.setUserName(user.getName());
@@ -381,12 +378,13 @@ public class UserController {
         dto.setCurrentLevelDisplay(user.getLevel().getDisplayName());
         dto.setCurrentLevelEmoji(user.getLevel().getEmoji());
 
-        if (progress.hasNextLevel()) {
-            dto.setNextLevel(progress.getNextLevel());
-            dto.setNextLevelDisplay(progress.getNextLevel().getDisplayName());
-            dto.setNextLevelEmoji(progress.getNextLevel().getEmoji());
-            dto.setProgress(progress.getProgress());
-            dto.setPointsToNextLevel(progress.getPointsNeeded());
+        com.example.demo.domain.user.UserLevel nextLvl = user.getLevel().getNextLevel();
+        if (nextLvl != null) {
+            dto.setNextLevel(nextLvl);
+            dto.setNextLevelDisplay(nextLvl.getDisplayName());
+            dto.setNextLevelEmoji(nextLvl.getEmoji());
+            dto.setProgress(levelCalculatorService.getProgressToNextLevel(user));
+            dto.setPointsToNextLevel(levelCalculatorService.getPointsToNextLevel(user));
             dto.setCanLevelUp(levelCalculatorService.canLevelUp(user));
         }
 
