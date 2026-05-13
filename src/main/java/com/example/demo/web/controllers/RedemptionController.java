@@ -5,6 +5,8 @@ import com.example.demo.application.dtos.RedemptionDto;
 import com.example.demo.application.services.EmailService;
 import com.example.demo.application.services.LevelCalculatorService;
 import com.example.demo.application.services.PointTransactionService;
+import com.example.demo.domain.pointbatch.PointBatch;
+import com.example.demo.domain.pointbatch.PointBatchRepository;
 import com.example.demo.domain.pointconfig.PointAction;
 import com.example.demo.domain.redemption.Redemption;
 import com.example.demo.domain.redemption.RedemptionRepository;
@@ -41,19 +43,22 @@ public class RedemptionController {
     private final PointTransactionService pointTransactionService;
     private final LevelCalculatorService levelCalculatorService;
     private final EmailService emailService;
+    private final PointBatchRepository pointBatchRepository;
 
     public RedemptionController(RedemptionRepository redemptionRepository,
                                 RewardRepository rewardRepository,
                                 UserRepository userRepository,
                                 PointTransactionService pointTransactionService,
                                 LevelCalculatorService levelCalculatorService,
-                                EmailService emailService) {
+                                EmailService emailService,
+                                PointBatchRepository pointBatchRepository) {
         this.redemptionRepository = redemptionRepository;
         this.rewardRepository = rewardRepository;
         this.userRepository = userRepository;
         this.pointTransactionService = pointTransactionService;
         this.levelCalculatorService = levelCalculatorService;
         this.emailService = emailService;
+        this.pointBatchRepository = pointBatchRepository;
     }
 
     @GetMapping("/me")
@@ -90,15 +95,38 @@ public class RedemptionController {
                     .body(Map.of("error", "El premio no está disponible"));
         }
 
-        if (user.getTotalPoints() < reward.getPointsRequired()) {
+        int pointsRequired = reward.getPointsRequired();
+
+        // Verificar puntos disponibles (no acumulados — solo los ya liberados)
+        if (user.getAvailablePoints() < pointsRequired) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("error", "Puntos insuficientes",
-                            "required", reward.getPointsRequired(),
-                            "available", user.getTotalPoints()));
+                    .body(Map.of("error", "Puntos disponibles insuficientes",
+                            "required", pointsRequired,
+                            "available", user.getAvailablePoints(),
+                            "accumulated", user.getAccumulatedPoints(),
+                            "note", "Los puntos acumulados se liberan el 1° de cada mes"));
         }
 
-        // Descontar puntos al usuario
-        user.subtractPoints(reward.getPointsRequired());
+        // ── FIFO: consumir lotes más antiguos primero ─────────────────────────
+        List<PointBatch> batches = pointBatchRepository.findActiveBatchesByUserId(user.getId());
+        int remaining = pointsRequired;
+
+        for (PointBatch batch : batches) {
+            if (remaining <= 0) break;
+
+            int consume = Math.min(batch.getRemainingPoints(), remaining);
+            batch.setRemainingPoints(batch.getRemainingPoints() - consume);
+
+            if (batch.getRemainingPoints() == 0) {
+                batch.setExpired(true);
+            }
+
+            pointBatchRepository.save(batch);
+            remaining -= consume;
+        }
+
+        // Descontar disponibles y sumar al histórico canjeado (para insignias)
+        user.redeemPoints(pointsRequired);
         userRepository.save(user);
 
         // Reducir stock del premio
@@ -127,12 +155,10 @@ public class RedemptionController {
                 "Canje: " + reward.getName()
         );
 
-        // Recalcular nivel
-        UserLevel oldLevel = user.getLevel();
-        UserLevel newLevel = levelCalculatorService.calculateUserLevel(user);
-        if (oldLevel != newLevel) {
-            user.setLevel(newLevel);
-            user.setLevelUpdatedAt(LocalDateTime.now());
+        // Verificar si el canje disparó una subida de nivel
+        // (updateLevelBasedOnPoints usa totalRedeemedPoints — solo sube, nunca baja)
+        boolean levelChanged = user.updateLevelBasedOnPoints();
+        if (levelChanged) {
             userRepository.save(user);
         }
 
