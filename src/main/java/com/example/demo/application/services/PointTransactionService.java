@@ -118,7 +118,7 @@ public class PointTransactionService {
                 .collect(Collectors.toList());
 
         return new PointHistoryResponse(
-                user.getTotalPoints(),
+                user.getAvailablePoints(),
                 transactionRepository.getTotalEarned(user.getId()),
                 transactionRepository.getTotalSpent(user.getId()),
                 transactionRepository.getEarnedThisMonth(user.getId()),
