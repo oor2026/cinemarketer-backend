@@ -51,7 +51,7 @@ public class PointReleaseScheduler {
         LocalDateTime now = LocalDateTime.now();
         log.info("🪙 Iniciando liberación mensual de puntos - {}", now);
 
-        List<User> activeUsers = userRepository.findAllByActiveTrue();
+        List<User> activeUsers = userRepository.findByActiveTrue();
         int usersProcessed = 0;
         int totalPointsReleased = 0;
 
