@@ -122,6 +122,10 @@ public class PointTransactionService {
                 transactionRepository.getTotalEarned(user.getId()),
                 transactionRepository.getTotalSpent(user.getId()),
                 transactionRepository.getEarnedThisMonth(user.getId()),
+                // Nuevos campos
+                user.getAccumulatedPoints(),
+                transactionRepository.getRedeemedThisMonth(user.getId()),
+                user.getTotalRedeemedPoints(),
                 dtos,
                 page,
                 txPage.getTotalPages(),
