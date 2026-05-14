@@ -30,8 +30,17 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
 
     // Puntos ganados este mes
     @Query("SELECT COALESCE(SUM(t.points), 0) FROM PointTransaction t WHERE t.user.id = :userId " +
-           "AND t.type = 'EARNED' AND MONTH(t.createdAt) = MONTH(CURRENT_DATE) AND YEAR(t.createdAt) = YEAR(CURRENT_DATE)")
+            "AND t.type = 'EARNED' " +
+            "AND EXTRACT(MONTH FROM t.createdAt) = EXTRACT(MONTH FROM CURRENT_DATE) " +
+            "AND EXTRACT(YEAR FROM t.createdAt) = EXTRACT(YEAR FROM CURRENT_DATE)")
     int getEarnedThisMonth(@Param("userId") Long userId);
+
+    // Puntos canjeados este mes
+    @Query("SELECT COALESCE(SUM(t.points), 0) FROM PointTransaction t WHERE t.user.id = :userId " +
+            "AND t.type = 'SPENT' " +
+            "AND EXTRACT(MONTH FROM t.createdAt) = EXTRACT(MONTH FROM CURRENT_DATE) " +
+            "AND EXTRACT(YEAR FROM t.createdAt) = EXTRACT(YEAR FROM CURRENT_DATE)")
+    int getRedeemedThisMonth(@Param("userId") Long userId);
 
     // Suma de puntos ganados en un período
     @Query("SELECT COALESCE(SUM(t.points), 0) FROM PointTransaction t WHERE t.type = 'EARNED' AND t.createdAt BETWEEN :start AND :end")

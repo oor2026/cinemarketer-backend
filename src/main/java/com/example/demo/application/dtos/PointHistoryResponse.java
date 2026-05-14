@@ -10,10 +10,15 @@ import java.util.List;
 @AllArgsConstructor
 public class PointHistoryResponse {
 
-    private Integer totalPoints;     // Puntos actuales del usuario
-    private Integer totalEarned;     // Total histórico ganado
-    private Integer totalSpent;      // Total histórico gastado
-    private Integer earnedThisMonth; // Ganados este mes
+    private Integer totalPoints;        // Puntos disponibles actuales
+    private Integer totalEarned;        // Total histórico acumulado (ganado)
+    private Integer totalSpent;         // Total histórico canjeado (legacy)
+    private Integer earnedThisMonth;    // Acumulados este mes (aún no liberados)
+
+    // Nuevos campos — sistema de puntos
+    private Integer accumulatedPoints;  // Puntos acumulados mes en curso
+    private Integer redeemedThisMonth;  // Canjeados en el mes actual
+    private Integer totalRedeemed;      // Canjeados histórico (base para insignias)
 
     private List<PointTransactionDto> transactions;
     private Integer currentPage;
