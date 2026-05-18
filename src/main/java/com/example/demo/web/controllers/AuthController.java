@@ -338,17 +338,26 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("message", "Email requerido."));
         }
 
-        // Siempre responder igual para no revelar si el email existe
-        userRepository.findByEmail(email.trim()).ifPresent(user -> {
+        // Verificar si es cuenta Google — responder antes del flujo normal
+        User user = userRepository.findByEmail(email.trim()).orElse(null);
+        if (user != null && user.getGoogleId() != null) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body(Map.of(
+                            "googleAccount", true,
+                            "message", "Tu cuenta está vinculada a Google."
+                    ));
+        }
+
+        // Flujo normal — siempre responder igual para no revelar si el email existe
+        if (user != null) {
             String token = UUID.randomUUID().toString();
             user.setResetPasswordToken(token);
             userRepository.save(user);
             try {
                 emailService.sendPasswordResetEmail(user.getEmail(), token);
-            } catch (Exception e) {
-
-            }
-        });
+            } catch (Exception e) {}
+        }
 
         return ResponseEntity.ok(Map.of("message", "Si el email está registrado, recibirás el enlace en breve."));
     }

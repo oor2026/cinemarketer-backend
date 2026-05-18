@@ -189,10 +189,11 @@ public class MovieService {
      * @param movieId ID de la película en TMDB
      * @return TmdbVideoDto con la lista de videos
      */
-    public TmdbVideoDto getMovieVideos(Long movieId) {
+
+    public TmdbVideoDto getMovieVideos(Long movieId, String language) {
         if (movieId == null || movieId <= 0) {
             throw new IllegalArgumentException("ID de película inválido");
         }
-        return tmdbService.getMovieVideos(movieId);
+        return tmdbService.getMovieVideos(movieId, language);
     }
 }

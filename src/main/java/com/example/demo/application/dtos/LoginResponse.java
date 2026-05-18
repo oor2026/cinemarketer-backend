@@ -18,6 +18,8 @@ public class LoginResponse {
     private String message;
     private UserLevel level;        // nivel del usuario (AMATEUR, COLABORADOR, etc.)
     private boolean isPremium;      // si tiene suscripción premium activa
+    private boolean profileComplete;
+    private String googleId;
 
     // Constructor sin mensaje ni level (compatibilidad con código existente)
     public LoginResponse(String token, String type, String email, String role, int totalPoints, boolean success) {

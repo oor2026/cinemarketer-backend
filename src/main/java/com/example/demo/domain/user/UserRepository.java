@@ -236,4 +236,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findBySuspendedFalseAndActiveTrue(Pageable pageable);
 
     Page<User> findBySuspendedTrue(Pageable pageable);
+
+    Optional<User> findByGoogleId(String googleId);
 }

@@ -15,6 +15,12 @@ public class UserProfileResponse {
     private String name;
     private String role;
 
+    /**
+     * ID de Google si la cuenta está vinculada con Google OAuth
+     * Null si es cuenta registrada con email/contraseña
+     */
+    private String googleId;
+
     /** Puntos disponibles para canjear (liberados, no vencidos) */
     private int availablePoints;
 

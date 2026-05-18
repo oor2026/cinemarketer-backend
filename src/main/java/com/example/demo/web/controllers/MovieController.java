@@ -136,8 +136,10 @@ public class MovieController {
      * @return TmdbVideoDto con la lista de videos (tráilers, teasers, etc.)
      */
     @GetMapping("/{id}/videos")
-    public ResponseEntity<TmdbVideoDto> getMovieVideos(@PathVariable Long id) {
-        TmdbVideoDto response = movieService.getMovieVideos(id);
+    public ResponseEntity<TmdbVideoDto> getMovieVideos(
+            @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "es-MX") String language) {
+        TmdbVideoDto response = movieService.getMovieVideos(id, language);
         return ResponseEntity.ok(response);
     }
 }

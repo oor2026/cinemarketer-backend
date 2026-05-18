@@ -216,19 +216,14 @@ public class TmdbService {
      * @param movieId ID de la película en TMDB
      * @return TmdbVideoDto con la lista de videos
      */
-    public TmdbVideoDto getMovieVideos(Long movieId) {
+
+    public TmdbVideoDto getMovieVideos(Long movieId, String language) {
         String path = "/movie/" + movieId + "/videos";
-        String url = buildUrl(path);
-
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + path);
+        builder.queryParam("language", language != null ? language : "es-MX");
         HttpEntity<String> entity = new HttpEntity<>(createHeaders());
-
         ResponseEntity<TmdbVideoDto> response = restTemplate.exchange(
-                url,
-                HttpMethod.GET,
-                entity,
-                TmdbVideoDto.class
-        );
-
+                builder.build().toUriString(), HttpMethod.GET, entity, TmdbVideoDto.class);
         return response.getBody();
     }
 }

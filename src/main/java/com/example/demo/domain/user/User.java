@@ -27,7 +27,7 @@ public class User {
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
     @Column(name = "email_verified", nullable = false)
@@ -72,6 +72,12 @@ public class User {
 
     @Column(name = "phone", length = 30)
     private String phone;
+
+    @Column(name = "google_id", unique = true, length = 255)
+    private String googleId;
+
+    @Column(name = "profile_complete", nullable = false)
+    private boolean profileComplete = true;
 
     private boolean active = true;
 
