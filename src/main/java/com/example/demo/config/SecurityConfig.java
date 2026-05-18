@@ -54,6 +54,7 @@ public class SecurityConfig {
                                 "/api/auth/reset-password",
                                 "/api/auth/google",
                                 "/api/auth/google/complete-profile",
+                                "/api/banners",
                                 "/api/faq",
                                 "/api/webhooks/mercadopago",
                                 "/h2-console/**",
