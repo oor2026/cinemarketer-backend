@@ -27,6 +27,9 @@ import org.springframework.beans.factory.annotation.Value;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.time.LocalDateTime;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -41,6 +44,12 @@ public class AuthController {
     private final SubscriptionService subscriptionService;
     @Value("${app.frontend.url}")
     private String frontendUrl;
+
+    // Rate limiting por IP
+    private static final int MAX_INTENTOS    = 5;
+    private static final int BLOQUEO_MINUTOS = 15;
+    private final Map<String, int[]>         loginAttempts  = new ConcurrentHashMap<>();
+    private final Map<String, LocalDateTime> loginBlockedAt = new ConcurrentHashMap<>();
 
     // Constructor actualizado
     public AuthController(
@@ -151,7 +160,27 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request,
+                                               HttpServletRequest httpRequest) {
+
+        // 0. Verificar rate limiting por IP
+        String clientIp = obtenerIpCliente(httpRequest);
+        LocalDateTime blockedAt = loginBlockedAt.get(clientIp);
+        if (blockedAt != null) {
+            long mins = java.time.Duration.between(blockedAt, LocalDateTime.now()).toMinutes();
+            if (mins < BLOQUEO_MINUTOS) {
+                long restantes = BLOQUEO_MINUTOS - mins;
+                return ResponseEntity
+                        .status(HttpStatus.TOO_MANY_REQUESTS)
+                        .body(new LoginResponse(
+                                null, "Bearer", request.getEmail(), null, 0, false,
+                                "Demasiados intentos fallidos. Reinten\u00e1 en " + restantes + " minuto(s)."
+                        ));
+            } else {
+                loginBlockedAt.remove(clientIp);
+                loginAttempts.remove(clientIp);
+            }
+        }
 
         // 1. Buscar usuario por email
         User user = userRepository.findByEmail(request.getEmail())
@@ -212,6 +241,8 @@ public class AuthController {
             // 5. Actualizar último acceso
             user.setLastLoginAt(java.time.LocalDateTime.now());
             userRepository.save(user);
+            loginAttempts.remove(clientIp);
+            loginBlockedAt.remove(clientIp);
 
             // 6. Generar token JWT
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
@@ -233,6 +264,18 @@ public class AuthController {
             return ResponseEntity.ok(response);
 
         } catch (BadCredentialsException e) {
+            int[] intentos = loginAttempts.computeIfAbsent(clientIp, k -> new int[]{0});
+            intentos[0]++;
+            if (intentos[0] >= MAX_INTENTOS) {
+                loginBlockedAt.put(clientIp, LocalDateTime.now());
+                loginAttempts.remove(clientIp);
+                return ResponseEntity
+                        .status(HttpStatus.TOO_MANY_REQUESTS)
+                        .body(new LoginResponse(
+                                null, "Bearer", request.getEmail(), null, 0, false,
+                                "Demasiados intentos fallidos. Reinten\u00e1 en " + BLOQUEO_MINUTOS + " minutos."
+                        ));
+            }
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
                     .body(new LoginResponse(
@@ -390,4 +433,18 @@ public class AuthController {
 
         return ResponseEntity.ok(Map.of("message", "Contraseña restablecida correctamente."));
     }
+
+    // Helper: obtener IP real del cliente (considera proxies)
+    private String obtenerIpCliente(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp.trim();
+        }
+        return request.getRemoteAddr();
+    }
+
 }
