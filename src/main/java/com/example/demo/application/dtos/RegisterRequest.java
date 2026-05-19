@@ -14,18 +14,21 @@ import lombok.Setter;
 public class RegisterRequest {
 
     @NotBlank(message = "El nombre es obligatorio")
-    @Size(min = 3, max = 100, message = "El nombre debe tener entre 3 y 100 caracteres")
+    @Size(min = 2, max = 50, message = "El nombre debe tener entre 2 y 50 caracteres")
+    @Pattern(
+            regexp = "^[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ]+(\\s[a-zA-ZáéíóúÁÉÍÓÚüÜñÑ]+)*$",
+            message = "El nombre solo puede contener letras y espacios simples entre palabras"
+    )
     private String name;
 
-    // ← ESTE ES EL QUE FALTA
     @NotBlank(message = "El email es obligatorio")
     @Email(message = "Formato de email inválido")
     private String email;
 
     @NotBlank(message = "La contraseña es obligatoria")
     @Pattern(
-        regexp = "(?=.*[A-Z])(?=.*\\d)[A-Za-z\\d@!_-]{8,}$",
-        message = "La contraseña debe tener al menos 8 caracteres, una mayúscula y un número. Solo se permiten letras, números y los caracteres @ ! - _"
+            regexp = "(?=.*[A-Z])(?=.*\\d)[A-Za-z\\d@!_-]{8,}$",
+            message = "La contraseña debe tener al menos 8 caracteres, una mayúscula y un número. Solo se permiten letras, números y los caracteres @ ! - _"
     )
     private String password;
 
