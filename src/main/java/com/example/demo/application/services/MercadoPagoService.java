@@ -191,10 +191,12 @@ public class MercadoPagoService {
 
     /**
      * Precio del plan — en producción vendría de la BD.
-     * Por ahora hardcodeado para sandbox.
      */
+    @Value("${subscription.price:999.0}")
+    private double subscriptionPrice;
+
     private double getPlanPrice() {
-        return 100.0;
+        return subscriptionPrice;
     }
 
     public String getPublicKey() {
