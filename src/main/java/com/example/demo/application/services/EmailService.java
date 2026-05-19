@@ -1,16 +1,27 @@
 package com.example.demo.application.services;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
+    private static final String BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+    private static final String LOGO_URL = "https://cinemarketer.com.ar/assets/images/isologotipoBannerMail.jpg";
+
+    private final RestClient restClient;
+
+    @Value("${brevo.api-key}")
+    private String brevoApiKey;
 
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
@@ -18,13 +29,11 @@ public class EmailService {
     @Value("${app.mail.from:info@cinemarketer.com.ar}")
     private String mailFrom;
 
-    @Value("${app.frontend.url:http://localhost:63342/cinemarketer-front/src}")
+    @Value("${app.frontend.url:https://cinemarketer.com.ar}")
     private String frontendUrl;
 
-    private static final String LOGO_URL = "https://cinemarketer.com.ar/assets/images/isologotipoBannerMail.jpg";
-
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
+    public EmailService() {
+        this.restClient = RestClient.builder().build();
     }
 
     // ── Template base ─────────────────────────────────────────────────────────
@@ -64,14 +73,25 @@ public class EmailService {
 
     private void sendHtml(String to, String subject, String htmlBody) {
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setTo(to);
-            helper.setFrom(mailFrom);
-            helper.setSubject(subject);
-            helper.setText(buildHtml(htmlBody), true);
-            mailSender.send(message);
-        } catch (MessagingException e) {
+            Map<String, Object> payload = Map.of(
+                    "sender", Map.of("name", "Cinemarketer", "email", mailFrom),
+                    "to", List.of(Map.of("email", to)),
+                    "subject", subject,
+                    "htmlContent", buildHtml(htmlBody)
+            );
+
+            restClient.post()
+                    .uri(BREVO_API_URL)
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .header("api-key", brevoApiKey)
+                    .body(payload)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("✅ Email enviado a: {}", to);
+
+        } catch (Exception e) {
+            log.error("ERROR ENVIANDO MAIL: {}", e.getMessage(), e);
             throw new RuntimeException("Error al enviar email: " + e.getMessage(), e);
         }
     }
