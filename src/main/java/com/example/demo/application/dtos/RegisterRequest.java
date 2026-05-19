@@ -23,6 +23,10 @@ public class RegisterRequest {
 
     @NotBlank(message = "El email es obligatorio")
     @Email(message = "Formato de email inválido")
+    @Pattern(
+            regexp = "^[^\\s@]+@(gmail|hotmail|outlook|yahoo|live|msn|icloud|me|mac|protonmail|proton|tutanota|gmx|yandex|zoho|fibertel|arnet|speedy|ciudad|uolsinectis|infovia|personal|claro|terra|bol|uol|oi|telmex)\\.[^\\s@]+$",
+            message = "El proveedor de email no está permitido. Los proveedores aceptados son: Gmail, Hotmail, Outlook, Yahoo, Live, iCloud, ProtonMail, Tutanota, GMX, Yandex, Zoho, Fibertel, Arnet, Speedy, Ciudad, Personal, Claro. Para dominios privados o institucionales contactanos a info@cinemarketer.com.ar"
+    )
     private String email;
 
     @NotBlank(message = "La contraseña es obligatoria")
