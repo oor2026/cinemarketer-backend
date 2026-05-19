@@ -30,7 +30,7 @@ public class RegisterRequest {
             // Sin caracteres especiales consecutivos
             // Proveedor: debe ser uno de la lista permitida
             // TLD: simple o compuesto reconocido
-            regexp = "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,62}[a-zA-Z0-9]?@" +
+            regexp = "^[a-zA-Z0-9][a-zA-Z0-9._-]{4,62}[a-zA-Z0-9]@" +
                     "(gmail|hotmail|outlook|yahoo|live|msn|icloud|me|mac|" +
                     "protonmail|proton|tutanota|gmx|yandex|zoho|" +
                     "fibertel|arnet|speedy|ciudad|uolsinectis|infovia|personal|claro|" +
