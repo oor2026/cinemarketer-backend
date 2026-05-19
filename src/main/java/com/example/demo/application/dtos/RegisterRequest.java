@@ -23,9 +23,27 @@ public class RegisterRequest {
 
     @NotBlank(message = "El email es obligatorio")
     @Email(message = "Formato de email inválido")
+    @Size(max = 254, message = "El email no puede superar los 254 caracteres")
     @Pattern(
-            regexp = "^[^\\s@]+@(gmail|hotmail|outlook|yahoo|live|msn|icloud|me|mac|protonmail|proton|tutanota|gmx|yandex|zoho|fibertel|arnet|speedy|ciudad|uolsinectis|infovia|personal|claro|terra|bol|uol|oi|telmex)\\.[^\\s@]+$",
-            message = "El proveedor de email no está permitido. Los proveedores aceptados son: Gmail, Hotmail, Outlook, Yahoo, Live, iCloud, ProtonMail, Tutanota, GMX, Yandex, Zoho, Fibertel, Arnet, Speedy, Ciudad, Personal, Claro. Para dominios privados o institucionales contactanos a info@cinemarketer.com.ar"
+            // Parte local: letras, números, puntos, guiones y guiones bajos
+            // No empieza ni termina con . - _
+            // Sin caracteres especiales consecutivos
+            // Proveedor: debe ser uno de la lista permitida
+            // TLD: simple o compuesto reconocido
+            regexp = "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,62}[a-zA-Z0-9]?@" +
+                    "(gmail|hotmail|outlook|yahoo|live|msn|icloud|me|mac|" +
+                    "protonmail|proton|tutanota|gmx|yandex|zoho|" +
+                    "fibertel|arnet|speedy|ciudad|uolsinectis|infovia|personal|claro|" +
+                    "terra|bol|uol|oi|telmex)\\." +
+                    "(com\\.ar|net\\.ar|org\\.ar|gob\\.ar|edu\\.ar|" +
+                    "com\\.br|net\\.br|com\\.mx|net\\.mx|com\\.uy|net\\.uy|" +
+                    "com\\.co|net\\.co|com\\.pe|net\\.pe|com\\.cl|com\\.ve|" +
+                    "com\\.bo|com\\.py|com\\.es|" +
+                    "com|net|org|info|io|co|ar|es|mx|br|uy|cl|pe|ve|bo|py)$",
+            message = "El email no cumple con el formato requerido. " +
+                    "Los proveedores aceptados son: Gmail, Hotmail, Outlook, Yahoo, Live, iCloud, " +
+                    "ProtonMail, Tutanota, GMX, Yandex, Zoho, Fibertel, Arnet, Speedy, Ciudad, Personal, Claro. " +
+                    "Para dominios privados o institucionales contactanos a info@cinemarketer.com.ar"
     )
     private String email;
 
