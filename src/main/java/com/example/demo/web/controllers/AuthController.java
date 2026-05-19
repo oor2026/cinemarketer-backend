@@ -383,7 +383,7 @@ public class AuthController {
 
         // Verificar si es cuenta Google — responder antes del flujo normal
         User user = userRepository.findByEmail(email.trim()).orElse(null);
-        if (user != null && user.getGoogleId() != null) {
+        if (user != null && user.getGoogleId() != null && user.getPassword() == null) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of(
