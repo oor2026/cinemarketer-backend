@@ -128,7 +128,9 @@ public class EmailService {
     }
 
     public void sendPasswordResetEmail(String to, String token) {
-        String resetUrl = frontendUrl + "/reset-password.html?token=" + token;
+        // El link apunta al backend que valida el token y redirige al frontend
+        // Asi funciona aunque el servicio de email envuelva la URL con tracking
+        String resetUrl = baseUrl + "/api/auth/reset-password-redirect?token=" + token;
         String body =
                 "<p>Hola,</p>" +
                         "<p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en <strong>Cinemarketer</strong>.</p>" +

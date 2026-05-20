@@ -406,6 +406,26 @@ public class AuthController {
     }
 
     // ── Reset password ────────────────────────────────────────────────────────
+    // Reset password redirect (GET) - el link del email apunta aqui
+    // El backend valida el token y redirige al frontend con el token en la URL
+    @GetMapping("/reset-password-redirect")
+    public ResponseEntity<Void> resetPasswordRedirect(
+            @org.springframework.web.bind.annotation.RequestParam String token) {
+
+        User userCheck = userRepository.findByResetPasswordToken(token).orElse(null);
+
+        String redirectUrl;
+        if (userCheck != null) {
+            redirectUrl = frontendUrl + "/reset-password.html?token=" + token;
+        } else {
+            redirectUrl = frontendUrl + "/reset-password.html?error=invalid";
+        }
+
+        return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
+                .header("Location", redirectUrl)
+                .build();
+    }
+
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
         String token       = body.get("token");
