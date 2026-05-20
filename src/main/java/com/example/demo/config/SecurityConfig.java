@@ -80,7 +80,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // CORS configuration - build $(date)
+    // CORS configuration - build $(date).
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
