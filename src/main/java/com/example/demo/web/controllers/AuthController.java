@@ -406,7 +406,7 @@ public class AuthController {
     }
 
     // ── Reset password ────────────────────────────────────────────────────────
-    // Reset password redirect (GET) - el link del email apunta aqui
+    // Reset password redirect (GET) - el link del email apunta aqui.
     // El backend valida el token y redirige al frontend con el token en la URL
     @GetMapping("/reset-password-redirect")
     public ResponseEntity<Void> resetPasswordRedirect(
