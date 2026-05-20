@@ -73,12 +73,13 @@ public class EmailService {
 
     private void sendHtml(String to, String subject, String htmlBody) {
         try {
-            Map<String, Object> payload = Map.of(
-                    "sender", Map.of("name", "Cinemarketer", "email", mailFrom),
-                    "to", List.of(Map.of("email", to)),
-                    "subject", subject,
-                    "htmlContent", buildHtml(htmlBody)
-            );
+            Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("sender",      Map.of("name", "Cinemarketer", "email", mailFrom));
+            payload.put("to",          List.of(Map.of("email", to)));
+            payload.put("subject",     subject);
+            payload.put("htmlContent", buildHtml(htmlBody));
+            payload.put("trackClicks", false);
+            payload.put("trackOpens",  false);
 
             restClient.post()
                     .uri(BREVO_API_URL)
