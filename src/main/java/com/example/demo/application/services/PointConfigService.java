@@ -1,6 +1,6 @@
 package com.example.demo.application.services;
 
-import com.example.demo.domain.pointconfig.PointAction;
+import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.point.PointConfig;
 import com.example.demo.domain.point.PointConfigRepository;
 import org.springframework.stereotype.Service;

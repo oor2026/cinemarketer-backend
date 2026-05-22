@@ -7,7 +7,7 @@ import com.example.demo.application.services.LevelCalculatorService;
 import com.example.demo.application.services.PointTransactionService;
 import com.example.demo.domain.pointbatch.PointBatch;
 import com.example.demo.domain.pointbatch.PointBatchRepository;
-import com.example.demo.domain.pointconfig.PointAction;
+import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.redemption.Redemption;
 import com.example.demo.domain.redemption.RedemptionRepository;
 import com.example.demo.domain.redemption.RedemptionStatus;
