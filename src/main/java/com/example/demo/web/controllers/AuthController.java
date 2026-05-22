@@ -416,9 +416,9 @@ public class AuthController {
 
         String redirectUrl;
         if (userCheck != null) {
-            redirectUrl = frontendUrl + "/reset-password.html?token=" + token;
+            redirectUrl = frontendUrl + "/reset-password?token=" + token;
         } else {
-            redirectUrl = frontendUrl + "/reset-password.html?error=invalid";
+            redirectUrl = frontendUrl + "/reset-password?error=invalid";
         }
 
         return ResponseEntity.status(org.springframework.http.HttpStatus.FOUND)
