@@ -231,41 +231,28 @@ public class CommentController {
         CommentReply reply = commentReplyRepository.findById(replyId)
                 .orElseThrow(() -> new RuntimeException("Respuesta no encontrada"));
 
-        // Reutilizamos comment_reactions pero con un comment_id negativo como convencion
-        // para diferenciar replies: usamos reply.getId() con un tipo especial
-        // En realidad: guardamos la reaccion apuntando al comentario padre con referencia al reply
-        // Solucion limpia: agregar reply_id nullable a comment_reactions
-        // Para MVP: reaccion de reply se guarda con comment_id = reply.getId() * -1 (negativo)
-        // NOTA: en produccion refactorizar con campo reply_id
-
-        Long pseudoCommentId = -reply.getId();
-
-        // Creamos un proxy — buscamos por commentId negativo
-        var existing = commentReactionRepository
-                .findByCommentIdAndUserIdAndType(pseudoCommentId, user.getId(), ReactionType.BANCO);
+        var reactionOpt = commentReactionRepository
+                .findByReplyIdAndUserIdAndType(replyId, user.getId(), ReactionType.BANCO);
 
         boolean nowActive;
-        if (existing.isPresent()) {
-            CommentReaction r = existing.get();
+        if (reactionOpt.isPresent()) {
+            CommentReaction r = reactionOpt.get();
             r.setActive(!r.isActive());
             commentReactionRepository.save(r);
             nowActive = r.isActive();
         } else {
-            // Para evitar FK constraint usamos el comentario padre
-            Comment parentComment = reply.getComment();
             CommentReaction r = new CommentReaction();
-            r.setComment(parentComment);
+            r.setComment(reply.getComment());
+            r.setReply(reply);
             r.setUser(user);
             r.setType(ReactionType.BANCO);
             r.setActive(true);
-            // Marcamos con un campo custom que es de reply — guardamos en pointsAwarded=false como flag
             commentReactionRepository.save(r);
             nowActive = true;
         }
 
-        // Contar bancos activos para esta reply
         long count = commentReactionRepository
-                .countByCommentIdAndTypeAndActiveTrue(reply.getComment().getId(), ReactionType.BANCO);
+                .countByReplyIdAndTypeAndActiveTrue(replyId, ReactionType.BANCO);
 
         return ResponseEntity.ok(Map.of("active", nowActive, "count", count));
     }
@@ -393,9 +380,9 @@ public class CommentController {
         List<CommentReplyResponse> response = page.stream().map(r -> {
             boolean esPropio = currentUserId != null && r.getUser().getId().equals(currentUserId);
             long bancoCount = commentReactionRepository
-                    .countByCommentIdAndTypeAndActiveTrue(r.getId(), ReactionType.BANCO);
+                    .countByReplyIdAndTypeAndActiveTrue(r.getId(), ReactionType.BANCO);
             boolean bancadoByMe = currentUserId != null && commentReactionRepository
-                    .existsByCommentIdAndUserIdAndTypeAndActiveTrue(r.getId(), currentUserId, ReactionType.BANCO);
+                    .existsByReplyIdAndUserIdAndTypeAndActiveTrue(r.getId(), currentUserId, ReactionType.BANCO);
 
             return new CommentReplyResponse(
                     r.getId(), r.getUser().getId(), r.getUser().getName(),

@@ -26,4 +26,12 @@ public interface CommentReactionRepository extends JpaRepository<CommentReaction
     @Query("UPDATE CommentReaction r SET r.pointLocked = true " +
            "WHERE r.type = 'MERECE_PUNTO' AND r.active = true AND r.pointLocked = false")
     int lockActiveMerecePuntoReactions();
+
+    Optional<CommentReaction> findByReplyIdAndUserIdAndType(
+            Long replyId, Long userId, ReactionType type);
+
+    long countByReplyIdAndTypeAndActiveTrue(Long replyId, ReactionType type);
+
+    boolean existsByReplyIdAndUserIdAndTypeAndActiveTrue(
+            Long replyId, Long userId, ReactionType type);
 }

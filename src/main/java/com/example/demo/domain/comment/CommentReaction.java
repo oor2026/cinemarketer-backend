@@ -22,6 +22,10 @@ public class CommentReaction {
     private Comment comment;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reply_id", nullable = true)
+    private CommentReply reply;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
