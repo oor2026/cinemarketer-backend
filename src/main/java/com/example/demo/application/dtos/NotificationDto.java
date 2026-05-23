@@ -1,0 +1,19 @@
+package com.example.demo.application.dtos;
+
+import com.example.demo.domain.notification.NotificationType;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import java.time.LocalDateTime;
+
+@Data
+@AllArgsConstructor
+public class NotificationDto {
+    private Long id;
+    private NotificationType type;
+    private String message;
+    private Long movieId;
+    private String movieTitle;
+    private Long commentId;
+    private boolean read;
+    private LocalDateTime createdAt;
+}

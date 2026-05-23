@@ -5,6 +5,7 @@ import com.example.demo.application.dtos.CommentReportRequest;
 import com.example.demo.application.dtos.CommentResponse;
 import com.example.demo.application.dtos.CommentReplyResponse;
 import com.example.demo.application.services.BannedWordService;
+import com.example.demo.application.services.NotificationService;
 import com.example.demo.application.services.PointConfigService;
 import com.example.demo.application.services.PointTransactionService;
 import com.example.demo.domain.comment.*;
@@ -20,7 +21,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -29,19 +29,20 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/comments")
 public class CommentController {
 
-    private static final int AUTO_HIDE_THRESHOLD        = 5;
+    private static final int AUTO_HIDE_THRESHOLD          = 5;
     private static final int MAX_HIDDEN_BY_USER_PER_MOVIE = 3;
     private static final int MERECE_PUNTO_POINTS          = 1;
 
-    private final CommentRepository          commentRepository;
-    private final CommentReportRepository    commentReportRepository;
-    private final CommentReactionRepository  commentReactionRepository;
-    private final CommentReplyRepository     commentReplyRepository;
-    private final UserRepository             userRepository;
-    private final PointConfigService         pointConfigService;
-    private final PointTransactionService    pointTransactionService;
-    private final MovieRepository            movieRepository;
-    private final BannedWordService          bannedWordService;
+    private final CommentRepository         commentRepository;
+    private final CommentReportRepository   commentReportRepository;
+    private final CommentReactionRepository commentReactionRepository;
+    private final CommentReplyRepository    commentReplyRepository;
+    private final UserRepository            userRepository;
+    private final PointConfigService        pointConfigService;
+    private final PointTransactionService   pointTransactionService;
+    private final MovieRepository           movieRepository;
+    private final BannedWordService         bannedWordService;
+    private final NotificationService       notificationService;
 
     public CommentController(CommentRepository commentRepository,
                              CommentReportRepository commentReportRepository,
@@ -51,16 +52,18 @@ public class CommentController {
                              PointConfigService pointConfigService,
                              PointTransactionService pointTransactionService,
                              MovieRepository movieRepository,
-                             BannedWordService bannedWordService) {
-        this.commentRepository       = commentRepository;
-        this.commentReportRepository = commentReportRepository;
+                             BannedWordService bannedWordService,
+                             NotificationService notificationService) {
+        this.commentRepository         = commentRepository;
+        this.commentReportRepository   = commentReportRepository;
         this.commentReactionRepository = commentReactionRepository;
-        this.commentReplyRepository  = commentReplyRepository;
-        this.userRepository          = userRepository;
-        this.pointConfigService      = pointConfigService;
-        this.pointTransactionService = pointTransactionService;
-        this.movieRepository         = movieRepository;
-        this.bannedWordService       = bannedWordService;
+        this.commentReplyRepository    = commentReplyRepository;
+        this.userRepository            = userRepository;
+        this.pointConfigService        = pointConfigService;
+        this.pointTransactionService   = pointTransactionService;
+        this.movieRepository           = movieRepository;
+        this.bannedWordService         = bannedWordService;
+        this.notificationService       = notificationService;
     }
 
     // ── Helper: construir CommentResponse con reacciones ──────────────────────
@@ -75,7 +78,6 @@ public class CommentController {
                 c.getContent(), c.getCreatedAt(), c.getUser().getEffectiveAvatarUrl(),
                 reportedByMe, esPropio);
 
-        // Contadores de reacciones
         r.setBancoCount(commentReactionRepository
                 .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.BANCO));
         r.setMerecePuntoCount(commentReactionRepository
@@ -84,7 +86,7 @@ public class CommentController {
 
         if (currentUserId != null) {
             r.setBancadoByMe(commentReactionRepository
-                    .existsByCommentIdAndUserIdAndTypeAndActiveTrue(
+                    .existsByCommentIdAndUserIdAndTypeAndActiveTrueAndNoReply(
                             c.getId(), currentUserId, ReactionType.BANCO));
 
             commentReactionRepository
@@ -108,7 +110,6 @@ public class CommentController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         List<Comment> comments = commentRepository.findVisibleByMovieId(movieId);
-
         Long currentUserId = resolveUserId(userDetails);
 
         List<CommentResponse> response = comments.stream()
@@ -191,7 +192,7 @@ public class CommentController {
                 .orElseThrow(() -> new RuntimeException("Comentario no encontrado"));
 
         var reactionOpt = commentReactionRepository
-                .findByCommentIdAndUserIdAndType(commentId, user.getId(), ReactionType.BANCO);
+                .findByCommentIdAndUserIdAndTypeAndNoReply(commentId, user.getId(), ReactionType.BANCO);
 
         boolean nowActive;
         if (reactionOpt.isPresent()) {
@@ -207,6 +208,15 @@ public class CommentController {
             r.setActive(true);
             commentReactionRepository.save(r);
             nowActive = true;
+
+            // Notificar al autor (solo si no es el mismo usuario)
+            if (!comment.getUser().getId().equals(user.getId())) {
+                String movieTitle = movieRepository.findByTmdbId(comment.getMovieId())
+                        .map(Movie::getTitle).orElse("una película");
+                notificationService.crearBanco(
+                        comment.getUser(), user.getName(),
+                        comment.getMovieId(), movieTitle, commentId);
+            }
         }
 
         long count = commentReactionRepository
@@ -258,12 +268,12 @@ public class CommentController {
     }
 
     // ==========================================================================
-    // POST ¡Mereces un punto! (toggle con logica de puntos)
+    // POST ¡Mereces un punto! — irreversible con modal de confirmacion en front
     // ==========================================================================
 
     @PostMapping("/{commentId}/merece-punto")
     @Transactional
-    public ResponseEntity<?> toggleMerecePunto(
+    public ResponseEntity<?> darMerecePunto(
             @PathVariable Long commentId,
             @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -273,85 +283,58 @@ public class CommentController {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new RuntimeException("Comentario no encontrado"));
 
-        // No podes darte un punto a vos mismo
         if (comment.getUser().getId().equals(giver.getId())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "No podes darte un punto a vos mismo"));
         }
 
-        User author = userRepository.findById(comment.getUser().getId())
-                .orElseThrow(() -> new RuntimeException("Autor no encontrado"));
-
+        // Si ya existe una reaccion previa, rechazar (es irreversible)
         var reactionOpt = commentReactionRepository
                 .findByCommentIdAndUserIdAndType(commentId, giver.getId(), ReactionType.MERECE_PUNTO);
 
-        boolean nowActive;
-        boolean locked = false;
-        String authorName = author.getName();
-
         if (reactionOpt.isPresent()) {
-            CommentReaction r = reactionOpt.get();
-
-            // Si el punto ya esta bloqueado (paso a disponible), no se puede retirar
-            if (r.isPointLocked()) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(Map.of(
-                                "locked", true,
-                                "message", "Este punto ya está disponible para " + authorName + ". No es posible retirarlo."
-                        ));
-            }
-
-            // Toggle normal
-            r.setActive(!r.isActive());
-            commentReactionRepository.save(r);
-            nowActive = r.isActive();
-
-            // Si se desactiva: restar punto acumulado al autor
-            if (!nowActive && r.isPointsAwarded()) {
-                author.addAccumulatedPoints(-MERECE_PUNTO_POINTS);
-                userRepository.save(author);
-                pointTransactionService.registerEarned(author,
-                        PointAction.REVERT_MERECE_PUNTO, -MERECE_PUNTO_POINTS,
-                        commentId, "Retiro de ¡Merecés un punto! en comentario #" + commentId);
-            }
-
-            // Si se reactiva: solo sumar si pointsAwarded es false (antifraude)
-            if (nowActive && !r.isPointsAwarded()) {
-                r.setPointsAwarded(true);
-                commentReactionRepository.save(r);
-                author.addAccumulatedPoints(MERECE_PUNTO_POINTS);
-                userRepository.save(author);
-                pointTransactionService.registerEarned(author,
-                        PointAction.RECEIVE_MERECE_PUNTO, MERECE_PUNTO_POINTS,
-                        commentId, "¡Merecés un punto! en comentario #" + commentId);
-            }
-
-        } else {
-            // Primera vez — crear reaccion y otorgar punto
-            CommentReaction r = new CommentReaction();
-            r.setComment(comment);
-            r.setUser(giver);
-            r.setType(ReactionType.MERECE_PUNTO);
-            r.setActive(true);
-            r.setPointsAwarded(true);
-            commentReactionRepository.save(r);
-            nowActive = true;
-
-            author.addAccumulatedPoints(MERECE_PUNTO_POINTS);
-            userRepository.save(author);
-            pointTransactionService.registerEarned(author,
-                    PointAction.RECEIVE_MERECE_PUNTO, MERECE_PUNTO_POINTS,
-                    commentId, "¡Merecés un punto! en comentario #" + commentId);
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of(
+                            "alreadyGiven", true,
+                            "message", "Ya le diste un punto a este comentario. Esta acción es irreversible."
+                    ));
         }
+
+        User author = userRepository.findById(comment.getUser().getId())
+                .orElseThrow(() -> new RuntimeException("Autor no encontrado"));
+
+        // Crear reaccion — activa y bloqueada desde el inicio (irreversible)
+        CommentReaction r = new CommentReaction();
+        r.setComment(comment);
+        r.setUser(giver);
+        r.setType(ReactionType.MERECE_PUNTO);
+        r.setActive(true);
+        r.setPointsAwarded(true);
+        r.setPointLocked(true); // irreversible desde el momento del otorgamiento
+        commentReactionRepository.save(r);
+
+        // Sumar punto acumulado al autor
+        author.addAccumulatedPoints(MERECE_PUNTO_POINTS);
+        userRepository.save(author);
+
+        pointTransactionService.registerEarned(author,
+                PointAction.RECEIVE_MERECE_PUNTO, MERECE_PUNTO_POINTS,
+                commentId, "¡Merecés un punto! en comentario #" + commentId);
+
+        // Notificar al autor
+        String movieTitle = movieRepository.findByTmdbId(comment.getMovieId())
+                .map(Movie::getTitle).orElse("una película");
+        notificationService.crearMerecePunto(
+                author, giver.getName(),
+                comment.getMovieId(), movieTitle, commentId);
 
         long count = commentReactionRepository
                 .countByCommentIdAndTypeAndActiveTrue(commentId, ReactionType.MERECE_PUNTO);
 
         return ResponseEntity.ok(Map.of(
-                "active", nowActive,
+                "active", true,
                 "count", count,
-                "locked", locked,
-                "authorName", authorName
+                "authorName", author.getName()
         ));
     }
 
@@ -370,23 +353,22 @@ public class CommentController {
         List<CommentReply> all = commentReplyRepository.findVisibleByCommentId(commentId);
         long total = all.size();
 
-        // Paginacion de a 5
         int pageSize = 5;
         List<CommentReply> page = all.stream()
                 .skip(offset)
                 .limit(pageSize)
                 .collect(Collectors.toList());
 
-        List<CommentReplyResponse> response = page.stream().map(r -> {
-            boolean esPropio = currentUserId != null && r.getUser().getId().equals(currentUserId);
+        List<CommentReplyResponse> response = page.stream().map(rep -> {
+            boolean esPropio = currentUserId != null && rep.getUser().getId().equals(currentUserId);
             long bancoCount = commentReactionRepository
-                    .countByReplyIdAndTypeAndActiveTrue(r.getId(), ReactionType.BANCO);
+                    .countByReplyIdAndTypeAndActiveTrue(rep.getId(), ReactionType.BANCO);
             boolean bancadoByMe = currentUserId != null && commentReactionRepository
-                    .existsByReplyIdAndUserIdAndTypeAndActiveTrue(r.getId(), currentUserId, ReactionType.BANCO);
+                    .existsByReplyIdAndUserIdAndTypeAndActiveTrue(rep.getId(), currentUserId, ReactionType.BANCO);
 
             return new CommentReplyResponse(
-                    r.getId(), r.getUser().getId(), r.getUser().getName(),
-                    r.getContent(), r.getCreatedAt(), r.getUser().getEffectiveAvatarUrl(),
+                    rep.getId(), rep.getUser().getId(), rep.getUser().getName(),
+                    rep.getContent(), rep.getCreatedAt(), rep.getUser().getEffectiveAvatarUrl(),
                     esPropio, bancoCount, bancadoByMe);
         }).collect(Collectors.toList());
 
@@ -413,7 +395,6 @@ public class CommentController {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new RuntimeException("Comentario no encontrado"));
 
-        // Moderacion
         if (bannedWordService.shouldReject(request.getContent())) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                     .body(Map.of("error", "Tu respuesta no pudo publicarse por no cumplir con nuestras politicas de convivencia.", "rejected", true));
@@ -422,7 +403,6 @@ public class CommentController {
         ModerationStatus moderationStatus = bannedWordService.shouldPendingReview(request.getContent())
                 ? ModerationStatus.PENDING_REVIEW : ModerationStatus.APPROVED;
 
-        // Antispam
         commentReplyRepository.findFirstByUserIdOrderByCreatedAtDesc(user.getId()).ifPresent(last -> {
             if (last.getContent().trim().equalsIgnoreCase(request.getContent().trim())) {
                 throw new com.example.demo.web.handlers.DuplicateCommentException(
@@ -437,7 +417,15 @@ public class CommentController {
         reply.setModerationStatus(moderationStatus);
         commentReplyRepository.save(reply);
 
-        // Sin puntos por responder — los puntos se ganan recibiendo Te banco
+        // Notificar al autor del comentario original (si no es el mismo usuario)
+        if (!comment.getUser().getId().equals(user.getId())) {
+            String movieTitle = movieRepository.findByTmdbId(comment.getMovieId())
+                    .map(Movie::getTitle).orElse("una película");
+            notificationService.crearReply(
+                    comment.getUser(), user.getName(),
+                    comment.getMovieId(), movieTitle, commentId);
+        }
+
         CommentReplyResponse response = new CommentReplyResponse(
                 reply.getId(), user.getId(), user.getName(),
                 reply.getContent(), reply.getCreatedAt(),

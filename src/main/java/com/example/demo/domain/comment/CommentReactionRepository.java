@@ -11,6 +11,15 @@ import java.util.Optional;
 public interface CommentReactionRepository extends JpaRepository<CommentReaction, Long> {
 
     // Buscar reaccion especifica de un usuario sobre un comentario
+    // Para comentarios (reply_id IS NULL)
+    @Query("SELECT r FROM CommentReaction r WHERE r.comment.id = :commentId " +
+            "AND r.user.id = :userId AND r.type = :type AND r.reply IS NULL")
+    Optional<CommentReaction> findByCommentIdAndUserIdAndTypeAndNoReply(
+            @Param("commentId") Long commentId,
+            @Param("userId") Long userId,
+            @Param("type") ReactionType type);
+
+    // Para cualquier busqueda (usado en merece punto que no tiene reply)
     Optional<CommentReaction> findByCommentIdAndUserIdAndType(
             Long commentId, Long userId, ReactionType type);
 
@@ -34,4 +43,12 @@ public interface CommentReactionRepository extends JpaRepository<CommentReaction
 
     boolean existsByReplyIdAndUserIdAndTypeAndActiveTrue(
             Long replyId, Long userId, ReactionType type);
+
+    @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END FROM CommentReaction r " +
+            "WHERE r.comment.id = :commentId AND r.user.id = :userId " +
+            "AND r.type = :type AND r.active = true AND r.reply IS NULL")
+    boolean existsByCommentIdAndUserIdAndTypeAndActiveTrueAndNoReply(
+            @Param("commentId") Long commentId,
+            @Param("userId") Long userId,
+            @Param("type") ReactionType type);
 }
