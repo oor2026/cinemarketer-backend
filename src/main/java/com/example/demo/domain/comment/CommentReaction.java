@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "comment_reactions",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"comment_id", "user_id", "type"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"comment_id", "reply_id", "user_id", "type"}))
 @Data
 @NoArgsConstructor
 public class CommentReaction {
