@@ -369,7 +369,8 @@ public class CommentController {
             return new CommentReplyResponse(
                     rep.getId(), rep.getUser().getId(), rep.getUser().getName(),
                     rep.getContent(), rep.getCreatedAt(), rep.getUser().getEffectiveAvatarUrl(),
-                    esPropio, bancoCount, bancadoByMe);
+                    esPropio, bancoCount, bancadoByMe,
+                    rep.getModerationStatus().name());
         }).collect(Collectors.toList());
 
         return ResponseEntity.ok()
@@ -429,7 +430,8 @@ public class CommentController {
         CommentReplyResponse response = new CommentReplyResponse(
                 reply.getId(), user.getId(), user.getName(),
                 reply.getContent(), reply.getCreatedAt(),
-                user.getEffectiveAvatarUrl(), true, 0L, false);
+                user.getEffectiveAvatarUrl(), true, 0L, false,
+                reply.getModerationStatus().name());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -525,6 +527,37 @@ public class CommentController {
         return ResponseEntity.ok(Map.of(
                 "message", "Reporte enviado correctamente. Nuestro equipo lo revisara a la brevedad.",
                 "reportCount", nuevoConteo));
+    }
+
+    @PostMapping("/replies/{replyId}/report")
+    @Transactional
+    public ResponseEntity<?> reportReply(
+            @PathVariable Long replyId,
+            @RequestBody CommentReportRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User reporter = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        CommentReply reply = commentReplyRepository.findById(replyId)
+                .orElseThrow(() -> new RuntimeException("Respuesta no encontrada"));
+
+        if (reply.getUser().getId().equals(reporter.getId())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "No podés reportar tu propia respuesta"));
+        }
+
+        if (request.getReason() == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "El motivo del reporte es obligatorio"));
+        }
+
+        // Reutilizamos ModerationStatus de la respuesta
+        reply.setModerationStatus(ModerationStatus.PENDING_REVIEW);
+        commentReplyRepository.save(reply);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Reporte enviado correctamente. Nuestro equipo lo revisará a la brevedad."));
     }
 
     // ==========================================================================

@@ -16,4 +16,5 @@ public class CommentReplyResponse {
     private boolean ownReply;
     private long bancoCount;
     private boolean bancadoByMe;
+    private String moderationStatus;
 }

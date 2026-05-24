@@ -33,6 +33,10 @@ public class CommentModerationDto {
     // Reportes recibidos
     private List<ReportDetail> reports;
 
+    // Para diferenciar comentarios de respuestas en el admin
+    private boolean isReply;
+    private Long replyId;
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

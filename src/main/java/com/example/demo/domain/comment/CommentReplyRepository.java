@@ -11,9 +11,10 @@ import java.util.List;
 public interface CommentReplyRepository extends JpaRepository<CommentReply, Long> {
 
     // Respuestas visibles de un comentario ordenadas por fecha
+    // Incluye REMOVED para mostrar mensaje disciplinatorio en el frontend
     @Query("SELECT r FROM CommentReply r WHERE r.comment.id = :commentId " +
-           "AND r.moderationStatus NOT IN ('REMOVED', 'REJECTED', 'AUTO_HIDDEN', 'HIDDEN_BY_USER') " +
-           "ORDER BY r.createdAt ASC")
+            "AND r.moderationStatus NOT IN ('REJECTED', 'AUTO_HIDDEN', 'HIDDEN_BY_USER') " +
+            "ORDER BY r.createdAt ASC")
     List<CommentReply> findVisibleByCommentId(@Param("commentId") Long commentId);
 
     // Contar respuestas visibles
@@ -25,4 +26,6 @@ public interface CommentReplyRepository extends JpaRepository<CommentReply, Long
     java.util.Optional<CommentReply> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
 
     void deleteByUser(com.example.demo.domain.user.User user);
+
+    List<CommentReply> findByModerationStatusOrderByCreatedAtDesc(ModerationStatus status);
 }
