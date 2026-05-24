@@ -2,7 +2,7 @@ package com.example.demo.application.services;
 
 import com.example.demo.application.dtos.PointHistoryResponse;
 import com.example.demo.application.dtos.PointTransactionDto;
-import com.example.demo.domain.pointconfig.PointAction;
+import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.pointtransaction.PointTransaction;
 import com.example.demo.domain.pointtransaction.PointTransactionRepository;
 import com.example.demo.domain.pointtransaction.PointTransactionType;

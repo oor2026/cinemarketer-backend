@@ -9,7 +9,7 @@ import com.example.demo.domain.user.UserLevel;
 import com.example.demo.domain.user.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.demo.domain.pointconfig.PointAction;
+import com.example.demo.domain.point.PointAction;
 
 import java.util.Optional;
 
@@ -106,7 +106,7 @@ public class ReviewService {
             // Registrar transacción de puntos
             pointTransactionService.registerEarned(
                     user,
-                    com.example.demo.domain.pointconfig.PointAction.VOTE_MOVIE,
+                    com.example.demo.domain.point.PointAction.VOTE_MOVIE,
                     votePoints,
                     movieId,
                     "Voto en película #" + movieId

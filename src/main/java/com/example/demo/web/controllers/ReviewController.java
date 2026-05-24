@@ -8,7 +8,7 @@ import com.example.demo.application.services.PointConfigService;
 import com.example.demo.application.services.PointTransactionService;
 import com.example.demo.domain.movie.Movie;
 import com.example.demo.domain.movie.MovieRepository;
-import com.example.demo.domain.pointconfig.PointAction;
+import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.review.*;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;

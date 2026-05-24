@@ -1,6 +1,6 @@
 package com.example.demo.application.dtos;
 
-import com.example.demo.domain.pointconfig.PointAction;
+import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.pointtransaction.PointTransactionType;
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -19,7 +19,7 @@ public class PointConfig {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "action", nullable = false, unique = true, length = 50)
-    private com.example.demo.domain.pointconfig.PointAction action;
+    private com.example.demo.domain.point.PointAction action;
 
     @Column(name = "points", nullable = false)
     private Integer points;

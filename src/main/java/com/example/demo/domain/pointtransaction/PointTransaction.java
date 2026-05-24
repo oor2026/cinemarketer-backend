@@ -1,6 +1,6 @@
 package com.example.demo.domain.pointtransaction;
 
-import com.example.demo.domain.pointconfig.PointAction;
+import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.user.User;
 import jakarta.persistence.*;
 import lombok.Data;

@@ -9,7 +9,7 @@ import java.util.List;
 @Repository
 public interface PointConfigRepository extends JpaRepository<PointConfig, Long> {
 
-    Optional<PointConfig> findByAction(com.example.demo.domain.pointconfig.PointAction action);
+    Optional<PointConfig> findByAction(com.example.demo.domain.point.PointAction action);
 
     List<PointConfig> findByActiveTrue();
 }
