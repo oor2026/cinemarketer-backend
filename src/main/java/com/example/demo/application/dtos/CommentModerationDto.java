@@ -34,7 +34,7 @@ public class CommentModerationDto {
     private List<ReportDetail> reports;
 
     // Para diferenciar comentarios de respuestas en el admin
-    private boolean isReply;
+    private Boolean isReply;
     private Long replyId;
 
     @Data
