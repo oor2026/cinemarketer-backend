@@ -73,4 +73,11 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
 
     @Query("SELECT COALESCE(SUM(t.points), 0) FROM PointTransaction t WHERE t.user.id = :userId AND t.type = :type")
     int sumPointsByUserAndType(@Param("userId") Long userId, @Param("type") PointTransactionType type);
+
+    // Buscar transaccion especifica por usuario, accion y referencia (para reversiones)
+    @Query("SELECT t FROM PointTransaction t WHERE t.user.id = :userId AND t.action = :action AND t.referenceId = :referenceId ORDER BY t.createdAt DESC")
+    List<PointTransaction> findByUserIdAndActionAndReferenceId(
+            @Param("userId") Long userId,
+            @Param("action") com.example.demo.domain.point.PointAction action,
+            @Param("referenceId") Long referenceId);
 }

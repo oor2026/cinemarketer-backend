@@ -33,7 +33,7 @@ public interface CommentReactionRepository extends JpaRepository<CommentReaction
     // Bloquear todas las reacciones MERECE_PUNTO activas (job mensual)
     @org.springframework.data.jpa.repository.Modifying
     @Query("UPDATE CommentReaction r SET r.pointLocked = true " +
-           "WHERE r.type = 'MERECE_PUNTO' AND r.active = true AND r.pointLocked = false")
+            "WHERE r.type = 'MERECE_PUNTO' AND r.active = true AND r.pointLocked = false")
     int lockActiveMerecePuntoReactions();
 
     Optional<CommentReaction> findByReplyIdAndUserIdAndType(
@@ -50,5 +50,11 @@ public interface CommentReactionRepository extends JpaRepository<CommentReaction
     boolean existsByCommentIdAndUserIdAndTypeAndActiveTrueAndNoReply(
             @Param("commentId") Long commentId,
             @Param("userId") Long userId,
+            @Param("type") ReactionType type);
+
+    // Obtener todas las reacciones MERECE_PUNTO de un comentario (para revertir puntos al eliminar)
+    @Query("SELECT r FROM CommentReaction r WHERE r.comment.id = :commentId AND r.type = :type")
+    java.util.List<CommentReaction> findAllByCommentIdAndType(
+            @Param("commentId") Long commentId,
             @Param("type") ReactionType type);
 }
