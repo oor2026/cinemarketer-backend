@@ -468,12 +468,86 @@ public class CommentController {
                     .body(Map.of("error", "Alcanzaste el límite de ocultamientos para esta película.", "limitAlcanzado", true));
         }
 
+        // Revertir puntos por comentar
+        int puntosComentario = comment.getPointsAwarded() != null ? comment.getPointsAwarded() : 0;
+        if (puntosComentario > 0) {
+            boolean restado = false;
+            if (user.getAvailablePoints() >= puntosComentario) {
+                user.setAvailablePoints(user.getAvailablePoints() - puntosComentario);
+                restado = true;
+            } else if (user.getAccumulatedPoints() >= puntosComentario) {
+                user.setAccumulatedPoints(user.getAccumulatedPoints() - puntosComentario);
+                restado = true;
+            }
+            if (restado) {
+                String movieTitle = movieRepository.findByTmdbId(comment.getMovieId())
+                        .map(Movie::getTitle).orElse("Pelicula #" + comment.getMovieId());
+                pointTransactionService.registerSpent(user, PointAction.COMMENT_MOVIE, puntosComentario,
+                        comment.getMovieId(), "Comentario ocultado en pelicula: " + movieTitle);
+            }
+        }
+
+        // Revertir puntos de cada MERECE_PUNTO recibido
+        List<CommentReaction> merecePuntos = commentReactionRepository
+                .findAllByCommentIdAndType(commentId, ReactionType.MERECE_PUNTO);
+
+        for (CommentReaction mp : merecePuntos) {
+            if (mp.isPointsAwarded()) {
+                if (user.getAvailablePoints() >= MERECE_PUNTO_POINTS) {
+                    user.setAvailablePoints(user.getAvailablePoints() - MERECE_PUNTO_POINTS);
+                    pointTransactionService.registerSpent(user, PointAction.RECEIVE_MERECE_PUNTO,
+                            MERECE_PUNTO_POINTS, commentId,
+                            "Punto revertido por ocultamiento de comentario #" + commentId);
+                } else if (user.getAccumulatedPoints() >= MERECE_PUNTO_POINTS) {
+                    user.setAccumulatedPoints(user.getAccumulatedPoints() - MERECE_PUNTO_POINTS);
+                    pointTransactionService.registerSpent(user, PointAction.RECEIVE_MERECE_PUNTO,
+                            MERECE_PUNTO_POINTS, commentId,
+                            "Punto revertido por ocultamiento de comentario #" + commentId);
+                }
+            }
+        }
+
+        userRepository.save(user);
+
         comment.setModerationStatus(ModerationStatus.HIDDEN_BY_USER);
         commentRepository.save(comment);
 
         return ResponseEntity.ok(Map.of(
                 "message", "Tu comentario fue ocultado correctamente.",
                 "ocultamientosRestantes", MAX_HIDDEN_BY_USER_PER_MOVIE - ocultamientos - 1));
+    }
+
+    // ==========================================================================
+    // POST ocultar respuesta propia
+    // ==========================================================================
+
+    @PostMapping("/replies/{replyId}/hide")
+    @Transactional
+    public ResponseEntity<?> hideReply(
+            @PathVariable Long replyId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        CommentReply reply = commentReplyRepository.findById(replyId)
+                .orElseThrow(() -> new RuntimeException("Respuesta no encontrada"));
+
+        if (!reply.getUser().getId().equals(user.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Solo podes ocultar tus propias respuestas"));
+        }
+
+        if (reply.getModerationStatus() == ModerationStatus.HIDDEN_BY_USER) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Esta respuesta ya esta oculta"));
+        }
+
+        // Las respuestas no generan puntos, solo cambiar el status
+        reply.setModerationStatus(ModerationStatus.HIDDEN_BY_USER);
+        commentReplyRepository.save(reply);
+
+        return ResponseEntity.ok(Map.of("message", "Tu respuesta fue ocultada correctamente."));
     }
 
     // ==========================================================================

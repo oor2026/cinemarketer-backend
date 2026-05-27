@@ -61,7 +61,22 @@ public class BannedWordService {
      * Detecta "pelotudo" dentro de "sos un pelotudo!!!".
      */
     private boolean contienepalabra(String texto, String palabra) {
-        return texto.contains(palabra);
+        // 1. Buscar la palabra tal cual (con word boundary)
+        String patron = "(^|[^a-z0-9])" + java.util.regex.Pattern.quote(palabra) + "([^a-z0-9]|$)";
+        if (java.util.regex.Pattern.compile(patron).matcher(texto).find()) {
+            return true;
+        }
+
+        // 2. Detectar variante con separadores de 1 a 5 caracteres entre letras
+        // Ejemplo: "p u t a", "p  u  t  a", "p-u-t-a", "p . u . t . a"
+        String[] letras = palabra.split("");
+        String separador = "[^a-z0-9]{1,100}";
+        String patronEspaciado = String.join(separador,
+                java.util.Arrays.stream(letras)
+                        .map(java.util.regex.Pattern::quote)
+                        .toArray(String[]::new));
+        String patronCompleto = "(^|[^a-z0-9])" + patronEspaciado + "([^a-z0-9]|$)";
+        return java.util.regex.Pattern.compile(patronCompleto).matcher(texto).find();
     }
 
     /**
