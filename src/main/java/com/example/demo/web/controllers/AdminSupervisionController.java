@@ -162,8 +162,10 @@ public class AdminSupervisionController {
 
             String mensajeTicket = String.format(
                     "Tu comentario fue eliminado por no cumplir con nuestras politicas de convivencia.\n\n" +
+                            "Pelicula: \"%s\"\n\n" +
                             "Comentario eliminado:\n\"%s\"\n\nMotivo:\n%s\n\n" +
                             "Si tenes consultas al respecto, podes responder este mensaje.",
+                    movieTitle,
                     contenido.length() > 200 ? contenido.substring(0, 200) + "..." : contenido,
                     request.getReason());
 
