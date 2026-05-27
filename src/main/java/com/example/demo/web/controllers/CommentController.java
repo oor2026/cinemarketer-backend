@@ -424,7 +424,7 @@ public class CommentController {
                     .map(Movie::getTitle).orElse("una película");
             notificationService.crearReply(
                     comment.getUser(), user.getName(),
-                    comment.getMovieId(), movieTitle, commentId);
+                    comment.getMovieId(), movieTitle, commentId, reply.getId());
         }
 
         CommentReplyResponse response = new CommentReplyResponse(

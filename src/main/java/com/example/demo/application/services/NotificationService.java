@@ -43,7 +43,7 @@ public class NotificationService {
     }
 
     @Transactional
-    public void crearReply(User receptor, String actorName, Long movieId, String movieTitle, Long commentId) {
+    public void crearReply(User receptor, String actorName, Long movieId, String movieTitle, Long commentId, Long replyId) {
         Notification n = new Notification();
         n.setUser(receptor);
         n.setActorName(actorName);
@@ -52,6 +52,7 @@ public class NotificationService {
         n.setMovieId(movieId);
         n.setMovieTitle(movieTitle);
         n.setCommentId(commentId);
+        n.setReplyId(replyId);
         notificationRepository.save(n);
     }
 }

@@ -41,7 +41,7 @@ public class NotificationController {
                 .map(n -> new NotificationDto(
                         n.getId(), n.getType(), n.getMessage(),
                         n.getMovieId(), n.getMovieTitle(), n.getCommentId(),
-                        n.isRead(), n.getCreatedAt()))
+                        n.getReplyId(), n.isRead(), n.getCreatedAt()))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);
