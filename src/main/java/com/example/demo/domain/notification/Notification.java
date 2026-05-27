@@ -43,6 +43,9 @@ public class Notification {
     @Column(name = "comment_id")
     private Long commentId;
 
+    @Column(name = "reply_id")
+    private Long replyId;
+
     @Column(name = "read", nullable = false)
     private boolean read = false;
 
