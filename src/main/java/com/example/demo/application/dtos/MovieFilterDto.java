@@ -16,6 +16,8 @@ public class MovieFilterDto {
     private Integer withRuntimeLte;
     private Integer page = 1;
     private String withCrew;
+    private String sortBy;
+    private String releaseDateGte;
 
     // Método para convertir a Map para TMDb
     public Map<String, String> toParams() {
@@ -57,6 +59,14 @@ public class MovieFilterDto {
             params.put("with_crew", withCrew);
         }
 
+        if (sortBy != null && !sortBy.trim().isEmpty()) {
+            params.put("sort_by", sortBy);
+        }
+
+        if (releaseDateGte != null && !releaseDateGte.trim().isEmpty()) {
+            params.put("primary_release_date.gte", releaseDateGte + "-01-01");
+        }
+
         params.put("page", page.toString());
 
         return params;
@@ -67,6 +77,7 @@ public class MovieFilterDto {
         return query != null && !query.trim().isEmpty() &&
                 year == null && withGenres == null &&
                 withOriginalLanguage == null && voteAverageGte == null &&
-                voteAverageLte == null && withRuntimeGte == null && withRuntimeLte == null;
+                voteAverageLte == null && withRuntimeGte == null &&
+                withRuntimeLte == null && (sortBy == null || sortBy.isBlank());
     }
 }

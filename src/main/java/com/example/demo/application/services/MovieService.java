@@ -117,12 +117,77 @@ public class MovieService {
         Map<String, String> params = filter.toParams();
 
         if (filter.usarSearch()) {
-            // Solo búsqueda por texto - usar /search/movie
             return tmdbService.searchMovies(params);
-        } else {
-            // Hay filtros avanzados - usar /discover/movie
-            return tmdbService.discoverMovies(params);
         }
+
+        // Si hay sortBy y no hay idioma específico, hacer dos requests paralelos es+en
+        if (filter.getSortBy() != null && !filter.getSortBy().isBlank()
+                && (filter.getWithOriginalLanguage() == null || filter.getWithOriginalLanguage().isBlank())) {
+
+            Map<String, String> paramsEs = new java.util.HashMap<>(params);
+            paramsEs.put("with_original_language", "es");
+
+            Map<String, String> paramsEn = new java.util.HashMap<>(params);
+            paramsEn.put("with_original_language", "en");
+
+            TmdbPageResponseDto resEs = tmdbService.discoverMovies(paramsEs);
+            TmdbPageResponseDto resEn = tmdbService.discoverMovies(paramsEn);
+
+            // Mergear resultados deduplicando por id
+            List<TmdbMovieDto> merged = new java.util.ArrayList<>();
+            java.util.Set<Long> ids = new java.util.HashSet<>();
+
+            List<TmdbMovieDto> listaEs = resEs != null && resEs.getResults() != null ? resEs.getResults() : List.of();
+            List<TmdbMovieDto> listaEn = resEn != null && resEn.getResults() != null ? resEn.getResults() : List.of();
+
+            // Intercalar es y en para mantener variedad
+            int max = Math.max(listaEs.size(), listaEn.size());
+            for (int i = 0; i < max; i++) {
+                if (i < listaEs.size()) {
+                    TmdbMovieDto p = listaEs.get(i);
+                    if (p.getId() != null && ids.add(p.getId())) merged.add(p);
+                }
+                if (i < listaEn.size()) {
+                    TmdbMovieDto p = listaEn.get(i);
+                    if (p.getId() != null && ids.add(p.getId())) merged.add(p);
+                }
+            }
+
+            // Ordenar merged por: año desc → popularity desc → vote_count desc
+            merged.sort((a, b) -> {
+                // 1. Año descendente
+                int anioA = extraerAnio(a.getReleaseDate());
+                int anioB = extraerAnio(b.getReleaseDate());
+                int cmpAnio = Integer.compare(anioB, anioA);
+                if (cmpAnio != 0) return cmpAnio;
+
+                // 2. Popularity descendente
+                double popA = a.getPopularity() != null ? a.getPopularity() : 0.0;
+                double popB = b.getPopularity() != null ? b.getPopularity() : 0.0;
+                int cmpPop = Double.compare(popB, popA);
+                if (cmpPop != 0) return cmpPop;
+
+                // 3. Vote count descendente
+                int vcA = a.getVoteCount() != null ? a.getVoteCount() : 0;
+                int vcB = b.getVoteCount() != null ? b.getVoteCount() : 0;
+                return Integer.compare(vcB, vcA);
+            });
+
+            TmdbPageResponseDto result = new TmdbPageResponseDto();
+            result.setPage(resEs.getPage());
+            result.setResults(merged);
+            result.setTotalPages(Math.max(
+                    resEs.getTotalPages() != null ? resEs.getTotalPages() : 1,
+                    resEn.getTotalPages() != null ? resEn.getTotalPages() : 1
+            ));
+            result.setTotalResults(
+                    (resEs.getTotalResults() != null ? resEs.getTotalResults() : 0) +
+                            (resEn.getTotalResults() != null ? resEn.getTotalResults() : 0)
+            );
+            return result;
+        }
+
+        return tmdbService.discoverMovies(params);
     }
 
     /**
@@ -189,6 +254,15 @@ public class MovieService {
      * @param movieId ID de la película en TMDB
      * @return TmdbVideoDto con la lista de videos
      */
+
+    private int extraerAnio(String releaseDate) {
+        if (releaseDate == null || releaseDate.length() < 4) return 0;
+        try {
+            return Integer.parseInt(releaseDate.substring(0, 4));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
 
     public TmdbVideoDto getMovieVideos(Long movieId, String language) {
         if (movieId == null || movieId <= 0) {
