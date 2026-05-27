@@ -70,7 +70,7 @@ public class BannedWordService {
         // 2. Detectar variante con separadores de 1 a 5 caracteres entre letras
         // Ejemplo: "p u t a", "p  u  t  a", "p-u-t-a", "p . u . t . a"
         String[] letras = palabra.split("");
-        String separador = "[^a-z0-9]{1,5}";
+        String separador = "[^a-z0-9]{1,100}";
         String patronEspaciado = String.join(separador,
                 java.util.Arrays.stream(letras)
                         .map(java.util.regex.Pattern::quote)
