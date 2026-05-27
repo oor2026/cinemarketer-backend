@@ -146,13 +146,17 @@ public class TmdbService {
 
         // Parámetros por defecto para discover
         builder.queryParam("language", "es-ES");
-        builder.queryParam("sort_by", "popularity.desc");
         builder.queryParam("include_adult", "false");
         builder.queryParam("include_video", "false");
 
         // Agregar todos los parámetros del mapa
         for (Map.Entry<String, String> entry : params.entrySet()) {
             builder.queryParam(entry.getKey(), entry.getValue());
+        }
+
+        // sort_by por defecto solo si el mapa no trae uno propio
+        if (!params.containsKey("sort_by")) {
+            builder.queryParam("sort_by", "popularity.desc");
         }
 
         String url = builder.build().toUriString();

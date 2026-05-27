@@ -23,7 +23,30 @@ public class MovieController {
     @GetMapping("/popular")
     public ResponseEntity<TmdbPageResponseDto> getPopularMovies(
             @RequestParam(required = false) String withCrew,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String releaseDateGte,
+            @RequestParam(required = false) String language,
             @RequestParam(required = false) Integer page) {
+
+        if (sortBy != null && !sortBy.isBlank()) {
+            MovieFilterDto filter = new MovieFilterDto();
+
+            // Para "más recientes": ordenar por popularidad desc dentro del año actual
+            if ("primary_release_date.desc".equals(sortBy)) {
+                filter.setSortBy("popularity.desc");
+                // Filtrar solo películas del año actual hacia atrás (últimos 2 años para tener volumen)
+                int anioActual = java.time.Year.now().getValue();
+                filter.setReleaseDateGte(String.valueOf(anioActual - 1));
+            } else {
+                filter.setSortBy(sortBy);
+                filter.setReleaseDateGte(releaseDateGte);
+            }
+
+            filter.setPage(page != null ? page : 1);
+            TmdbPageResponseDto response = movieService.searchMovies(filter);
+            return ResponseEntity.ok(response);
+        }
+
         TmdbPageResponseDto response = movieService.getPopularMovies(page);
         return ResponseEntity.ok(response);
     }
@@ -100,6 +123,7 @@ public class MovieController {
         filter.setWithRuntimeLte(withRuntimeLte);
         filter.setWithCrew(withCrew);
         filter.setPage(page);
+        filter.setSortBy(null);
 
         // Llamar al servicio (que decidirá entre search y discover)
         TmdbPageResponseDto response = movieService.searchMovies(filter);
