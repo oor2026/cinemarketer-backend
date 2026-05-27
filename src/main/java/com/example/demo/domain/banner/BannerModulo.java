@@ -6,5 +6,6 @@ public enum BannerModulo {
     MIS_PREMIOS,
     MIS_CONSULTAS,
     CONTACTO,
-    FEED_FILMS
+    FEED_FILMS,
+    SPLASH_MOBILE
 }
