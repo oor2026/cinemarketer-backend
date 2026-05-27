@@ -28,7 +28,7 @@ public class CommentReply {
     private String content;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "moderation_status", length = 20)
+    @Column(name = "moderation_status", length = 20, nullable = false)
     private ModerationStatus moderationStatus = ModerationStatus.APPROVED;
 
     @Column(name = "created_at", nullable = false, updatable = false)
