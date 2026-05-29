@@ -408,6 +408,8 @@ public class CommentController {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new RuntimeException("Comentario no encontrado"));
 
+        System.out.println("parentReplyId recibido: " + request.getParentReplyId());
+
         if (bannedWordService.shouldReject(request.getContent())) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                     .body(Map.of("error", "Tu respuesta no pudo publicarse por no cumplir con nuestras politicas de convivencia.", "rejected", true));
@@ -430,13 +432,28 @@ public class CommentController {
         reply.setModerationStatus(moderationStatus);
         commentReplyRepository.save(reply);
 
-        // Notificar al autor del comentario original (si no es el mismo usuario)
+        String movieTitle = movieRepository.findByTmdbId(comment.getMovieId())
+                .map(Movie::getTitle).orElse("una película");
+
+// Notificar al autor del comentario padre (si no es el mismo usuario)
         if (!comment.getUser().getId().equals(user.getId())) {
-            String movieTitle = movieRepository.findByTmdbId(comment.getMovieId())
-                    .map(Movie::getTitle).orElse("una película");
             notificationService.crearReply(
                     comment.getUser(), user.getName(),
                     comment.getMovieId(), movieTitle, commentId, reply.getId());
+        }
+
+// Notificar al autor de la reply respondida (si es distinto al padre y al emisor)
+        if (request.getParentReplyId() != null) {
+            commentReplyRepository.findById(request.getParentReplyId()).ifPresent(parentReply -> {
+                User parentReplyAuthor = parentReply.getUser();
+                boolean esDistintoAlPadre = !parentReplyAuthor.getId().equals(comment.getUser().getId());
+                boolean esDistintoAlEmisor = !parentReplyAuthor.getId().equals(user.getId());
+                if (esDistintoAlPadre && esDistintoAlEmisor) {
+                    notificationService.crearReply(
+                            parentReplyAuthor, user.getName(),
+                            comment.getMovieId(), movieTitle, commentId, reply.getId());
+                }
+            });
         }
 
         CommentReplyResponse response = new CommentReplyResponse(
