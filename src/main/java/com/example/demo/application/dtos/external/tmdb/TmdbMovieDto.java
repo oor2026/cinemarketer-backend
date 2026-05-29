@@ -36,6 +36,12 @@ public class TmdbMovieDto {
     @JsonProperty("genre_ids")
     private List<Integer> genreIds;
 
+    @JsonProperty("genres")
+    private List<TmdbGenreDto> genres;
+
+    @JsonProperty("runtime")
+    private Integer runtime;
+
     private Double popularity;
 
     @JsonProperty("original_language")
@@ -55,5 +61,11 @@ public class TmdbMovieDto {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    @Data
+    public static class TmdbGenreDto {
+        private Integer id;
+        private String name;
     }
 }
