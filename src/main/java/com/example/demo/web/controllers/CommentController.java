@@ -320,13 +320,14 @@ public class CommentController {
         author.addAccumulatedPoints(MERECE_PUNTO_POINTS);
         userRepository.save(author);
 
-        pointTransactionService.registerEarned(author,
-                PointAction.RECEIVE_MERECE_PUNTO, MERECE_PUNTO_POINTS,
-                commentId, "¡Merecés un punto! en comentario #" + commentId);
-
-        // Notificar al autor
         String movieTitle = movieRepository.findByTmdbId(comment.getMovieId())
                 .map(Movie::getTitle).orElse("una película");
+
+        pointTransactionService.registerEarned(author,
+                PointAction.RECEIVE_MERECE_PUNTO, MERECE_PUNTO_POINTS,
+                commentId, giver.getName() + " indicó que te ¡Merecés un punto! por tu comentario en " + movieTitle);
+
+// Notificar al autor
         notificationService.crearMerecePunto(
                 author, giver.getName(),
                 comment.getMovieId(), movieTitle, commentId);
