@@ -4,10 +4,7 @@ import com.example.demo.application.dtos.CommentRequest;
 import com.example.demo.application.dtos.CommentReportRequest;
 import com.example.demo.application.dtos.CommentResponse;
 import com.example.demo.application.dtos.CommentReplyResponse;
-import com.example.demo.application.services.BannedWordService;
-import com.example.demo.application.services.NotificationService;
-import com.example.demo.application.services.PointConfigService;
-import com.example.demo.application.services.PointTransactionService;
+import com.example.demo.application.services.*;
 import com.example.demo.domain.comment.*;
 import com.example.demo.domain.movie.Movie;
 import com.example.demo.domain.movie.MovieRepository;
@@ -43,6 +40,7 @@ public class CommentController {
     private final MovieRepository           movieRepository;
     private final BannedWordService         bannedWordService;
     private final NotificationService       notificationService;
+    private final MovieService movieService;
 
     public CommentController(CommentRepository commentRepository,
                              CommentReportRepository commentReportRepository,
@@ -53,7 +51,8 @@ public class CommentController {
                              PointTransactionService pointTransactionService,
                              MovieRepository movieRepository,
                              BannedWordService bannedWordService,
-                             NotificationService notificationService) {
+                             NotificationService notificationService,
+                             MovieService movieService) {
         this.commentRepository         = commentRepository;
         this.commentReportRepository   = commentReportRepository;
         this.commentReactionRepository = commentReactionRepository;
@@ -64,6 +63,7 @@ public class CommentController {
         this.movieRepository           = movieRepository;
         this.bannedWordService         = bannedWordService;
         this.notificationService       = notificationService;
+        this.movieService = movieService;
     }
 
     // ── Helper: construir CommentResponse con reacciones ──────────────────────
@@ -170,7 +170,15 @@ public class CommentController {
         userRepository.save(user);
 
         String movieTitle = movieRepository.findByTmdbId(movieId)
-                .map(Movie::getTitle).orElse("Pelicula #" + movieId);
+                .map(Movie::getTitle)
+                .orElseGet(() -> {
+                    try {
+                        var tmdb = movieService.getMovieDetails(movieId);
+                        return tmdb != null && tmdb.getTitle() != null ? tmdb.getTitle() : "Pelicula #" + movieId;
+                    } catch (Exception e) {
+                        return "Pelicula #" + movieId;
+                    }
+                });
 
         pointTransactionService.registerEarned(user, PointAction.COMMENT_MOVIE, points,
                 movieId, "Comentario en pelicula: " + movieTitle);
