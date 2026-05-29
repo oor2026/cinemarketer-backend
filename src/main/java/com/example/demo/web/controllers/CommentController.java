@@ -146,12 +146,15 @@ public class CommentController {
         ModerationStatus moderationStatus = bannedWordService.shouldPendingReview(request.getContent())
                 ? ModerationStatus.PENDING_REVIEW : ModerationStatus.APPROVED;
 
-        commentRepository.findFirstByUserIdOrderByCreatedAtDesc(user.getId()).ifPresent(last -> {
+        List<Comment> lastVisible = commentRepository.findLastVisibleByUserId(
+                user.getId(), org.springframework.data.domain.PageRequest.of(0, 1));
+        if (!lastVisible.isEmpty()) {
+            Comment last = lastVisible.get(0);
             if (last.getContent().trim().equalsIgnoreCase(request.getContent().trim())) {
                 throw new com.example.demo.web.handlers.DuplicateCommentException(
                         "No podés publicar el mismo comentario dos veces seguidas.");
             }
-        });
+        }
 
         int points = user.isActivePremium() ? 80 : 40;
 

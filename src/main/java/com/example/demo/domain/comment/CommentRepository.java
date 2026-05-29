@@ -52,6 +52,12 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     // Último comentario publicado por el usuario (para validar duplicados)
     java.util.Optional<Comment> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
 
+    // Último comentario visible del usuario (excluye ocultos — para antispam)
+    @Query("SELECT c FROM Comment c WHERE c.user.id = :userId " +
+            "AND c.moderationStatus NOT IN ('HIDDEN_BY_USER', 'REMOVED', 'REJECTED') " +
+            "ORDER BY c.createdAt DESC")
+    List<Comment> findLastVisibleByUserId(@Param("userId") Long userId, Pageable pageable);
+
     // ── Moderación ────────────────────────────────────────────────────────────
 
     // Comentarios visibles en el frontend (excluye ocultos, eliminados y rechazados)
