@@ -82,8 +82,9 @@ public class GoogleAuthService {
             }
         }
 
-        // 4. Generar JWT
-        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+        // 4. Generar JWT — usar el email guardado en la BD, no el de Google
+        // (el usuario pudo haber cambiado su email en Mi Cuenta)
+        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtService.generateToken(userDetails);
 
         // 5. Construir respuesta
