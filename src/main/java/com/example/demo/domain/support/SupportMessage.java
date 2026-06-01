@@ -42,6 +42,6 @@ public class SupportMessage {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now(java.time.ZoneId.of("America/Argentina/Buenos_Aires"));
     }
 }
