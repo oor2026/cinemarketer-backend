@@ -101,6 +101,9 @@ public class PointTransactionService {
         } else if ("spent".equalsIgnoreCase(typeFilter)) {
             txPage = transactionRepository.findByUserIdAndTypeOrderByCreatedAtDesc(
                     user.getId(), PointTransactionType.SPENT, pageable);
+        } else if ("redeemed".equalsIgnoreCase(typeFilter)) {
+            txPage = transactionRepository.findByUserIdAndTypeAndActionOrderByCreatedAtDesc(
+                    user.getId(), PointTransactionType.SPENT, PointAction.REWARD_REDEMPTION, pageable);
         } else {
             txPage = transactionRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), pageable);
         }

@@ -80,4 +80,9 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
             @Param("userId") Long userId,
             @Param("action") com.example.demo.domain.point.PointAction action,
             @Param("referenceId") Long referenceId);
+
+    // Filtrar por tipo y acción específica (ej: solo canjes)
+    Page<PointTransaction> findByUserIdAndTypeAndActionOrderByCreatedAtDesc(
+            Long userId, PointTransactionType type,
+            com.example.demo.domain.point.PointAction action, Pageable pageable);
 }
