@@ -49,8 +49,8 @@ public class PremiumRewardService {
 
     public List<PremiumRewardDto> getCatalog(User user, boolean isPremium, PremiumRewardType type) {
         List<PremiumReward> rewards = type != null
-                ? premiumRewardRepository.findByActiveTrueAndType(type)
-                : premiumRewardRepository.findByActiveTrue();
+                ? premiumRewardRepository.findByActiveTrueAndDeletedFalseAndType(type)
+                : premiumRewardRepository.findByActiveTrueAndDeletedFalse();
 
         return rewards.stream()
                 .map(r -> toDto(r, user, isPremium))
