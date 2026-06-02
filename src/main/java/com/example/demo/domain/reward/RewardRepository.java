@@ -43,6 +43,8 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
     // Buscar premios ordenados por puntos requeridos (menor a mayor)
     List<Reward> findByActiveTrueOrderByPointsRequiredAsc();
 
+    List<Reward> findByActiveTrueAndDeletedFalseOrderByPointsRequiredAsc();
+
     // Buscar premios más populares (los más canjeados - lo implementaremos con Redemption después)
     @Query("SELECT r, COUNT(red) as canjes FROM Reward r LEFT JOIN Redemption red ON r.id = red.reward.id " +
             "GROUP BY r.id ORDER BY canjes DESC")

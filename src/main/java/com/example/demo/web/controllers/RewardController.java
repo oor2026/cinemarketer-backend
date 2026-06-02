@@ -58,7 +58,7 @@ public class RewardController {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        List<Reward> rewards = rewardRepository.findByActiveTrueOrderByPointsRequiredAsc();
+        List<Reward> rewards = rewardRepository.findByActiveTrueAndDeletedFalseOrderByPointsRequiredAsc();
 
         List<RewardDto> dtos = rewards.stream()
                 .map(r -> toDto(r, user.getAvailablePoints()))
