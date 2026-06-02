@@ -34,6 +34,9 @@ public class CommentReply {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "admin_reviewed", nullable = false)
+    private boolean adminReviewed = false;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

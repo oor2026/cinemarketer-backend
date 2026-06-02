@@ -6,5 +6,6 @@ public enum ModerationStatus {
     REJECTED,
     REMOVED,
     AUTO_HIDDEN,
-    HIDDEN_BY_USER
+    HIDDEN_BY_USER,
+    DISMISSED
 }

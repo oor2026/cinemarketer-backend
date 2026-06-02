@@ -43,6 +43,18 @@ public class NotificationService {
     }
 
     @Transactional
+    public void crearComentarioEliminado(User receptor, Long movieId, String movieTitle) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.COMMENT_REMOVED);
+        n.setMessage("Tu comentario en " + movieTitle + " fue reportado y eliminado por no cumplir con nuestras normas de convivencia.");
+        n.setMovieId(movieId);
+        n.setMovieTitle(movieTitle);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
     public void crearReply(User receptor, String actorName, Long movieId, String movieTitle, Long commentId, Long replyId) {
         Notification n = new Notification();
         n.setUser(receptor);
