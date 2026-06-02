@@ -28,4 +28,21 @@ public interface CommentReplyRepository extends JpaRepository<CommentReply, Long
     void deleteByUser(com.example.demo.domain.user.User user);
 
     List<CommentReply> findByModerationStatusOrderByCreatedAtDesc(ModerationStatus status);
+
+    // Respuestas pendientes: reportadas que el admin aún no revisó
+    @Query("SELECT r FROM CommentReply r WHERE r.moderationStatus = 'PENDING_REVIEW' " +
+            "AND r.adminReviewed = false " +
+            "ORDER BY r.createdAt DESC")
+    List<CommentReply> findPending();
+
+    // Respuestas en revisión: reportadas que el admin ya vio pero no resolvió
+    @Query("SELECT r FROM CommentReply r WHERE r.moderationStatus = 'PENDING_REVIEW' " +
+            "AND r.adminReviewed = true " +
+            "ORDER BY r.createdAt DESC")
+    List<CommentReply> findInReview();
+
+    // Respuestas resueltas
+    @Query("SELECT r FROM CommentReply r WHERE r.moderationStatus IN ('REMOVED', 'DISMISSED') " +
+            "ORDER BY r.createdAt DESC")
+    List<CommentReply> findResolved();
 }

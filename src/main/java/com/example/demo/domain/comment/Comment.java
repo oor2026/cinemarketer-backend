@@ -48,6 +48,9 @@ public class Comment {
     @Column(name = "moderation_reviewed_at")
     private LocalDateTime moderationReviewedAt;
 
+    @Column(name = "admin_reviewed", nullable = false)
+    private boolean adminReviewed = false;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

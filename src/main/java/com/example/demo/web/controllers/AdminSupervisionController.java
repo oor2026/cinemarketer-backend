@@ -41,53 +41,88 @@ public class AdminSupervisionController {
     private final UserRepository              userRepository;
     private final MovieRepository             movieRepository;
     private final EmailService                emailService;
+    private final com.example.demo.application.services.NotificationService notificationService;
 
     @GetMapping("/stats")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<Map<String, Long>> getStats() {
-        long reportados = commentRepository.findReported().size();
-        long pendientes = commentRepository
-                .findByModerationStatusOrderByCreatedAtDesc(ModerationStatus.PENDING_REVIEW).size();
-        long resueltos  = commentRepository.findResolved().size();
-        long repliesRep = commentReplyRepository
-                .findByModerationStatusOrderByCreatedAtDesc(ModerationStatus.PENDING_REVIEW).size();
+        long pendientes = commentRepository.findPending().size()
+                + commentReplyRepository.findPending().size();
+        long enRevision = commentRepository.findInReview().size()
+                + commentReplyRepository.findInReview().size();
+        long resueltos  = commentRepository.findResolved().size()
+                + commentReplyRepository.findResolved().size();
 
         return ResponseEntity.ok(Map.of(
-                "reportados",  reportados,
                 "pendientes",  pendientes,
-                "resueltos",   resueltos,
-                "repliesRep",  repliesRep
+                "enRevision",  enRevision,
+                "resueltos",   resueltos
         ));
     }
 
-    @GetMapping("/reported")
-    @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<List<CommentModerationDto>> getReported() {
-        return ResponseEntity.ok(commentRepository.findReported().stream()
-                .map(this::toDto).collect(Collectors.toList()));
-    }
-
+    // Pendientes: comentarios + respuestas que el admin no revisó
     @GetMapping("/pending")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<List<CommentModerationDto>> getPending() {
-        return ResponseEntity.ok(commentRepository
-                .findByModerationStatusOrderByCreatedAtDesc(ModerationStatus.PENDING_REVIEW).stream()
-                .map(this::toDto).collect(Collectors.toList()));
+        List<CommentModerationDto> comentarios = commentRepository.findPending().stream()
+                .map(this::toDto).collect(Collectors.toList());
+        List<CommentModerationDto> respuestas = commentReplyRepository.findPending().stream()
+                .map(this::toDtoFromReply).collect(Collectors.toList());
+        List<CommentModerationDto> todos = new java.util.ArrayList<>();
+        todos.addAll(comentarios);
+        todos.addAll(respuestas);
+        todos.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+        return ResponseEntity.ok(todos);
     }
 
+    // En revisión: comentarios + respuestas que el admin ya vio
+    @GetMapping("/in-review")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<List<CommentModerationDto>> getInReview() {
+        List<CommentModerationDto> comentarios = commentRepository.findInReview().stream()
+                .map(this::toDto).collect(Collectors.toList());
+        List<CommentModerationDto> respuestas = commentReplyRepository.findInReview().stream()
+                .map(this::toDtoFromReply).collect(Collectors.toList());
+        List<CommentModerationDto> todos = new java.util.ArrayList<>();
+        todos.addAll(comentarios);
+        todos.addAll(respuestas);
+        todos.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+        return ResponseEntity.ok(todos);
+    }
+
+    // Resueltos: eliminados + desestimados de comentarios y respuestas
     @GetMapping("/resolved")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<List<CommentModerationDto>> getResolved() {
-        return ResponseEntity.ok(commentRepository.findResolved().stream()
-                .map(this::toDto).collect(Collectors.toList()));
+        List<CommentModerationDto> comentarios = commentRepository.findResolved().stream()
+                .map(this::toDto).collect(Collectors.toList());
+        List<CommentModerationDto> respuestas = commentReplyRepository.findResolved().stream()
+                .map(this::toDtoFromReply).collect(Collectors.toList());
+        List<CommentModerationDto> todos = new java.util.ArrayList<>();
+        todos.addAll(comentarios);
+        todos.addAll(respuestas);
+        todos.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+        return ResponseEntity.ok(todos);
     }
 
-    @GetMapping("/replies-reported")
+    // Marcar como revisado (al cerrar el modal de detalle)
+    @PostMapping("/{commentId}/mark-reviewed")
     @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<List<CommentModerationDto>> getRepliesReported() {
-        return ResponseEntity.ok(commentReplyRepository
-                .findByModerationStatusOrderByCreatedAtDesc(ModerationStatus.PENDING_REVIEW).stream()
-                .map(this::toDtoFromReply).collect(Collectors.toList()));
+    @Transactional
+    public ResponseEntity<?> markReviewed(@PathVariable Long commentId,
+                                          @RequestParam(defaultValue = "false") boolean isReply) {
+        if (isReply) {
+            commentReplyRepository.findById(commentId).ifPresent(r -> {
+                r.setAdminReviewed(true);
+                commentReplyRepository.save(r);
+            });
+        } else {
+            commentRepository.findById(commentId).ifPresent(c -> {
+                c.setAdminReviewed(true);
+                commentRepository.save(c);
+            });
+        }
+        return ResponseEntity.ok(Map.of("message", "Marcado como revisado"));
     }
 
     @PostMapping("/{commentId}/remove")
@@ -184,6 +219,10 @@ public class AdminSupervisionController {
                     contenido, request.getReason());
         } catch (Exception ignored) {}
 
+        try {
+            notificationService.crearComentarioEliminado(autor, comment.getMovieId(), movieTitle);
+        } catch (Exception ignored) {}
+
         return ResponseEntity.ok(Map.of("message", "Comentario eliminado y usuario notificado"));
     }
 
@@ -245,17 +284,23 @@ public class AdminSupervisionController {
     @PostMapping("/{commentId}/dismiss")
     @PreAuthorize("hasAuthority('ADMIN')")
     @Transactional
-    public ResponseEntity<?> dismissReports(@PathVariable Long commentId) {
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("Comentario no encontrado"));
-
-        commentReportRepository.deleteByCommentId(commentId);
-        comment.setReportCount(0);
-        comment.setModerationStatus(ModerationStatus.APPROVED);
-        comment.setModerationReviewedAt(LocalDateTime.now());
-        commentRepository.save(comment);
-
-        return ResponseEntity.ok(Map.of("message", "Reportes descartados. El comentario sigue visible."));
+    public ResponseEntity<?> dismissComment(@PathVariable Long commentId,
+                                            @RequestParam(defaultValue = "false") boolean isReply) {
+        if (isReply) {
+            CommentReply reply = commentReplyRepository.findById(commentId)
+                    .orElseThrow(() -> new RuntimeException("Respuesta no encontrada"));
+            reply.setModerationStatus(ModerationStatus.DISMISSED);
+            reply.setAdminReviewed(true);
+            commentReplyRepository.save(reply);
+        } else {
+            Comment comment = commentRepository.findById(commentId)
+                    .orElseThrow(() -> new RuntimeException("Comentario no encontrado"));
+            comment.setModerationStatus(ModerationStatus.DISMISSED);
+            comment.setAdminReviewed(true);
+            comment.setModerationReviewedAt(LocalDateTime.now());
+            commentRepository.save(comment);
+        }
+        return ResponseEntity.ok(Map.of("message", "Reporte desestimado correctamente"));
     }
 
     @PostMapping("/replies/{replyId}/remove")
@@ -309,6 +354,10 @@ public class AdminSupervisionController {
             mensaje.setReadByAdmin(true);
             mensaje.setReadByUser(false);
             supportMessageRepository.save(mensaje);
+        } catch (Exception ignored) {}
+
+        try {
+            notificationService.crearComentarioEliminado(autor, comentarioPadre.getMovieId(), movieTitle);
         } catch (Exception ignored) {}
 
         return ResponseEntity.ok(Map.of("message", "Respuesta eliminada y usuario notificado"));

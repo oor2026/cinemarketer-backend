@@ -73,11 +73,25 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             "ORDER BY c.reportCount DESC")
     List<Comment> findReported();
 
+    // Pendientes: reportados que el admin aún no revisó
+    @Query("SELECT c FROM Comment c WHERE c.reportCount > 0 " +
+            "AND c.adminReviewed = false " +
+            "AND c.moderationStatus NOT IN ('REMOVED', 'DISMISSED') " +
+            "ORDER BY c.createdAt DESC")
+    List<Comment> findPending();
+
+    // En revisión: reportados que el admin ya vio pero no resolvió
+    @Query("SELECT c FROM Comment c WHERE c.reportCount > 0 " +
+            "AND c.adminReviewed = true " +
+            "AND c.moderationStatus NOT IN ('REMOVED', 'DISMISSED') " +
+            "ORDER BY c.createdAt DESC")
+    List<Comment> findInReview();
+
     // Comentarios pendientes de revisión (para admin — pestaña 2)
     List<Comment> findByModerationStatusOrderByCreatedAtDesc(ModerationStatus status);
 
-    // Comentarios resueltos (eliminados o descartados) para historial
-    @Query("SELECT c FROM Comment c WHERE c.moderationStatus IN ('REMOVED') " +
+    // Comentarios resueltos (eliminados o desestimados)
+    @Query("SELECT c FROM Comment c WHERE c.moderationStatus IN ('REMOVED', 'DISMISSED') " +
             "AND c.moderationReviewedAt IS NOT NULL " +
             "ORDER BY c.moderationReviewedAt DESC")
     List<Comment> findResolved();
