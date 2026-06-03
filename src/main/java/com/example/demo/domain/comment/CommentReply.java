@@ -37,6 +37,12 @@ public class CommentReply {
     @Column(name = "admin_reviewed", nullable = false)
     private boolean adminReviewed = false;
 
+    @Column(name = "has_gif")
+    private Boolean hasGif = false;
+
+    @Column(name = "gif_url", length = 500)
+    private String gifUrl;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

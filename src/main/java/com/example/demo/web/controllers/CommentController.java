@@ -96,7 +96,8 @@ public class CommentController {
                         r.setMerecePuntoLocked(reaction.isPointLocked());
                     });
         }
-
+        r.setHasGif(c.getHasGif() != null && c.getHasGif());
+        r.setGifUrl(c.getGifUrl());
         return r;
     }
 
@@ -164,6 +165,10 @@ public class CommentController {
         comment.setContent(request.getContent());
         comment.setPointsAwarded(points);
         comment.setModerationStatus(moderationStatus);
+        if (request.getGifUrl() != null && !request.getGifUrl().isBlank()) {
+            comment.setGifUrl(request.getGifUrl());
+            comment.setHasGif(true);
+        }
         commentRepository.save(comment);
 
         user.addAccumulatedPoints(points);
@@ -382,7 +387,9 @@ public class CommentController {
                     rep.getId(), rep.getUser().getId(), rep.getUser().getName(),
                     rep.getContent(), rep.getCreatedAt(), rep.getUser().getEffectiveAvatarUrl(),
                     esPropio, bancoCount, bancadoByMe,
-                    rep.getModerationStatus().name());
+                    rep.getModerationStatus().name(),
+                    rep.getHasGif() != null && rep.getHasGif(),
+                    rep.getGifUrl());
         }).collect(Collectors.toList());
 
         return ResponseEntity.ok()
@@ -430,6 +437,10 @@ public class CommentController {
         reply.setUser(user);
         reply.setContent(request.getContent());
         reply.setModerationStatus(moderationStatus);
+        if (request.getGifUrl() != null && !request.getGifUrl().isBlank()) {
+            reply.setGifUrl(request.getGifUrl());
+            reply.setHasGif(true);
+        }
         commentReplyRepository.save(reply);
 
         String movieTitle = movieRepository.findByTmdbId(comment.getMovieId())
@@ -460,7 +471,9 @@ public class CommentController {
                 reply.getId(), user.getId(), user.getName(),
                 reply.getContent(), reply.getCreatedAt(),
                 user.getEffectiveAvatarUrl(), true, 0L, false,
-                reply.getModerationStatus().name());
+                reply.getModerationStatus().name(),
+                reply.getHasGif() != null && reply.getHasGif(),
+                reply.getGifUrl());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

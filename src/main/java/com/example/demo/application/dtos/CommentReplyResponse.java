@@ -17,4 +17,6 @@ public class CommentReplyResponse {
     private long bancoCount;
     private boolean bancadoByMe;
     private String moderationStatus;
+    private Boolean hasGif;
+    private String gifUrl;
 }

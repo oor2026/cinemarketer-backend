@@ -23,6 +23,8 @@ public class CommentResponse {
 
     // Respuestas
     private long replyCount;
+    private Boolean hasGif;
+    private String gifUrl;
 
     public CommentResponse(Long id, Long userId, String userName, String content,
                            LocalDateTime createdAt, String avatarUrl,
