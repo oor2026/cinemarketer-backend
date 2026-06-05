@@ -41,6 +41,7 @@ public class CommentController {
     private final BannedWordService         bannedWordService;
     private final NotificationService       notificationService;
     private final MovieService movieService;
+    private final SpoilerAcceptedRepository spoilerAcceptedRepository;
 
     public CommentController(CommentRepository commentRepository,
                              CommentReportRepository commentReportRepository,
@@ -52,7 +53,8 @@ public class CommentController {
                              MovieRepository movieRepository,
                              BannedWordService bannedWordService,
                              NotificationService notificationService,
-                             MovieService movieService) {
+                             MovieService movieService,
+                             SpoilerAcceptedRepository spoilerAcceptedRepository, SpoilerAcceptedRepository spoilerAcceptedRepository1) {
         this.commentRepository         = commentRepository;
         this.commentReportRepository   = commentReportRepository;
         this.commentReactionRepository = commentReactionRepository;
@@ -64,6 +66,7 @@ public class CommentController {
         this.bannedWordService         = bannedWordService;
         this.notificationService       = notificationService;
         this.movieService = movieService;
+        this.spoilerAcceptedRepository = spoilerAcceptedRepository;
     }
 
     // ── Helper: construir CommentResponse con reacciones ──────────────────────
@@ -98,6 +101,7 @@ public class CommentController {
         }
         r.setHasGif(c.getHasGif() != null && c.getHasGif());
         r.setGifUrl(c.getGifUrl());
+        r.setSpoiler(c.isSpoiler());
         return r;
     }
 
@@ -108,9 +112,10 @@ public class CommentController {
     @GetMapping("/movies/{movieId}")
     public ResponseEntity<List<CommentResponse>> getMovieComments(
             @PathVariable Long movieId,
+            @RequestParam(defaultValue = "false") boolean spoiler,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        List<Comment> comments = commentRepository.findVisibleByMovieId(movieId);
+        List<Comment> comments = commentRepository.findVisibleByMovieIdAndSpoiler(movieId, spoiler);
         Long currentUserId = resolveUserId(userDetails);
 
         List<CommentResponse> response = comments.stream()
@@ -165,6 +170,7 @@ public class CommentController {
         comment.setContent(request.getContent());
         comment.setPointsAwarded(points);
         comment.setModerationStatus(moderationStatus);
+        comment.setSpoiler(request.isSpoiler());
         if (request.getGifUrl() != null && !request.getGifUrl().isBlank()) {
             comment.setGifUrl(request.getGifUrl());
             comment.setHasGif(true);
@@ -674,6 +680,40 @@ public class CommentController {
 
         return ResponseEntity.ok(Map.of(
                 "message", "Reporte enviado correctamente. Nuestro equipo lo revisará a la brevedad."));
+    }
+
+    // ==========================================================================
+// GET / POST spoiler aceptado por película
+// ==========================================================================
+
+    @GetMapping("/spoiler-accepted/{movieId}")
+    public ResponseEntity<Map<String, Boolean>> getSpoilerAccepted(
+            @PathVariable Long movieId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) return ResponseEntity.ok(Map.of("accepted", false));
+        Long userId = resolveUserId(userDetails);
+        if (userId == null) return ResponseEntity.ok(Map.of("accepted", false));
+
+        boolean accepted = spoilerAcceptedRepository.existsByIdUserIdAndIdMovieId(userId, movieId);
+        return ResponseEntity.ok(Map.of("accepted", accepted));
+    }
+
+    @PostMapping("/spoiler-accepted/{movieId}")
+    @Transactional
+    public ResponseEntity<Map<String, Boolean>> saveSpoilerAccepted(
+            @PathVariable Long movieId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        SpoilerAcceptedId id = new SpoilerAcceptedId(user.getId(), movieId);
+        if (!spoilerAcceptedRepository.existsById(id)) {
+            spoilerAcceptedRepository.save(new SpoilerAccepted(id, user));
+        }
+        return ResponseEntity.ok(Map.of("accepted", true));
     }
 
     // ==========================================================================
