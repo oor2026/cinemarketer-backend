@@ -152,8 +152,8 @@ public class CommentController {
         ModerationStatus moderationStatus = bannedWordService.shouldPendingReview(request.getContent())
                 ? ModerationStatus.PENDING_REVIEW : ModerationStatus.APPROVED;
 
-        List<Comment> lastVisible = commentRepository.findLastVisibleByUserId(
-                user.getId(), org.springframework.data.domain.PageRequest.of(0, 1));
+        List<Comment> lastVisible = commentRepository.findLastVisibleByUserIdAndMovieId(
+                user.getId(), movieId, org.springframework.data.domain.PageRequest.of(0, 1));
         if (!lastVisible.isEmpty()) {
             Comment last = lastVisible.get(0);
             if (last.getContent().trim().equalsIgnoreCase(request.getContent().trim())) {
@@ -714,6 +714,19 @@ public class CommentController {
             spoilerAcceptedRepository.save(new SpoilerAccepted(id, user));
         }
         return ResponseEntity.ok(Map.of("accepted", true));
+    }
+
+    // ==========================================================================
+// GET un comentario por ID — para consultar si es spoiler desde notificaciones
+// ==========================================================================
+    @GetMapping("/{commentId}")
+    public ResponseEntity<?> getComment(
+            @PathVariable Long commentId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        return commentRepository.findById(commentId)
+                .map(c -> ResponseEntity.ok(Map.of("id", c.getId(), "spoiler", c.isSpoiler())))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // ==========================================================================
