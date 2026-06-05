@@ -19,13 +19,14 @@ public class PremiumRewardService {
 
     private static final Logger log = LoggerFactory.getLogger(PremiumRewardService.class);
 
-    private final PremiumRewardRepository premiumRewardRepository;
+    private final PremiumRewardRepository    premiumRewardRepository;
     private final PremiumDrawEntryRepository drawEntryRepository;
     private final PremiumRedemptionRepository premiumRedemptionRepository;
-    private final UserRepository userRepository;
-    private final SupportTicketRepository supportTicketRepository;
-    private final SupportMessageRepository supportMessageRepository;
-    private final EmailService emailService;
+    private final UserRepository             userRepository;
+    private final SupportTicketRepository    supportTicketRepository;
+    private final SupportMessageRepository   supportMessageRepository;
+    private final EmailService               emailService;
+    private final com.example.demo.domain.reward.RewardImageRepository rewardImageRepository;
 
     public PremiumRewardService(PremiumRewardRepository premiumRewardRepository,
                                 PremiumDrawEntryRepository drawEntryRepository,
@@ -33,14 +34,16 @@ public class PremiumRewardService {
                                 UserRepository userRepository,
                                 SupportTicketRepository supportTicketRepository,
                                 SupportMessageRepository supportMessageRepository,
-                                EmailService emailService) {
+                                EmailService emailService,
+                                com.example.demo.domain.reward.RewardImageRepository rewardImageRepository) {
         this.premiumRewardRepository = premiumRewardRepository;
-        this.drawEntryRepository = drawEntryRepository;
+        this.drawEntryRepository     = drawEntryRepository;
         this.premiumRedemptionRepository = premiumRedemptionRepository;
-        this.userRepository = userRepository;
+        this.userRepository          = userRepository;
         this.supportTicketRepository = supportTicketRepository;
         this.supportMessageRepository = supportMessageRepository;
-        this.emailService = emailService;
+        this.emailService            = emailService;
+        this.rewardImageRepository   = rewardImageRepository;
     }
 
     // ==============================================
@@ -254,6 +257,17 @@ public class PremiumRewardService {
             dto.setAlreadyEntered(drawEntryRepository.existsByRewardIdAndUserId(reward.getId(), user.getId()));
             dto.setTotalEntries(drawEntryRepository.countByRewardId(reward.getId()));
         }
+
+        // Cargar imágenes
+        var images = rewardImageRepository
+                .findByRewardIdAndRewardTypeOrderByPrimaryDesc(reward.getId(), "PREMIUM");
+        dto.setImages(images.stream().map(img -> {
+            PremiumRewardDto.ImageDto imgDto = new PremiumRewardDto.ImageDto();
+            imgDto.setId(img.getId());
+            imgDto.setImageUrl(img.getImageUrl());
+            imgDto.setPrimary(img.isPrimary());
+            return imgDto;
+        }).collect(java.util.stream.Collectors.toList()));
 
         return dto;
     }

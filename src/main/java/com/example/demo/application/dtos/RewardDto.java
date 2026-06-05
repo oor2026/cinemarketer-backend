@@ -25,7 +25,19 @@ public class RewardDto {
     private String website;
 
     // Campos calculados para el frontend
-    private Boolean canRedeem;      // Si el usuario puede canjearlo (tiene puntos suficientes y hay stock)
+    private Boolean canRedeem;
     private Boolean isExpired;
     private Boolean hasStock;
+
+    // Imágenes múltiples
+    private java.util.List<ImageDto> images;
+
+    @Data
+    @NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class ImageDto {
+        private Long id;
+        private String imageUrl;
+        private boolean primary;
+    }
 }

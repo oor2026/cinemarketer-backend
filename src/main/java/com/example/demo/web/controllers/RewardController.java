@@ -18,13 +18,16 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/rewards")
 public class RewardController {
 
-    private final RewardRepository rewardRepository;
-    private final UserRepository userRepository;
+    private final RewardRepository      rewardRepository;
+    private final UserRepository        userRepository;
+    private final com.example.demo.domain.reward.RewardImageRepository rewardImageRepository;
 
     public RewardController(RewardRepository rewardRepository,
-                            UserRepository userRepository) {
-        this.rewardRepository = rewardRepository;
-        this.userRepository = userRepository;
+                            UserRepository userRepository,
+                            com.example.demo.domain.reward.RewardImageRepository rewardImageRepository) {
+        this.rewardRepository      = rewardRepository;
+        this.userRepository        = userRepository;
+        this.rewardImageRepository = rewardImageRepository;
     }
 
     /**
@@ -87,6 +90,18 @@ public class RewardController {
         dto.setCanRedeem(r.isAvailable() && userPoints >= r.getPointsRequired());
         dto.setPartner(r.getPartner());
         dto.setWebsite(r.getWebsite());
+
+        // Cargar imágenes
+        var images = rewardImageRepository
+                .findByRewardIdAndRewardTypeOrderByPrimaryDesc(r.getId(), "COMMON");
+        dto.setImages(images.stream().map(img -> {
+            RewardDto.ImageDto imgDto = new RewardDto.ImageDto();
+            imgDto.setId(img.getId());
+            imgDto.setImageUrl(img.getImageUrl());
+            imgDto.setPrimary(img.isPrimary());
+            return imgDto;
+        }).collect(java.util.stream.Collectors.toList()));
+
         return dto;
     }
 }
