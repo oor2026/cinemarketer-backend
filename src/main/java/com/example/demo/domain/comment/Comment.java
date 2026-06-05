@@ -57,6 +57,9 @@ public class Comment {
     @Column(name = "gif_url", length = 500)
     private String gifUrl;
 
+    @Column(name = "spoiler", nullable = false)
+    private boolean spoiler = false;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

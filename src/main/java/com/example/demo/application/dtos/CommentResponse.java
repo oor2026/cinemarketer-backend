@@ -25,6 +25,7 @@ public class CommentResponse {
     private long replyCount;
     private Boolean hasGif;
     private String gifUrl;
+    private boolean spoiler;
 
     public CommentResponse(Long id, Long userId, String userName, String content,
                            LocalDateTime createdAt, String avatarUrl,

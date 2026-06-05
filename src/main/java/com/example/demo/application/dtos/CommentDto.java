@@ -13,4 +13,5 @@ public class CommentDto {
     private String userAvatar;
     private String content;
     private LocalDateTime createdAt;
+    private boolean spoiler;
 }
