@@ -32,4 +32,16 @@ public class PremiumRewardDto {
     private String partner;
     private String website;
     private String termsConditions;
+
+    // Imágenes múltiples
+    private java.util.List<ImageDto> images;
+
+    @lombok.Data
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class ImageDto {
+        private Long id;
+        private String imageUrl;
+        private boolean primary;
+    }
 }
