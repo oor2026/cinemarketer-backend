@@ -104,6 +104,14 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findVisibleByMovieIdAndSpoiler(@Param("movieId") Long movieId,
                                                  @Param("spoiler") boolean spoiler);
 
+    @Query("SELECT c FROM Comment c WHERE c.user.id = :userId " +
+            "AND c.movieId = :movieId " +
+            "AND c.moderationStatus NOT IN ('HIDDEN_BY_USER', 'REMOVED', 'REJECTED') " +
+            "ORDER BY c.createdAt DESC")
+    List<Comment> findLastVisibleByUserIdAndMovieId(@Param("userId") Long userId,
+                                                    @Param("movieId") Long movieId,
+                                                    Pageable pageable);
+
     // ── Ocultamientos por usuario por película ────────────────────────────────
 
     // Cuenta cuántos comentarios ocultó el usuario sobre una película específica
