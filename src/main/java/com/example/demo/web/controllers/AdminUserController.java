@@ -2,6 +2,7 @@ package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.AdminUserDto;
 import com.example.demo.application.dtos.AdminUserUpdateRequest;
+import com.example.demo.domain.redemption.Redemption;
 import com.example.demo.domain.redemption.RedemptionRepository;
 import com.example.demo.domain.comment.CommentRepository;
 import com.example.demo.domain.review.ReviewRepository;
@@ -9,10 +10,14 @@ import com.example.demo.domain.pointtransaction.PointTransactionRepository;
 import com.example.demo.domain.support.SupportMessageRepository;
 import com.example.demo.domain.support.SupportTicket;
 import com.example.demo.domain.support.SupportTicketRepository;
+import com.example.demo.domain.subscription.UserSubscriptionRepository;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
 import com.example.demo.application.services.EmailService;
 import com.example.demo.domain.user.UserRole;
+import com.example.demo.application.dtos.AdminUserDetailDto;
+import com.example.demo.domain.review.ReviewRepository;
+import java.util.stream.Collectors;
 
 import java.util.List;
 import java.util.UUID;
@@ -46,6 +51,7 @@ public class AdminUserController {
     private final EmailService emailService;
     private final SupportTicketRepository ticketRepository;
     private final SupportMessageRepository messageRepository;
+    private final UserSubscriptionRepository subscriptionRepository;
 
     public AdminUserController(
             UserRepository userRepository,
@@ -56,6 +62,7 @@ public class AdminUserController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository ticketRepository,
             SupportMessageRepository messageRepository,
+            UserSubscriptionRepository subscriptionRepository,
             EmailService emailService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -65,6 +72,7 @@ public class AdminUserController {
         this.pointTransactionRepository = pointTransactionRepository;
         this.ticketRepository = ticketRepository;
         this.messageRepository = messageRepository;
+        this.subscriptionRepository = subscriptionRepository;
         this.emailService = emailService;
     }
 
@@ -262,6 +270,12 @@ public class AdminUserController {
             }
             ticketRepository.deleteAll(tickets);
 
+            List<com.example.demo.domain.subscription.UserSubscription> suscripciones =
+                    subscriptionRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+            if (!suscripciones.isEmpty()) {
+                subscriptionRepository.deleteAll(suscripciones);
+            }
+
             userRepository.delete(user);
 
             return ResponseEntity.ok(Map.of(
@@ -273,6 +287,62 @@ public class AdminUserController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error interno al eliminar usuario: " + e.getMessage()));
         }
+    }
+
+    @GetMapping("/{id}/detail")
+    public ResponseEntity<?> getUserDetail(@PathVariable Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        AdminUserDetailDto dto = new AdminUserDetailDto();
+
+        // Personal
+        dto.setNombre(user.getName());
+        dto.setEmail(user.getEmail());
+        dto.setDni(user.getDni());
+        dto.setTelefono(user.getPhone());
+        dto.setEmailVerificado(user.isEmailVerified());
+        dto.setGoogleAuth(user.getGoogleId() != null && !user.getGoogleId().isBlank());
+        dto.setCreadoEn(user.getCreatedAt());
+        dto.setUltimoAcceso(user.getLastLoginAt());
+
+        // Cuenta
+        dto.setRol(user.getRole().name());
+        dto.setEstado(user.isSuspended() ? "Suspendido" : user.isActive() ? "Activo" : "Inactivo");
+        dto.setPremium(user.isActivePremium());
+        dto.setNivel(user.getLevel() != null ? user.getLevel().name() : "-");
+
+        // Puntos
+        dto.setPuntosDisponibles(user.getAvailablePoints());
+        dto.setPuntosAcumulados(user.getAccumulatedPoints());
+        dto.setPuntosCanjeadosHistorico(user.getTotalRedeemedPoints());
+
+        // Actividad — votaciones y comentarios
+        dto.setTotalVotaciones(reviewRepository.countByUserId(user.getId()));
+        dto.setTotalComentarios(commentRepository.countByUserId(user.getId()));
+
+        // Premios canjeados
+        List<Redemption> canjes = redemptionRepository.findByUserIdOrderByRedemptionDateDesc(user.getId());
+
+        AdminUserDetailDto.PremiosDto premios = new AdminUserDetailDto.PremiosDto();
+        premios.setTotalCanjeados(canjes.size());
+        premios.setEntradas(canjes.stream()
+                .filter(r -> r.getReward().getRewardType().name().equals("TICKET"))
+                .count());
+        premios.setMerchandising(canjes.stream()
+                .filter(r -> r.getReward().getRewardType().name().equals("MERCHANDISING"))
+                .count());
+        premios.setListado(canjes.stream().map(r -> {
+            AdminUserDetailDto.PremioCanjeadoDto p = new AdminUserDetailDto.PremioCanjeadoDto();
+            p.setNombre(r.getReward().getName());
+            p.setTipo(r.getReward().getRewardType().name());
+            p.setFecha(r.getRedemptionDate());
+            return p;
+        }).collect(Collectors.toList()));
+
+        dto.setPremios(premios);
+
+        return ResponseEntity.ok(dto);
     }
 
     @GetMapping("/stats")
