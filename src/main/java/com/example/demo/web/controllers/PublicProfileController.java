@@ -1,0 +1,186 @@
+package com.example.demo.web.controllers;
+
+import com.example.demo.application.dtos.PublicProfileDto;
+import com.example.demo.domain.comment.Comment;
+import com.example.demo.domain.comment.CommentRepository;
+import com.example.demo.domain.follow.UserFollowRepository;
+import com.example.demo.domain.movie.Movie;
+import com.example.demo.domain.movie.MovieRepository;
+import com.example.demo.domain.review.Review;
+import com.example.demo.domain.review.ReviewRepository;
+import com.example.demo.domain.review.ReviewType;
+import com.example.demo.domain.user.User;
+import com.example.demo.domain.user.UserRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/users")
+public class PublicProfileController {
+
+    private final UserRepository userRepository;
+    private final UserFollowRepository followRepository;
+    private final ReviewRepository reviewRepository;
+    private final CommentRepository commentRepository;
+    private final MovieRepository movieRepository;
+
+    public PublicProfileController(UserRepository userRepository,
+                                   UserFollowRepository followRepository,
+                                   ReviewRepository reviewRepository,
+                                   CommentRepository commentRepository,
+                                   MovieRepository movieRepository) {
+        this.userRepository = userRepository;
+        this.followRepository = followRepository;
+        this.reviewRepository = reviewRepository;
+        this.commentRepository = commentRepository;
+        this.movieRepository = movieRepository;
+    }
+
+    @GetMapping("/{id}/profile")
+    public ResponseEntity<?> getPublicProfile(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User target = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        User me = userDetails != null
+                ? userRepository.findByEmail(userDetails.getUsername()).orElse(null)
+                : null;
+
+        PublicProfileDto dto = new PublicProfileDto();
+
+        // ── Identidad ──────────────────────────────────────────
+        dto.setId(target.getId());
+        dto.setNombre(target.getName());
+        dto.setAvatarUrl(target.getEffectiveAvatarUrl());
+        dto.setNivel(target.getLevel() != null ? target.getLevel().name() : "AMATEUR");
+        dto.setNivelEmoji(target.getLevel() != null ? target.getLevel().getEmoji() : "🟢");
+        dto.setNivelDisplayName(target.getLevel() != null ? target.getLevel().getDisplayName() : "Amateur");
+        dto.setMiembroDesde(formatMiembroDesde(target.getCreatedAt()));
+
+        // ── Stats ──────────────────────────────────────────────
+        dto.setSeguidores(followRepository.countByFollowingId(target.getId()));
+        dto.setSiguiendo(followRepository.countByFollowerId(target.getId()));
+        dto.setTotalVotaciones(reviewRepository.countByUserId(target.getId()));
+        dto.setTotalComentarios(commentRepository.countByUserId(target.getId()));
+        dto.setEsSeguido(me != null &&
+                followRepository.existsByFollowerIdAndFollowingId(me.getId(), target.getId()));
+
+        // ── Últimas votaciones (máx 6) ─────────────────────────
+        List<Review> reviews = reviewRepository
+                .findByUserIdOrderByCreatedAtDesc(target.getId())
+                .stream()
+                .filter(r -> r.getReviewType() == ReviewType.MOVIE && r.getVote() != null)
+                .limit(100)
+                .toList();
+
+        dto.setUltimasVotaciones(reviews.stream().map(r -> {
+            PublicProfileDto.VotacionDto v = new PublicProfileDto.VotacionDto();
+            v.setMovieId(r.getTargetId());
+            v.setVoto(r.getVote().name());
+            Optional<Movie> movie = movieRepository.findByTmdbId(r.getTargetId());
+            movie.ifPresent(m -> {
+                v.setMovieTitle(m.getTitle());
+                v.setPosterPath(m.getPosterPath());
+            });
+            return v;
+        }).toList());
+
+        // Usamos el query correcto por userId
+        List<Comment> userComments = commentRepository
+                .findPublicByUserId(target.getId(), PageRequest.of(0, 5));
+
+        dto.setUltimosComentarios(userComments.stream().map(c -> {
+            PublicProfileDto.ComentarioPublicoDto cd = new PublicProfileDto.ComentarioPublicoDto();
+            cd.setCommentId(c.getId());
+            cd.setMovieId(c.getMovieId());
+            cd.setSpoiler(c.isSpoiler());
+            cd.setFechaRelativa(formatRelativa(c.getCreatedAt()));
+
+            String contenido = c.isSpoiler() ? "— Comentario con spoiler —" : c.getContent();
+            cd.setContenido(contenido.length() > 120
+                    ? contenido.substring(0, 120) + "..."
+                    : contenido);
+
+            Optional<Movie> movie = movieRepository.findByTmdbId(c.getMovieId());
+            movie.ifPresent(m -> cd.setMovieTitle(m.getTitle()));
+            return cd;
+        }).toList());
+
+        return ResponseEntity.ok(dto);
+    }
+
+    // GET /api/users/{id}/votaciones?page=0&size=8
+    @GetMapping("/{id}/votaciones")
+    public ResponseEntity<?> getVotaciones(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        List<Review> todas = reviewRepository
+                .findByUserIdOrderByCreatedAtDesc(id)
+                .stream()
+                .filter(r -> r.getReviewType() == ReviewType.MOVIE && r.getVote() != null)
+                .toList();
+
+        int total = todas.size();
+        int from  = page * size;
+        int to    = Math.min(from + size, total);
+        boolean hayMas = to < total;
+
+        List<PublicProfileDto.VotacionDto> lote = todas.subList(from, to)
+                .stream().map(r -> {
+                    PublicProfileDto.VotacionDto v = new PublicProfileDto.VotacionDto();
+                    v.setMovieId(r.getTargetId());
+                    v.setVoto(r.getVote().name());
+                    Optional<Movie> movie = movieRepository.findByTmdbId(r.getTargetId());
+                    movie.ifPresent(m -> {
+                        v.setMovieTitle(m.getTitle());
+                        v.setPosterPath(m.getPosterPath());
+                    });
+                    return v;
+                }).toList();
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "votaciones", lote,
+                "hayMas", hayMas,
+                "page", page,
+                "total", total
+        ));
+    }
+
+    // ── helpers ────────────────────────────────────────────────
+    private String formatMiembroDesde(LocalDateTime dt) {
+        if (dt == null) return "";
+        String[] meses = {"enero","febrero","marzo","abril","mayo","junio",
+                "julio","agosto","septiembre","octubre","noviembre","diciembre"};
+        return meses[dt.getMonthValue() - 1] + " " + dt.getYear();
+    }
+
+    private String formatRelativa(LocalDateTime dt) {
+        if (dt == null) return "";
+        long minutos = ChronoUnit.MINUTES.between(dt, LocalDateTime.now());
+        if (minutos < 60)   return "hace " + minutos + " min";
+        long horas = ChronoUnit.HOURS.between(dt, LocalDateTime.now());
+        if (horas < 24)     return "hace " + horas + " h";
+        long dias = ChronoUnit.DAYS.between(dt, LocalDateTime.now());
+        if (dias < 7)       return "hace " + dias + " días";
+        long semanas = dias / 7;
+        if (semanas < 4)    return "hace " + semanas + " semanas";
+        long meses = ChronoUnit.MONTHS.between(dt, LocalDateTime.now());
+        return "hace " + meses + " meses";
+    }
+}

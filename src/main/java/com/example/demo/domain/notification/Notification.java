@@ -25,6 +25,9 @@ public class Notification {
     @Column(name = "actor_name", nullable = false)
     private String actorName;
 
+    @Column(name = "actor_id")
+    private Long actorId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private NotificationType type;

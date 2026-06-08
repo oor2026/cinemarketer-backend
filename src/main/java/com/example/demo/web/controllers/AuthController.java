@@ -253,6 +253,7 @@ public class AuthController {
 
             LoginResponse response = new LoginResponse();
             response.setToken(jwtToken);
+            response.setId(user.getId());
             response.setType("Bearer");
             response.setEmail(user.getEmail());
             response.setRole(user.getRole().name());

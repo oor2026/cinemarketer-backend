@@ -40,6 +40,7 @@ public class NotificationController {
                 .stream()
                 .map(n -> new NotificationDto(
                         n.getId(), n.getType(), n.getMessage(),
+                        n.getActorId(),
                         n.getMovieId(), n.getMovieTitle(), n.getCommentId(),
                         n.getReplyId(), n.isRead(), n.getCreatedAt()))
                 .collect(Collectors.toList());
