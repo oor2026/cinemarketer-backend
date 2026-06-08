@@ -11,6 +11,7 @@ public class NotificationDto {
     private Long id;
     private NotificationType type;
     private String message;
+    private Long actorId;
     private Long movieId;
     private String movieTitle;
     private Long commentId;

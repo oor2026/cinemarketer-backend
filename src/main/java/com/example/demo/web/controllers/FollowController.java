@@ -3,6 +3,9 @@ package com.example.demo.web.controllers;
 import com.example.demo.application.dtos.FollowDto;
 import com.example.demo.domain.follow.UserFollow;
 import com.example.demo.domain.follow.UserFollowRepository;
+import com.example.demo.domain.notification.Notification;
+import com.example.demo.domain.notification.NotificationRepository;
+import com.example.demo.domain.notification.NotificationType;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -21,11 +24,14 @@ public class FollowController {
 
     private final UserFollowRepository followRepository;
     private final UserRepository userRepository;
+    private final NotificationRepository notificationRepository;
 
     public FollowController(UserFollowRepository followRepository,
-                            UserRepository userRepository) {
+                            UserRepository userRepository,
+                            NotificationRepository notificationRepository) {
         this.followRepository = followRepository;
         this.userRepository = userRepository;
+        this.notificationRepository = notificationRepository;
     }
 
     // POST /api/follows/{userId} — seguir usuario
@@ -45,6 +51,16 @@ public class FollowController {
                     .body(Map.of("error", "Ya seguís a este usuario"));
 
         followRepository.save(new UserFollow(me, target));
+
+        // Notificar al usuario seguido
+        Notification notif = new Notification();
+        notif.setUser(target);
+        notif.setActorName(me.getName());
+        notif.setActorId(me.getId());
+        notif.setType(NotificationType.NEW_FOLLOWER);
+        notif.setMessage(me.getName() + " comenzó a seguirte");
+        notificationRepository.save(notif);
+
         return ResponseEntity.ok(Map.of(
                 "following", true,
                 "followersCount", followRepository.countByFollowingId(userId)

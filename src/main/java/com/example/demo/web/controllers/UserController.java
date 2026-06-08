@@ -99,6 +99,7 @@ public class UserController {
         }
 
         UserProfileResponse response = new UserProfileResponse();
+        response.setId(user.getId());
         response.setEmail(user.getEmail());
         response.setName(user.getName());
         response.setRole(user.getRole().name());
