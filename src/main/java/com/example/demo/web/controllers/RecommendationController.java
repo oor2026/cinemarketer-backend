@@ -3,6 +3,7 @@ package com.example.demo.web.controllers;
 import com.example.demo.application.dtos.ReceivedRecommendationDto;
 import com.example.demo.application.dtos.RecommendationRequest;
 import com.example.demo.application.dtos.SuggestedUserDto;
+import com.example.demo.application.services.MovieService;
 import com.example.demo.application.services.NotificationService;
 import com.example.demo.domain.notification.Notification;
 import com.example.demo.domain.notification.NotificationRepository;
@@ -29,12 +30,16 @@ public class RecommendationController {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
 
+    private final MovieService movieService;
+
     public RecommendationController(MovieRecommendationRepository recommendationRepository,
                                     UserRepository userRepository,
-                                    NotificationService notificationService) {
+                                    NotificationService notificationService,
+                                    MovieService movieService) {
         this.recommendationRepository = recommendationRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.movieService = movieService;
     }
 
     // POST /api/recommendations — crear recomendación
@@ -60,6 +65,13 @@ public class RecommendationController {
         rec.setSender(me);
         rec.setReceiver(receiver);
         rec.setMovieId(req.getMovieId());
+        try {
+            var tmdb = movieService.getMovieDetails(req.getMovieId());
+            if (tmdb != null) {
+                rec.setMovieTitle(tmdb.getTitle());
+                rec.setMoviePosterPath(tmdb.getPosterPath());
+            }
+        } catch(Exception ignored) {}
         rec.setContextType(req.getContextType());
         rec.setStatus("PENDING");
         recommendationRepository.save(rec);
@@ -81,8 +93,8 @@ public class RecommendationController {
                         r.getSender().getName(),
                         r.getSender().getEffectiveAvatarUrl(),
                         r.getMovieId(),
-                        r.getMovieTitle(),
-                        r.getMoviePosterPath(),
+                        r.getMovieTitle() != null ? r.getMovieTitle() : resolverTitulo(r.getMovieId()),
+                        r.getMoviePosterPath() != null ? r.getMoviePosterPath() : resolverPoster(r.getMovieId()),
                         r.getContextType(),
                         r.getStatus(),
                         r.getSeenAt(),
@@ -176,5 +188,22 @@ public class RecommendationController {
     private User getUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    }
+
+    private String resolverTitulo(Long movieId) {
+        try {
+            var tmdb = movieService.getMovieDetails(movieId);
+            return tmdb != null ? tmdb.getTitle() : "Película";
+        } catch(Exception e) {
+            return "Película";
+        }
+    }
+    private String resolverPoster(Long movieId) {
+        try {
+            var tmdb = movieService.getMovieDetails(movieId);
+            return tmdb != null ? tmdb.getPosterPath() : null;
+        } catch(Exception e) {
+            return null;
+        }
     }
 }

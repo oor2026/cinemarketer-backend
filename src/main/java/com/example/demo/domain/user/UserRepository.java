@@ -238,4 +238,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findBySuspendedTrue(Pageable pageable);
 
     Optional<User> findByGoogleId(String googleId);
+
+    List<User> findByNameContainingIgnoreCaseAndActiveTrue(String name);
+
+    Page<User> findByNameContainingIgnoreCaseAndActiveTrue(String name, Pageable pageable);
 }
