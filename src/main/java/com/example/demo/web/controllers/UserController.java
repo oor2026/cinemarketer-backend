@@ -1,5 +1,6 @@
 package com.example.demo.web.controllers;
 
+import com.example.demo.application.dtos.FollowDto;
 import com.example.demo.application.dtos.UserProfileResponse;
 import com.example.demo.domain.pointbatch.PointBatch;
 import com.example.demo.domain.pointbatch.PointBatchRepository;
@@ -17,14 +18,19 @@ import com.example.demo.domain.sweepstake.WinnerRepository;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserLevel;
 import com.example.demo.domain.user.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -415,5 +421,40 @@ public class UserController {
                 .getAuthentication().getPrincipal();
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    }
+
+    // GET /api/users/search?q=oscar
+    @GetMapping("/search")
+    public ResponseEntity<?> searchUsers(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User me = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        if (q == null || q.trim().isEmpty())
+            return ResponseEntity.ok(Map.of("users", List.of(), "hasMore", false));
+
+        Pageable pageable = PageRequest.of(page, size + 1);
+        Page<User> pageResult = userRepository
+                .findByNameContainingIgnoreCaseAndActiveTrue(q.trim(), pageable);
+
+        List<FollowDto> users = pageResult.getContent()
+                .stream()
+                .filter(u -> !u.getId().equals(me.getId()))
+                .limit(size)
+                .map(u -> new FollowDto(
+                        u.getId(),
+                        u.getName(),
+                        u.getEffectiveAvatarUrl(),
+                        u.getLevel() != null ? u.getLevel().name() : "AMATEUR",
+                        u.getLevel() != null ? u.getLevel().getEmoji() : "🎬"
+                ))
+                .toList();
+
+        boolean hasMore = pageResult.getContent().size() > size;
+
+        return ResponseEntity.ok(Map.of("users", users, "hasMore", hasMore));
     }
 }

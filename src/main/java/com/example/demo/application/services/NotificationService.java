@@ -67,4 +67,18 @@ public class NotificationService {
         n.setReplyId(replyId);
         notificationRepository.save(n);
     }
+
+    @Transactional
+    public void crearRecomendacionCalificada(User receptor, String actorName, Long actorId,
+                                             Long movieId, String movieTitle, int rating) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName(actorName);
+        n.setActorId(actorId);
+        n.setType(NotificationType.RECOMMENDATION_RATED);
+        n.setMessage(actorName + " vio " + movieTitle + " que recomendaste y la calificó con " + rating + " estrella" + (rating == 1 ? "" : "s"));
+        n.setMovieId(movieId);
+        n.setMovieTitle(movieTitle);
+        notificationRepository.save(n);
+    }
 }
