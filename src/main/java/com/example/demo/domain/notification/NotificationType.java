@@ -5,5 +5,6 @@ public enum NotificationType {
     MERECE_PUNTO,   // Alguien te dio un punto
     REPLY,           // Alguien respondió tu comentario
     COMMENT_REMOVED,
-    NEW_FOLLOWER
+    NEW_FOLLOWER,
+    RECOMMENDATION_RATED
 }
