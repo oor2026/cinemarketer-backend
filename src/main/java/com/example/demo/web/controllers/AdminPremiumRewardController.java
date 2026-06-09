@@ -92,11 +92,11 @@ public class AdminPremiumRewardController {
         try {
             PremiumReward reward = opt.get();
             if (body.get("name") != null)             reward.setName((String) body.get("name"));
-            if (body.get("description") != null)      reward.setDescription((String) body.get("description"));
+            if (body.containsKey("description"))     reward.setDescription((String) body.get("description"));
             if (body.get("imageUrl") != null)         reward.setImageUrl((String) body.get("imageUrl"));
-            if (body.get("partner") != null)          reward.setPartner((String) body.get("partner"));
-            if (body.get("website") != null)          reward.setWebsite((String) body.get("website"));
-            if (body.get("termsConditions") != null)  reward.setTermsConditions((String) body.get("termsConditions"));
+            if (body.containsKey("partner"))         reward.setPartner((String) body.get("partner"));
+            if (body.containsKey("website"))         reward.setWebsite((String) body.get("website"));
+            if (body.containsKey("termsConditions")) reward.setTermsConditions((String) body.get("termsConditions"));
             if (body.get("pointsRequired") != null)
                 reward.setPointsRequired(((Number) body.get("pointsRequired")).intValue());
             if (body.get("stock") != null)
