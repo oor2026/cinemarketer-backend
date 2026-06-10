@@ -52,13 +52,17 @@ public class FollowController {
 
         followRepository.save(new UserFollow(me, target));
 
-        // Notificar al usuario seguido
-        Notification notif = new Notification();
+        // Upsert notificación: si ya existe una de este actor hacia este usuario, refrescarla
+        Notification notif = notificationRepository
+                .findTopByUserIdAndActorIdAndTypeOrderByCreatedAtDesc(target.getId(), me.getId(), NotificationType.NEW_FOLLOWER)
+                .orElse(new Notification());
         notif.setUser(target);
         notif.setActorName(me.getName());
         notif.setActorId(me.getId());
         notif.setType(NotificationType.NEW_FOLLOWER);
         notif.setMessage(me.getName() + " comenzó a seguirte");
+        notif.setRead(false);
+        notif.setCreatedAt(java.time.LocalDateTime.now());
         notificationRepository.save(notif);
 
         return ResponseEntity.ok(Map.of(
