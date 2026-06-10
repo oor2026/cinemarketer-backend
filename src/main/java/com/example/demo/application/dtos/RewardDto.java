@@ -23,6 +23,18 @@ public class RewardDto {
     private Boolean active;
     private String partner;
     private String website;
+    // Campos para DESCUENTO
+    private java.math.BigDecimal discountValue;
+    private String discountType;
+    private String discountCode;
+
+    // Campos para EXPERIENCIA
+    private String experienceType;
+    private String location;
+    private java.time.LocalDateTime eventDate;
+    private Integer maxCapacity;
+    private java.time.LocalDateTime drawDate;
+    private Boolean drawExecuted;
 
     // Campos calculados para el frontend
     private Boolean canRedeem;

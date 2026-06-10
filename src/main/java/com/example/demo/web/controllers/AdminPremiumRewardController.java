@@ -74,6 +74,21 @@ public class AdminPremiumRewardController {
             if (body.get("drawDate") != null) {
                 reward.setDrawDate(LocalDateTime.parse((String) body.get("drawDate")));
             }
+            if (body.get("discountValue") != null)
+                reward.setDiscountValue(new java.math.BigDecimal(body.get("discountValue").toString()));
+            if (body.get("discountType") != null)
+                reward.setDiscountType((String) body.get("discountType"));
+            if (body.get("experienceType") != null)
+                reward.setExperienceType((String) body.get("experienceType"));
+            if (body.get("location") != null)
+                reward.setLocation((String) body.get("location"));
+            if (body.get("eventDate") != null)
+                reward.setEventDate(LocalDateTime.parse((String) body.get("eventDate")));
+            if (body.get("maxCapacity") != null)
+                reward.setMaxCapacity(((Number) body.get("maxCapacity")).intValue());
+            if ("DESCUENTO".equals(body.get("type"))) {
+                reward.setDiscountCode(generarCodigoDescuento());
+            }
             reward.setActive(true);
             PremiumReward saved = premiumRewardRepository.save(reward);
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
@@ -92,11 +107,11 @@ public class AdminPremiumRewardController {
         try {
             PremiumReward reward = opt.get();
             if (body.get("name") != null)             reward.setName((String) body.get("name"));
-            if (body.containsKey("description"))     reward.setDescription((String) body.get("description"));
+            if (body.get("description") != null)      reward.setDescription((String) body.get("description"));
             if (body.get("imageUrl") != null)         reward.setImageUrl((String) body.get("imageUrl"));
-            if (body.containsKey("partner"))         reward.setPartner((String) body.get("partner"));
-            if (body.containsKey("website"))         reward.setWebsite((String) body.get("website"));
-            if (body.containsKey("termsConditions")) reward.setTermsConditions((String) body.get("termsConditions"));
+            if (body.get("partner") != null)          reward.setPartner((String) body.get("partner"));
+            if (body.get("website") != null)          reward.setWebsite((String) body.get("website"));
+            if (body.get("termsConditions") != null)  reward.setTermsConditions((String) body.get("termsConditions"));
             if (body.get("pointsRequired") != null)
                 reward.setPointsRequired(((Number) body.get("pointsRequired")).intValue());
             if (body.get("stock") != null)
@@ -105,6 +120,18 @@ public class AdminPremiumRewardController {
                 reward.setDrawDate(LocalDateTime.parse((String) body.get("drawDate")));
             if (body.get("active") != null)
                 reward.setActive((Boolean) body.get("active"));
+            if (body.containsKey("discountValue") && body.get("discountValue") != null)
+                reward.setDiscountValue(new java.math.BigDecimal(body.get("discountValue").toString()));
+            if (body.containsKey("discountType"))
+                reward.setDiscountType((String) body.get("discountType"));
+            if (body.containsKey("experienceType"))
+                reward.setExperienceType((String) body.get("experienceType"));
+            if (body.containsKey("location"))
+                reward.setLocation((String) body.get("location"));
+            if (body.containsKey("eventDate") && body.get("eventDate") != null)
+                reward.setEventDate(LocalDateTime.parse((String) body.get("eventDate")));
+            if (body.containsKey("maxCapacity"))
+                reward.setMaxCapacity(body.get("maxCapacity") != null ? ((Number) body.get("maxCapacity")).intValue() : null);
 
             return ResponseEntity.ok(premiumRewardRepository.save(reward));
         } catch (Exception e) {
@@ -303,5 +330,17 @@ public class AdminPremiumRewardController {
     public ResponseEntity<?> uploadImageLegacy(@PathVariable Long id,
                                                @RequestParam("image") MultipartFile file) {
         return addImage(id, file);
+    }
+
+    // =============================================
+    // HELPERS
+    // =============================================
+
+    private String generarCodigoDescuento() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder sb = new StringBuilder("CINE-");
+        java.util.Random rnd = new java.util.Random();
+        for (int i = 0; i < 8; i++) sb.append(chars.charAt(rnd.nextInt(chars.length())));
+        return sb.toString();
     }
 }

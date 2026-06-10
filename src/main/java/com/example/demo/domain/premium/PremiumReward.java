@@ -69,6 +69,27 @@ public class PremiumReward {
     @Column(name = "terms_conditions", columnDefinition = "TEXT")
     private String termsConditions;
 
+    @Column(name = "discount_value", precision = 10, scale = 2)
+    private java.math.BigDecimal discountValue;
+
+    @Column(name = "discount_type", length = 10)
+    private String discountType; // PERCENTAGE o FIXED
+
+    @Column(name = "discount_code", length = 50)
+    private String discountCode;
+
+    @Column(name = "experience_type", length = 200)
+    private String experienceType;
+
+    @Column(length = 300)
+    private String location;
+
+    @Column(name = "event_date")
+    private LocalDateTime eventDate;
+
+    @Column(name = "max_capacity")
+    private Integer maxCapacity;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

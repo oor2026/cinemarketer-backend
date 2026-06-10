@@ -250,6 +250,20 @@ public class AdminRewardController {
         reward.setActive(req.getActive() != null ? req.getActive() : true);
         reward.setPartner(req.getPartner());
         reward.setWebsite(req.getWebsite());
+        reward.setDiscountValue(req.getDiscountValue());
+        reward.setDiscountType(req.getDiscountType());
+        reward.setExperienceType(req.getExperienceType());
+        reward.setLocation(req.getLocation());
+        reward.setEventDate(req.getEventDate());
+        reward.setMaxCapacity(req.getMaxCapacity());
+        reward.setDrawDate(req.getDrawDate());
+
+        // Generar código de descuento automático para DESCUENTO
+        if (req.getRewardType() != null &&
+                req.getRewardType().name().equals("DESCUENTO") &&
+                (reward.getDiscountCode() == null || reward.getDiscountCode().isEmpty())) {
+            reward.setDiscountCode(generarCodigoDescuento());
+        }
     }
 
     private RewardDto toDto(Reward r, int userPoints) {
@@ -269,6 +283,15 @@ public class AdminRewardController {
         dto.setCanRedeem(false);
         dto.setPartner(r.getPartner());
         dto.setWebsite(r.getWebsite());
+        dto.setDiscountValue(r.getDiscountValue());
+        dto.setDiscountType(r.getDiscountType());
+        dto.setDiscountCode(r.getDiscountCode());
+        dto.setExperienceType(r.getExperienceType());
+        dto.setLocation(r.getLocation());
+        dto.setEventDate(r.getEventDate());
+        dto.setMaxCapacity(r.getMaxCapacity());
+        dto.setDrawDate(r.getDrawDate());
+        dto.setDrawExecuted(r.isDrawExecuted());
 
         // Incluir lista de imágenes
         List<RewardImage> images = rewardImageRepository
@@ -282,5 +305,13 @@ public class AdminRewardController {
         }).collect(Collectors.toList()));
 
         return dto;
+    }
+
+    private String generarCodigoDescuento() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder sb = new StringBuilder("CINE-");
+        java.util.Random rnd = new java.util.Random();
+        for (int i = 0; i < 8; i++) sb.append(chars.charAt(rnd.nextInt(chars.length())));
+        return sb.toString();
     }
 }
