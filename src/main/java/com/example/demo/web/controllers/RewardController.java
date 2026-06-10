@@ -90,6 +90,35 @@ public class RewardController {
         dto.setCanRedeem(r.isAvailable() && userPoints >= r.getPointsRequired());
         dto.setPartner(r.getPartner());
         dto.setWebsite(r.getWebsite());
+        dto.setDiscountValue(r.getDiscountValue());
+        dto.setDiscountType(r.getDiscountType());
+        dto.setDiscountCode(r.getDiscountCode());
+        dto.setDiscountChannel(r.getDiscountChannel());
+        dto.setMinimumPurchase(r.getMinimumPurchase());
+        dto.setApplicableProducts(r.getApplicableProducts());
+        dto.setStackable(r.getStackable());
+        dto.setExperienceType(r.getExperienceType());
+        dto.setLocation(r.getLocation());
+        dto.setEventDate(r.getEventDate());
+        dto.setMaxCapacity(r.getMaxCapacity());
+        dto.setDuration(r.getDuration());
+        dto.setIncludesTransport(r.getIncludesTransport());
+        dto.setRequirements(r.getRequirements());
+        dto.setCompanionAllowed(r.getCompanionAllowed());
+        dto.setBrand(r.getBrand());
+        dto.setMaterial(r.getMaterial());
+        dto.setColor(r.getColor());
+        dto.setSize(r.getSize());
+        dto.setDimensions(r.getDimensions());
+        dto.setWeight(r.getWeight());
+        dto.setOrigin(r.getOrigin());
+        dto.setUnitsIncluded(r.getUnitsIncluded());
+        dto.setCondition(r.getCondition());
+        dto.setCinemaChain(r.getCinemaChain());
+        dto.setCinemaFormat(r.getCinemaFormat());
+        dto.setCinemaRestrictions(r.getCinemaRestrictions());
+        dto.setTicketsIncluded(r.getTicketsIncluded());
+        dto.setIncludesSnack(r.getIncludesSnack());
 
         // Cargar imágenes
         var images = rewardImageRepository

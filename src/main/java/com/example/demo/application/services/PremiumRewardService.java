@@ -244,6 +244,43 @@ public class PremiumRewardService {
         dto.setWebsite(reward.getWebsite());
         dto.setTermsConditions(reward.getTermsConditions());
 
+        // Descuento
+        dto.setDiscountValue(reward.getDiscountValue());
+        dto.setDiscountType(reward.getDiscountType());
+        dto.setDiscountCode(reward.getDiscountCode());
+        dto.setDiscountChannel(reward.getDiscountChannel());
+        dto.setMinimumPurchase(reward.getMinimumPurchase());
+        dto.setApplicableProducts(reward.getApplicableProducts());
+        dto.setStackable(reward.getStackable());
+
+        // Experiencia
+        dto.setExperienceType(reward.getExperienceType());
+        dto.setLocation(reward.getLocation());
+        dto.setEventDate(reward.getEventDate());
+        dto.setMaxCapacity(reward.getMaxCapacity());
+        dto.setDuration(reward.getDuration());
+        dto.setIncludesTransport(reward.getIncludesTransport());
+        dto.setRequirements(reward.getRequirements());
+        dto.setCompanionAllowed(reward.getCompanionAllowed());
+
+        // Merchandising
+        dto.setBrand(reward.getBrand());
+        dto.setMaterial(reward.getMaterial());
+        dto.setColor(reward.getColor());
+        dto.setSize(reward.getSize());
+        dto.setDimensions(reward.getDimensions());
+        dto.setWeight(reward.getWeight());
+        dto.setOrigin(reward.getOrigin());
+        dto.setUnitsIncluded(reward.getUnitsIncluded());
+        dto.setCondition(reward.getCondition());
+
+        // Entrada de cine
+        dto.setCinemaChain(reward.getCinemaChain());
+        dto.setCinemaFormat(reward.getCinemaFormat());
+        dto.setCinemaRestrictions(reward.getCinemaRestrictions());
+        dto.setTicketsIncluded(reward.getTicketsIncluded());
+        dto.setIncludesSnack(reward.getIncludesSnack());
+
         if (reward.getWinner() != null) {
             dto.setWinnerName(reward.getWinner().getName());
         }
