@@ -69,7 +69,7 @@ public class PremiumRewardService {
         PremiumReward reward = premiumRewardRepository.findById(rewardId)
                 .orElseThrow(() -> new IllegalStateException("Premio no encontrado"));
 
-        if (reward.getType() != PremiumRewardType.CANJEABLE) {
+        if (reward.getType() == PremiumRewardType.SORTEO) {
             throw new IllegalStateException("Este ítem es un sorteo, no un premio canjeable");
         }
         if (!reward.isActive()) {
@@ -248,7 +248,7 @@ public class PremiumRewardService {
             dto.setWinnerName(reward.getWinner().getName());
         }
 
-        if (reward.getType() == PremiumRewardType.CANJEABLE) {
+        if (reward.getType() != PremiumRewardType.SORTEO) {
             dto.setCanRedeem(user.isActivePremium()
                     && reward.hasStock()
                     && user.getTotalPoints() >= reward.getPointsRequired()

@@ -16,4 +16,11 @@ public class AdminRewardRequest {
     private Boolean active = true;
     private String partner;
     private String website;
+    private java.math.BigDecimal discountValue;
+    private String discountType;
+    private String experienceType;
+    private String location;
+    private java.time.LocalDateTime eventDate;
+    private Integer maxCapacity;
+    private java.time.LocalDateTime drawDate;
 }
