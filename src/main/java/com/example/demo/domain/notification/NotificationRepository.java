@@ -26,4 +26,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     @Modifying
     @Query("DELETE FROM Notification n WHERE n.createdAt < :cutoff")
     void deleteOlderThan(@Param("cutoff") java.time.LocalDateTime cutoff);
+
+    // Buscar notificación existente por destinatario + actor + tipo (para upsert) — trae la más reciente
+    java.util.Optional<Notification> findTopByUserIdAndActorIdAndTypeOrderByCreatedAtDesc(
+            Long userId, Long actorId, NotificationType type);
 }
