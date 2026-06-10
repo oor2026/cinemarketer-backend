@@ -27,6 +27,10 @@ public class RewardDto {
     private java.math.BigDecimal discountValue;
     private String discountType;
     private String discountCode;
+    private String discountChannel;
+    private java.math.BigDecimal minimumPurchase;
+    private String applicableProducts;
+    private Boolean stackable;
 
     // Campos para EXPERIENCIA
     private String experienceType;
@@ -35,6 +39,28 @@ public class RewardDto {
     private Integer maxCapacity;
     private java.time.LocalDateTime drawDate;
     private Boolean drawExecuted;
+    private String duration;
+    private Boolean includesTransport;
+    private String requirements;
+    private Boolean companionAllowed;
+
+    // Campos para MERCHANDISING
+    private String brand;
+    private String material;
+    private String color;
+    private String size;
+    private String dimensions;
+    private String weight;
+    private String origin;
+    private String unitsIncluded;
+    private String condition;
+
+    // Campos para TICKET (entrada de cine)
+    private String cinemaChain;
+    private String cinemaFormat;
+    private String cinemaRestrictions;
+    private Integer ticketsIncluded;
+    private Boolean includesSnack;
 
     // Campos calculados para el frontend
     private Boolean canRedeem;

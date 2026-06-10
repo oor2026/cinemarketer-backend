@@ -33,6 +33,43 @@ public class PremiumRewardDto {
     private String website;
     private String termsConditions;
 
+    // Campos para DESCUENTO
+    private java.math.BigDecimal discountValue;
+    private String discountType;
+    private String discountCode;
+    private String discountChannel;
+    private java.math.BigDecimal minimumPurchase;
+    private String applicableProducts;
+    private Boolean stackable;
+
+    // Campos para EXPERIENCIA
+    private String experienceType;
+    private String location;
+    private java.time.LocalDateTime eventDate;
+    private Integer maxCapacity;
+    private String duration;
+    private Boolean includesTransport;
+    private String requirements;
+    private Boolean companionAllowed;
+
+    // Campos para MERCHANDISING
+    private String brand;
+    private String material;
+    private String color;
+    private String size;
+    private String dimensions;
+    private String weight;
+    private String origin;
+    private String unitsIncluded;
+    private String condition;
+
+    // Campos para TICKET (entrada de cine)
+    private String cinemaChain;
+    private String cinemaFormat;
+    private String cinemaRestrictions;
+    private Integer ticketsIncluded;
+    private Boolean includesSnack;
+
     // Imágenes múltiples
     private java.util.List<ImageDto> images;
 

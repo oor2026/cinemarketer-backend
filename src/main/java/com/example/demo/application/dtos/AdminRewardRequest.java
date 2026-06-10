@@ -23,4 +23,33 @@ public class AdminRewardRequest {
     private java.time.LocalDateTime eventDate;
     private Integer maxCapacity;
     private java.time.LocalDateTime drawDate;
+    // Merchandising
+    private String brand;
+    private String material;
+    private String color;
+    private String size;
+    private String dimensions;
+    private String weight;
+    private String origin;
+    private String unitsIncluded;
+    private String condition;
+
+    // Entrada de cine
+    private String cinemaChain;
+    private String cinemaFormat;
+    private String cinemaRestrictions;
+    private Integer ticketsIncluded;
+    private Boolean includesSnack;
+
+    // Descuento
+    private String discountChannel;
+    private java.math.BigDecimal minimumPurchase;
+    private String applicableProducts;
+    private Boolean stackable;
+
+    // Experiencia
+    private String duration;
+    private Boolean includesTransport;
+    private String requirements;
+    private Boolean companionAllowed;
 }

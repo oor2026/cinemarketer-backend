@@ -89,6 +89,43 @@ public class AdminPremiumRewardController {
             if ("DESCUENTO".equals(body.get("type"))) {
                 reward.setDiscountCode(generarCodigoDescuento());
             }
+
+            // Merchandising
+            reward.setBrand((String) body.get("brand"));
+            reward.setMaterial((String) body.get("material"));
+            reward.setColor((String) body.get("color"));
+            reward.setSize((String) body.get("size"));
+            reward.setDimensions((String) body.get("dimensions"));
+            reward.setWeight((String) body.get("weight"));
+            reward.setOrigin((String) body.get("origin"));
+            reward.setUnitsIncluded((String) body.get("unitsIncluded"));
+            reward.setCondition((String) body.get("condition"));
+
+            // Entrada de cine
+            reward.setCinemaChain((String) body.get("cinemaChain"));
+            reward.setCinemaFormat((String) body.get("cinemaFormat"));
+            reward.setCinemaRestrictions((String) body.get("cinemaRestrictions"));
+            if (body.get("ticketsIncluded") != null)
+                reward.setTicketsIncluded(((Number) body.get("ticketsIncluded")).intValue());
+            if (body.get("includesSnack") != null)
+                reward.setIncludesSnack((Boolean) body.get("includesSnack"));
+
+            // Descuento
+            reward.setDiscountChannel((String) body.get("discountChannel"));
+            if (body.get("minimumPurchase") != null)
+                reward.setMinimumPurchase(new java.math.BigDecimal(body.get("minimumPurchase").toString()));
+            reward.setApplicableProducts((String) body.get("applicableProducts"));
+            if (body.get("stackable") != null)
+                reward.setStackable((Boolean) body.get("stackable"));
+
+            // Experiencia
+            reward.setDuration((String) body.get("duration"));
+            if (body.get("includesTransport") != null)
+                reward.setIncludesTransport((Boolean) body.get("includesTransport"));
+            reward.setRequirements((String) body.get("requirements"));
+            if (body.get("companionAllowed") != null)
+                reward.setCompanionAllowed((Boolean) body.get("companionAllowed"));
+
             reward.setActive(true);
             PremiumReward saved = premiumRewardRepository.save(reward);
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
@@ -133,7 +170,44 @@ public class AdminPremiumRewardController {
             if (body.containsKey("maxCapacity"))
                 reward.setMaxCapacity(body.get("maxCapacity") != null ? ((Number) body.get("maxCapacity")).intValue() : null);
 
+            // Merchandising
+            if (body.containsKey("brand"))          reward.setBrand((String) body.get("brand"));
+            if (body.containsKey("material"))       reward.setMaterial((String) body.get("material"));
+            if (body.containsKey("color"))          reward.setColor((String) body.get("color"));
+            if (body.containsKey("size"))           reward.setSize((String) body.get("size"));
+            if (body.containsKey("dimensions"))     reward.setDimensions((String) body.get("dimensions"));
+            if (body.containsKey("weight"))         reward.setWeight((String) body.get("weight"));
+            if (body.containsKey("origin"))         reward.setOrigin((String) body.get("origin"));
+            if (body.containsKey("unitsIncluded"))  reward.setUnitsIncluded((String) body.get("unitsIncluded"));
+            if (body.containsKey("condition"))      reward.setCondition((String) body.get("condition"));
+
+            // Entrada de cine
+            if (body.containsKey("cinemaChain"))        reward.setCinemaChain((String) body.get("cinemaChain"));
+            if (body.containsKey("cinemaFormat"))       reward.setCinemaFormat((String) body.get("cinemaFormat"));
+            if (body.containsKey("cinemaRestrictions")) reward.setCinemaRestrictions((String) body.get("cinemaRestrictions"));
+            if (body.containsKey("ticketsIncluded") && body.get("ticketsIncluded") != null)
+                reward.setTicketsIncluded(((Number) body.get("ticketsIncluded")).intValue());
+            if (body.containsKey("includesSnack") && body.get("includesSnack") != null)
+                reward.setIncludesSnack((Boolean) body.get("includesSnack"));
+
+            // Descuento
+            if (body.containsKey("discountChannel"))     reward.setDiscountChannel((String) body.get("discountChannel"));
+            if (body.containsKey("minimumPurchase") && body.get("minimumPurchase") != null)
+                reward.setMinimumPurchase(new java.math.BigDecimal(body.get("minimumPurchase").toString()));
+            if (body.containsKey("applicableProducts"))  reward.setApplicableProducts((String) body.get("applicableProducts"));
+            if (body.containsKey("stackable") && body.get("stackable") != null)
+                reward.setStackable((Boolean) body.get("stackable"));
+
+            // Experiencia
+            if (body.containsKey("duration"))          reward.setDuration((String) body.get("duration"));
+            if (body.containsKey("includesTransport") && body.get("includesTransport") != null)
+                reward.setIncludesTransport((Boolean) body.get("includesTransport"));
+            if (body.containsKey("requirements"))      reward.setRequirements((String) body.get("requirements"));
+            if (body.containsKey("companionAllowed") && body.get("companionAllowed") != null)
+                reward.setCompanionAllowed((Boolean) body.get("companionAllowed"));
+
             return ResponseEntity.ok(premiumRewardRepository.save(reward));
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", e.getMessage()));

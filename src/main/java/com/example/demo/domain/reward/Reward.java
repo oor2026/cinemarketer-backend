@@ -103,6 +103,76 @@ public class Reward {
     @Column(name = "draw_executed")
     private boolean drawExecuted = false;
 
+    // --- Merchandising ---
+    @Column(length = 100)
+    private String brand;
+
+    @Column(length = 100)
+    private String material;
+
+    @Column(length = 100)
+    private String color;
+
+    @Column(length = 50)
+    private String size;
+
+    @Column(length = 100)
+    private String dimensions;
+
+    @Column(length = 50)
+    private String weight;
+
+    @Column(length = 100)
+    private String origin;
+
+    @Column(name = "units_included", length = 50)
+    private String unitsIncluded;
+
+    @Column(length = 30)
+    private String condition; // NUEVO, REACONDICIONADO
+
+    // --- Entrada de cine ---
+    @Column(name = "cinema_chain", length = 100)
+    private String cinemaChain;
+
+    @Column(name = "cinema_format", length = 20)
+    private String cinemaFormat; // 2D, 3D, IMAX, 4DX, OTROS
+
+    @Column(name = "cinema_restrictions", columnDefinition = "TEXT")
+    private String cinemaRestrictions;
+
+    @Column(name = "tickets_included")
+    private Integer ticketsIncluded;
+
+    @Column(name = "includes_snack")
+    private Boolean includesSnack;
+
+    // --- Descuento ---
+    @Column(name = "discount_channel", length = 100)
+    private String discountChannel; // WEB, APP, LOCAL, TELEFÓNICO
+
+    @Column(name = "minimum_purchase", precision = 10, scale = 2)
+    private java.math.BigDecimal minimumPurchase;
+
+    @Column(name = "applicable_products", columnDefinition = "TEXT")
+    private String applicableProducts;
+
+    @Column(name = "stackable")
+    private Boolean stackable;
+
+    // --- Experiencia ---
+    @Column(length = 100)
+    private String duration;
+
+    @Column(name = "includes_transport")
+    private Boolean includesTransport;
+
+    @Column(columnDefinition = "TEXT")
+    private String requirements;
+
+    @Column(name = "companion_allowed")
+    private Boolean companionAllowed;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
