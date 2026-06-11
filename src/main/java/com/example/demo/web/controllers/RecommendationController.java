@@ -200,6 +200,18 @@ public class RecommendationController {
         return ResponseEntity.ok(result);
     }
 
+    // DELETE /api/recommendations/{id} — eliminar recomendación recibida
+    @DeleteMapping("/{id}")
+    @Transactional
+    public ResponseEntity<?> eliminar(@PathVariable Long id,
+                                      @AuthenticationPrincipal UserDetails userDetails) {
+        User me = getUser(userDetails);
+        MovieRecommendation rec = recommendationRepository.findByIdAndReceiverId(id, me.getId())
+                .orElseThrow(() -> new RuntimeException("Recomendación no encontrada"));
+        recommendationRepository.delete(rec);
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
     // ── helpers ──────────────────────────────────────────────
     private User getUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
