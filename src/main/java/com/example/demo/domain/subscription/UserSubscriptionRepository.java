@@ -30,4 +30,9 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
 
     @Query("SELECT COUNT(DISTINCT s.user.id) FROM UserSubscription s WHERE s.status = 'ACTIVE'")
     long countDistinctActiveUsers();
+
+    List<UserSubscription> findByStatusAndEndDateBetween(
+            SubscriptionStatus status,
+            java.time.LocalDateTime from,
+            java.time.LocalDateTime to);
 }

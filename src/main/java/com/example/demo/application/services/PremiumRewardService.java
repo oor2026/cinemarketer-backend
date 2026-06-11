@@ -1,6 +1,7 @@
 package com.example.demo.application.services;
 
 import com.example.demo.application.dtos.PremiumRewardDto;
+import com.example.demo.domain.notification.Notification;
 import com.example.demo.domain.premium.*;
 import com.example.demo.domain.support.*;
 import com.example.demo.domain.user.User;
@@ -27,6 +28,7 @@ public class PremiumRewardService {
     private final SupportMessageRepository   supportMessageRepository;
     private final EmailService               emailService;
     private final com.example.demo.domain.reward.RewardImageRepository rewardImageRepository;
+    private final com.example.demo.domain.notification.NotificationRepository notificationRepository;
 
     public PremiumRewardService(PremiumRewardRepository premiumRewardRepository,
                                 PremiumDrawEntryRepository drawEntryRepository,
@@ -35,7 +37,8 @@ public class PremiumRewardService {
                                 SupportTicketRepository supportTicketRepository,
                                 SupportMessageRepository supportMessageRepository,
                                 EmailService emailService,
-                                com.example.demo.domain.reward.RewardImageRepository rewardImageRepository) {
+                                com.example.demo.domain.reward.RewardImageRepository rewardImageRepository,
+                                com.example.demo.domain.notification.NotificationRepository notificationRepository) {
         this.premiumRewardRepository = premiumRewardRepository;
         this.drawEntryRepository     = drawEntryRepository;
         this.premiumRedemptionRepository = premiumRedemptionRepository;
@@ -44,6 +47,7 @@ public class PremiumRewardService {
         this.supportMessageRepository = supportMessageRepository;
         this.emailService            = emailService;
         this.rewardImageRepository   = rewardImageRepository;
+        this.notificationRepository  = notificationRepository;
     }
 
     // ==============================================
@@ -178,6 +182,14 @@ public class PremiumRewardService {
         premiumRewardRepository.save(reward);
 
         try {
+            // Notificación en el dropdown
+            Notification winnerNotif = new Notification();
+            winnerNotif.setUser(winner);
+            winnerNotif.setActorName("Cinemarketer");
+            winnerNotif.setType(com.example.demo.domain.notification.NotificationType.DRAW_WINNER);
+            winnerNotif.setMessage("🏆 ¡Felicitaciones! Ganaste el sorteo \"" + reward.getName() + "\". Nuestro equipo se contactará con vos.");
+            notificationRepository.save(winnerNotif);
+
             SupportTicket ticket = new SupportTicket();
             ticket.setUser(winner);
             ticket.setSubject("🏆 ¡Ganaste el sorteo: " + reward.getName() + "!");
