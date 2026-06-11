@@ -29,16 +29,18 @@ public class RecommendationController {
     private final MovieRecommendationRepository recommendationRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
-
+    private final NotificationRepository notificationRepository;
     private final MovieService movieService;
 
     public RecommendationController(MovieRecommendationRepository recommendationRepository,
                                     UserRepository userRepository,
                                     NotificationService notificationService,
+                                    NotificationRepository notificationRepository,
                                     MovieService movieService) {
         this.recommendationRepository = recommendationRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.notificationRepository = notificationRepository;
         this.movieService = movieService;
     }
 
@@ -75,6 +77,20 @@ public class RecommendationController {
         rec.setContextType(req.getContextType());
         rec.setStatus("PENDING");
         recommendationRepository.save(rec);
+
+        // Notificar al receptor
+        Notification notif = new Notification();
+        notif.setUser(receiver);
+        notif.setActorId(me.getId());
+        notif.setActorName(me.getName());
+        notif.setType(NotificationType.NEW_RECOMMENDATION);
+        notif.setMovieId(req.getMovieId());
+        notif.setMovieTitle(rec.getMovieTitle());
+        notif.setMessage(me.getName() + " te recomendó " +
+                (rec.getMovieTitle() != null ? rec.getMovieTitle() : "una película"));
+
+        // Inyectar NotificationRepository
+        notificationRepository.save(notif);
 
         return ResponseEntity.ok(Map.of("success", true));
     }
