@@ -26,9 +26,9 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/comments")
 public class CommentController {
 
-    private static final int AUTO_HIDE_THRESHOLD          = 5;
-    private static final int MAX_HIDDEN_BY_USER_PER_MOVIE = 3;
-    private static final int MERECE_PUNTO_POINTS          = 1;
+    private static final int AUTO_HIDE_THRESHOLD     = 5;
+    private static final int DAILY_COMMENT_LIMIT     = 10;
+    private static final int MERECE_PUNTO_POINTS     = 1;
 
     private final CommentRepository         commentRepository;
     private final CommentReportRepository   commentReportRepository;
@@ -162,7 +162,22 @@ public class CommentController {
             }
         }
 
-        int points = user.isActivePremium() ? 80 : 40;
+        // ── Límite diario de comentarios con puntos (solo FREE) ──
+        boolean otorgaPuntos = true;
+        if (!user.isActivePremium()) {
+            java.time.LocalDate hoy = java.time.LocalDate.now();
+            if (!hoy.equals(user.getLastCommentDate())) {
+                user.setDailyCommentCount(0);
+                user.setLastCommentDate(hoy);
+            }
+            if (user.getDailyCommentCount() >= DAILY_COMMENT_LIMIT) {
+                otorgaPuntos = false;
+            } else {
+                user.setDailyCommentCount(user.getDailyCommentCount() + 1);
+            }
+        }
+
+        int points = otorgaPuntos ? (user.isActivePremium() ? 80 : 40) : 0;
 
         Comment comment = new Comment();
         comment.setUser(user);
@@ -177,24 +192,33 @@ public class CommentController {
         }
         commentRepository.save(comment);
 
-        user.addAccumulatedPoints(points);
+        if (points > 0) {
+            user.addAccumulatedPoints(points);
+            String movieTitle = movieRepository.findByTmdbId(movieId)
+                    .map(Movie::getTitle)
+                    .orElseGet(() -> {
+                        try {
+                            var tmdb = movieService.getMovieDetails(movieId);
+                            return tmdb != null && tmdb.getTitle() != null ? tmdb.getTitle() : "Pelicula #" + movieId;
+                        } catch (Exception e) {
+                            return "Pelicula #" + movieId;
+                        }
+                    });
+            pointTransactionService.registerEarned(user, PointAction.COMMENT_MOVIE, points,
+                    movieId, "Comentario en pelicula: " + movieTitle);
+        }
         userRepository.save(user);
 
-        String movieTitle = movieRepository.findByTmdbId(movieId)
-                .map(Movie::getTitle)
-                .orElseGet(() -> {
-                    try {
-                        var tmdb = movieService.getMovieDetails(movieId);
-                        return tmdb != null && tmdb.getTitle() != null ? tmdb.getTitle() : "Pelicula #" + movieId;
-                    } catch (Exception e) {
-                        return "Pelicula #" + movieId;
-                    }
-                });
-
-        pointTransactionService.registerEarned(user, PointAction.COMMENT_MOVIE, points,
-                movieId, "Comentario en pelicula: " + movieTitle);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(buildResponse(comment, user.getId()));
+        CommentResponse resp = buildResponse(comment, user.getId());
+        if (!otorgaPuntos) {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of(
+                            "comment", resp,
+                            "limiteDiarioAlcanzado", true,
+                            "mensaje", "Ya generaste todos tus puntos de hoy 🎬 Podés seguir comentando lo que quieras, pero estos comentarios no sumarán puntos. A las 00hs se renueva tu límite diario y volverás a ganar puntos con tus comentarios."
+                    ));
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
 
     // ==========================================================================
@@ -510,11 +534,7 @@ public class CommentController {
                     .body(Map.of("error", "Este comentario ya está oculto"));
         }
 
-        long ocultamientos = commentRepository.countHiddenByUserAndMovie(user.getId(), comment.getMovieId());
-        if (ocultamientos >= MAX_HIDDEN_BY_USER_PER_MOVIE) {
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                    .body(Map.of("error", "Alcanzaste el límite de ocultamientos para esta película.", "limitAlcanzado", true));
-        }
+        // Sin límite de ocultamientos — el usuario puede ocultar libremente
 
         // Revertir puntos por comentar
         int puntosComentario = comment.getPointsAwarded() != null ? comment.getPointsAwarded() : 0;
@@ -560,9 +580,7 @@ public class CommentController {
         comment.setModerationStatus(ModerationStatus.HIDDEN_BY_USER);
         commentRepository.save(comment);
 
-        return ResponseEntity.ok(Map.of(
-                "message", "Tu comentario fue ocultado correctamente.",
-                "ocultamientosRestantes", MAX_HIDDEN_BY_USER_PER_MOVIE - ocultamientos - 1));
+        return ResponseEntity.ok(Map.of("message", "Tu comentario fue ocultado correctamente."));
     }
 
     // ==========================================================================

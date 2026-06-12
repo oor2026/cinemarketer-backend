@@ -115,6 +115,12 @@ public class User {
     @Column(name = "premium_until")
     private LocalDateTime premiumUntil;
 
+    @Column(name = "daily_comment_count", nullable = false)
+    private int dailyCommentCount = 0;
+
+    @Column(name = "last_comment_date")
+    private java.time.LocalDate lastCommentDate;
+
     // ==============================================
     // MÉTODOS DE NEGOCIO (NO GETTERS/SETTERS)
     // ==============================================
