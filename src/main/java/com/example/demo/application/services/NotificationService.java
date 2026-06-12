@@ -69,6 +69,20 @@ public class NotificationService {
     }
 
     @Transactional
+    public void crearPuntosLiberados(User receptor, int acumulados, int cobrados, boolean pasóTecho) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.POINTS_RELEASED);
+        String msg = "¡Gran trabajo! Acumulaste " + acumulados + " pts y cobraste " + cobrados + " pts.";
+        if (pasóTecho) {
+            msg += " Pasate a Premium para no tener tope.";
+        }
+        n.setMessage(msg);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
     public void crearRecomendacionCalificada(User receptor, String actorName, Long actorId,
                                              Long movieId, String movieTitle, int rating) {
         Notification n = new Notification();

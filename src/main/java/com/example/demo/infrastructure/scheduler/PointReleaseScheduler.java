@@ -1,5 +1,6 @@
 package com.example.demo.infrastructure.scheduler;
 
+import com.example.demo.application.services.NotificationService;
 import com.example.demo.domain.pointbatch.PointBatch;
 import com.example.demo.domain.pointbatch.PointBatchRepository;
 import com.example.demo.domain.user.User;
@@ -34,11 +35,14 @@ public class PointReleaseScheduler {
 
     private final UserRepository userRepository;
     private final PointBatchRepository pointBatchRepository;
+    private final NotificationService notificationService;
 
     public PointReleaseScheduler(UserRepository userRepository,
-                                 PointBatchRepository pointBatchRepository) {
+                                 PointBatchRepository pointBatchRepository,
+                                 NotificationService notificationService) {
         this.userRepository = userRepository;
         this.pointBatchRepository = pointBatchRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -81,6 +85,9 @@ public class PointReleaseScheduler {
                 user.addAvailablePoints(toRelease);
                 user.clearAccumulatedPoints(toRelease);
                 userRepository.save(user);
+
+                boolean pasóTecho = cap != null && accumulated > cap;
+                notificationService.crearPuntosLiberados(user, accumulated, toRelease, pasóTecho);
 
                 usersProcessed++;
                 totalPointsReleased += toRelease;
