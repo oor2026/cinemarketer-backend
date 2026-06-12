@@ -152,13 +152,17 @@ public class CommentController {
         ModerationStatus moderationStatus = bannedWordService.shouldPendingReview(request.getContent())
                 ? ModerationStatus.PENDING_REVIEW : ModerationStatus.APPROVED;
 
+        boolean esDuplicado = false;
         List<Comment> lastVisible = commentRepository.findLastVisibleByUserIdAndMovieId(
                 user.getId(), movieId, org.springframework.data.domain.PageRequest.of(0, 1));
         if (!lastVisible.isEmpty()) {
             Comment last = lastVisible.get(0);
-            if (last.getContent().trim().equalsIgnoreCase(request.getContent().trim())) {
-                throw new com.example.demo.web.handlers.DuplicateCommentException(
-                        "No podés publicar el mismo comentario dos veces seguidas.");
+            boolean mismoTexto = request.getContent() != null
+                    && last.getContent().trim().equalsIgnoreCase(request.getContent().trim());
+            boolean mismoGif = request.getGifUrl() != null
+                    && request.getGifUrl().equals(last.getGifUrl());
+            if (mismoTexto || mismoGif) {
+                esDuplicado = true;
             }
         }
 
@@ -177,6 +181,7 @@ public class CommentController {
             }
         }
 
+        if (esDuplicado) otorgaPuntos = false;
         int points = otorgaPuntos ? (user.isActivePremium() ? 80 : 40) : 0;
 
         Comment comment = new Comment();
@@ -210,6 +215,13 @@ public class CommentController {
         userRepository.save(user);
 
         CommentResponse resp = buildResponse(comment, user.getId());
+        if (esDuplicado) {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of(
+                            "comment", resp,
+                            "comentarioDuplicado", true
+                    ));
+        }
         if (!otorgaPuntos) {
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(Map.of(
@@ -455,12 +467,7 @@ public class CommentController {
         ModerationStatus moderationStatus = bannedWordService.shouldPendingReview(request.getContent())
                 ? ModerationStatus.PENDING_REVIEW : ModerationStatus.APPROVED;
 
-        commentReplyRepository.findFirstByUserIdOrderByCreatedAtDesc(user.getId()).ifPresent(last -> {
-            if (last.getContent().trim().equalsIgnoreCase(request.getContent().trim())) {
-                throw new com.example.demo.web.handlers.DuplicateCommentException(
-                        "No podés publicar la misma respuesta dos veces seguidas.");
-            }
-        });
+        // Las respuestas duplicadas se publican pero no hacen nada especial — el frontend muestra un toast
 
         CommentReply reply = new CommentReply();
         reply.setComment(comment);
