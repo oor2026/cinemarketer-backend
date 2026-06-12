@@ -285,11 +285,11 @@ public class User {
 
     /**
      * Retorna el tope mensual de liberación.
-     * FREE: 20.000 pts (o valor personalizado). PREMIUM: sin tope (null).
+     * FREE: 5.000 pts (o valor personalizado). PREMIUM: sin tope (null).
      */
     public Integer getEffectiveMonthlyCap() {
         if (this.premium) return null;
-        return freeMonthlyCapOverride != null ? freeMonthlyCapOverride : 20000;
+        return freeMonthlyCapOverride != null ? freeMonthlyCapOverride : 5000;
     }
 
     public boolean isActivePremium() {
