@@ -5,6 +5,9 @@ import com.example.demo.application.dtos.RecommendationRequest;
 import com.example.demo.application.dtos.SuggestedUserDto;
 import com.example.demo.application.services.MovieService;
 import com.example.demo.application.services.NotificationService;
+import com.example.demo.application.services.PointConfigService;
+import com.example.demo.application.services.PointTransactionService;
+import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.notification.Notification;
 import com.example.demo.domain.notification.NotificationRepository;
 import com.example.demo.domain.notification.NotificationType;
@@ -31,17 +34,23 @@ public class RecommendationController {
     private final NotificationService notificationService;
     private final NotificationRepository notificationRepository;
     private final MovieService movieService;
+    private final PointConfigService pointConfigService;
+    private final PointTransactionService pointTransactionService;
 
     public RecommendationController(MovieRecommendationRepository recommendationRepository,
                                     UserRepository userRepository,
                                     NotificationService notificationService,
                                     NotificationRepository notificationRepository,
-                                    MovieService movieService) {
+                                    MovieService movieService,
+                                    PointConfigService pointConfigService,
+                                    PointTransactionService pointTransactionService) {
         this.recommendationRepository = recommendationRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.notificationRepository = notificationRepository;
         this.movieService = movieService;
+        this.pointConfigService = pointConfigService;
+        this.pointTransactionService = pointTransactionService;
     }
 
     // POST /api/recommendations — crear recomendación
@@ -78,6 +87,38 @@ public class RecommendationController {
         rec.setStatus("PENDING");
         recommendationRepository.save(rec);
 
+        // Puntos por recomendar — con límite diario FREE
+        java.time.LocalDate hoy = java.time.LocalDate.now(java.time.ZoneId.of("America/Argentina/Buenos_Aires"));
+        boolean otorgaPuntos = true;
+
+        if (!me.isActivePremium()) {
+            if (!hoy.equals(me.getLastRecommendationDate())) {
+                me.setLastRecommendationDate(hoy);
+                me.setDailyRecommendationCount(0);
+            }
+            if (me.getDailyRecommendationCount() >= 3) {
+                otorgaPuntos = false;
+            } else {
+                me.setDailyRecommendationCount(me.getDailyRecommendationCount() + 1);
+            }
+        }
+
+        if (otorgaPuntos) {
+            int basePoints = pointConfigService.getPoints(PointAction.RECOMMEND_MOVIE);
+            int points = me.isActivePremium() ? basePoints * 2 : basePoints;
+            me.addAccumulatedPoints(points);
+            userRepository.save(me);
+            pointTransactionService.registerEarned(
+                    me,
+                    PointAction.RECOMMEND_MOVIE,
+                    points,
+                    req.getMovieId(),
+                    "Recomendación: " + (rec.getMovieTitle() != null ? rec.getMovieTitle() : "Película #" + req.getMovieId())
+            );
+        } else {
+            userRepository.save(me);
+        }
+
         // Notificar al receptor
         Notification notif = new Notification();
         notif.setUser(receiver);
@@ -92,7 +133,7 @@ public class RecommendationController {
         // Inyectar NotificationRepository
         notificationRepository.save(notif);
 
-        return ResponseEntity.ok(Map.of("success", true));
+        return ResponseEntity.ok(Map.of("success", true, "sinPuntos", !otorgaPuntos));
     }
 
     // GET /api/recommendations/received — recomendaciones recibidas

@@ -162,6 +162,42 @@ public class PublicProfileController {
         ));
     }
 
+    // GET /api/users/{id}/comentarios?page=0&size=5
+    @GetMapping("/{id}/comentarios")
+    public ResponseEntity<?> getComentarios(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        long total = commentRepository.countByUserId(id);
+        List<Comment> lote = commentRepository.findPublicByUserId(id, PageRequest.of(page, size));
+        boolean hayMas = (long)(page + 1) * size < total;
+
+        List<PublicProfileDto.ComentarioPublicoDto> dtos = lote.stream().map(c -> {
+            PublicProfileDto.ComentarioPublicoDto cd = new PublicProfileDto.ComentarioPublicoDto();
+            cd.setCommentId(c.getId());
+            cd.setMovieId(c.getMovieId());
+            cd.setSpoiler(c.isSpoiler());
+            cd.setFechaRelativa(formatRelativa(c.getCreatedAt()));
+            String contenido = c.isSpoiler() ? "— Comentario con spoiler —" : c.getContent();
+            cd.setContenido(contenido.length() > 120 ? contenido.substring(0, 120) + "..." : contenido);
+            Optional<Movie> movie = movieRepository.findByTmdbId(c.getMovieId());
+            movie.ifPresent(m -> cd.setMovieTitle(m.getTitle()));
+            return cd;
+        }).toList();
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "comentarios", dtos,
+                "hayMas", hayMas,
+                "page", page,
+                "total", total
+        ));
+    }
+
     // ── helpers ────────────────────────────────────────────────
     private String formatMiembroDesde(LocalDateTime dt) {
         if (dt == null) return "";
