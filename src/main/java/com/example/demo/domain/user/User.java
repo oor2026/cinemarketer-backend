@@ -121,6 +121,12 @@ public class User {
     @Column(name = "last_comment_date")
     private java.time.LocalDate lastCommentDate;
 
+    @Column(name = "daily_recommendation_count", nullable = false)
+    private int dailyRecommendationCount = 0;
+
+    @Column(name = "last_recommendation_date")
+    private java.time.LocalDate lastRecommendationDate;
+
     // ==============================================
     // MÉTODOS DE NEGOCIO (NO GETTERS/SETTERS)
     // ==============================================
