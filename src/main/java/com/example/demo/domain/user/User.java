@@ -127,6 +127,9 @@ public class User {
     @Column(name = "last_recommendation_date")
     private java.time.LocalDate lastRecommendationDate;
 
+    @Column(name = "banner_url")
+    private String bannerUrl;
+
     // ==============================================
     // MÉTODOS DE NEGOCIO (NO GETTERS/SETTERS)
     // ==============================================
