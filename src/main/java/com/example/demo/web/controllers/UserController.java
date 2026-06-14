@@ -367,6 +367,48 @@ public class UserController {
         ));
     }
 
+    /**
+     * Sube un banner personalizado para el perfil público
+     * POST /api/users/me/banner
+     */
+    @PostMapping(value = "/me/banner", consumes = "multipart/form-data")
+    public ResponseEntity<?> uploadBanner(@RequestParam("file") MultipartFile file) {
+
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "El archivo no puede estar vacío"));
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Solo se permiten archivos de imagen"));
+        }
+
+        if (file.getSize() > 2 * 1024 * 1024) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "El archivo no puede superar los 2MB"));
+        }
+
+        try {
+            User user = getAuthenticatedUser();
+            User updatedUser = userService.uploadBanner(user.getId(), file);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Banner actualizado correctamente",
+                    "bannerUrl", updatedUser.getBannerUrl(),
+                    "success", true
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "message", "Error al subir el banner: " + e.getMessage(),
+                            "success", false
+                    ));
+        }
+    }
+
     // ==============================================
     // ENDPOINTS PARA NIVEL
     // ==============================================

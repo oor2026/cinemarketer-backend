@@ -104,6 +104,23 @@ public class AvatarService {
     }
 
     /**
+     * Sube y asigna un banner personalizado al perfil público
+     */
+    @Transactional
+    public User uploadBanner(Long userId, MultipartFile file) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        try {
+            String bannerUrl = cloudinaryService.uploadImage(file, "banners");
+            user.setBannerUrl(bannerUrl);
+            return userRepository.save(user);
+        } catch (IOException e) {
+            throw new RuntimeException("Error al subir el banner: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Elimina el avatar personalizado y vuelve al avatar por defecto de su nivel
      */
     @Transactional
@@ -319,5 +336,13 @@ public class AvatarService {
         if (imageUrl == null || imageUrl.isEmpty()) return Optional.empty();
         return avatarRepository.findByImageUrl(imageUrl)
                 .map(Avatar::getName);
+    }
+
+    /**
+     * Sube una imagen de banner a Cloudinary
+     */
+    @Transactional
+    public String uploadBannerImage(MultipartFile file) throws IOException {
+        return cloudinaryService.uploadImage(file, "banners");
     }
 }

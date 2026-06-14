@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -360,5 +361,19 @@ public class UserService {
         user.setLevelUpdatedAt(LocalDateTime.now());
 
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public User uploadBanner(Long userId, MultipartFile file) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        try {
+            String bannerUrl = avatarService.uploadBannerImage(file);
+            user.setBannerUrl(bannerUrl);
+            return userRepository.save(user);
+        } catch (IOException e) {
+            throw new RuntimeException("Error al subir el banner: " + e.getMessage(), e);
+        }
     }
 }
