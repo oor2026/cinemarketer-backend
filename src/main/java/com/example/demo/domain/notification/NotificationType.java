@@ -6,6 +6,8 @@ public enum NotificationType {
     REPLY,           // Alguien respondió tu comentario
     COMMENT_REMOVED,
     NEW_FOLLOWER,
+    FOLLOW_REQUEST,       // Alguien quiere seguirte (perfil privado)
+    FOLLOW_REQUEST_ACCEPTED, // Aceptaron tu solicitud de seguimiento
     RECOMMENDATION_RATED,
     NEW_RECOMMENDATION,     // Alguien te recomendó una película
     DRAW_WINNER,            // Ganaste un sorteo premium

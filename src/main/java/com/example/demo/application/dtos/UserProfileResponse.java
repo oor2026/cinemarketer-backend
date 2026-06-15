@@ -109,4 +109,9 @@ public class UserProfileResponse {
      * Fecha hasta la que tiene acceso premium
      */
     private LocalDateTime premiumUntil;
+
+    /**
+     * Visibilidad del perfil público: PUBLIC o PRIVATE
+     */
+    private String profileVisibility;
 }

@@ -28,6 +28,11 @@ public class PublicProfileDto {
     private List<VotacionDto> ultimasVotaciones;
     private List<ComentarioPublicoDto> ultimosComentarios;
 
+    // Privacidad y follow
+    private boolean esPrivado;
+    private String followStatus;
+    private Long followId;
+
     @Data
     public static class VotacionDto {
         private Long movieId;

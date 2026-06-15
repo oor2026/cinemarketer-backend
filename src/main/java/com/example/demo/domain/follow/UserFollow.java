@@ -25,8 +25,14 @@ public class UserFollow {
     @JoinColumn(name = "following_id", nullable = false)
     private User following;
 
+    @Column(name = "status", length = 20, nullable = false)
+    private String status = "ACCEPTED";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    public boolean isPending()  { return "PENDING".equals(this.status); }
+    public boolean isAccepted() { return "ACCEPTED".equals(this.status); }
 
     @PrePersist
     protected void onCreate() {
