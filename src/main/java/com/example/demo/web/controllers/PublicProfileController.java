@@ -16,6 +16,7 @@ import com.example.demo.domain.review.ReviewRepository;
 import com.example.demo.domain.review.ReviewType;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
+import com.example.demo.domain.user.UserBlockRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,6 +39,7 @@ public class PublicProfileController {
     private final MovieRepository movieRepository;
     private final CommentReactionRepository commentReactionRepository;
     private final CommentReplyRepository commentReplyRepository;
+    private final UserBlockRepository userBlockRepository;
 
     public PublicProfileController(UserRepository userRepository,
                                    UserFollowRepository followRepository,
@@ -45,7 +47,8 @@ public class PublicProfileController {
                                    CommentRepository commentRepository,
                                    MovieRepository movieRepository,
                                    CommentReactionRepository commentReactionRepository,
-                                   CommentReplyRepository commentReplyRepository) {
+                                   CommentReplyRepository commentReplyRepository,
+                                   UserBlockRepository userBlockRepository) {
         this.userRepository = userRepository;
         this.followRepository = followRepository;
         this.reviewRepository = reviewRepository;
@@ -53,6 +56,7 @@ public class PublicProfileController {
         this.movieRepository = movieRepository;
         this.commentReactionRepository = commentReactionRepository;
         this.commentReplyRepository = commentReplyRepository;
+        this.userBlockRepository = userBlockRepository;
     }
 
     @GetMapping("/{id}/profile")
@@ -67,7 +71,15 @@ public class PublicProfileController {
                 ? userRepository.findByEmail(userDetails.getUsername()).orElse(null)
                 : null;
 
+        // ── Bloqueo ────────────────────────────────────────────
+        boolean bloqueadoPorMi = me != null &&
+                userBlockRepository.existsByBlockerIdAndBlockedId(me.getId(), target.getId());
+        boolean meBloqueó = me != null &&
+                userBlockRepository.existsByBlockerIdAndBlockedId(target.getId(), me.getId());
+
         PublicProfileDto dto = new PublicProfileDto();
+        dto.setBloqueado(bloqueadoPorMi || meBloqueó);
+        dto.setBloqueadoPorMi(bloqueadoPorMi);
 
         // ── Identidad ──────────────────────────────────────────
         dto.setId(target.getId());
@@ -264,7 +276,10 @@ public class PublicProfileController {
     // GET /api/users/{id}/seguidores
     @GetMapping("/{id}/seguidores")
     public ResponseEntity<?> getSeguidores(@PathVariable Long id) {
-        List<UserFollow> follows = followRepository.findFollowersByUserId(id);
+        List<UserFollow> follows = followRepository.findFollowersByUserId(id)
+                .stream()
+                .filter(f -> "ACCEPTED".equals(f.getStatus()))
+                .toList();
         List<java.util.Map<String, Object>> lista = follows.stream().map(f -> {
             java.util.Map<String, Object> u = new java.util.HashMap<>();
             u.put("id", f.getFollower().getId());
@@ -279,7 +294,10 @@ public class PublicProfileController {
     // GET /api/users/{id}/seguidos
     @GetMapping("/{id}/seguidos")
     public ResponseEntity<?> getSeguidos(@PathVariable Long id) {
-        List<UserFollow> follows = followRepository.findFollowingByUserId(id);
+        List<UserFollow> follows = followRepository.findFollowingByUserId(id)
+                .stream()
+                .filter(f -> "ACCEPTED".equals(f.getStatus()))
+                .toList();
         List<java.util.Map<String, Object>> lista = follows.stream().map(f -> {
             java.util.Map<String, Object> u = new java.util.HashMap<>();
             u.put("id", f.getFollowing().getId());

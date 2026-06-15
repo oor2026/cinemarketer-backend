@@ -32,6 +32,8 @@ public class PublicProfileDto {
     private boolean esPrivado;
     private String followStatus;
     private Long followId;
+    private boolean bloqueado;
+    private boolean bloqueadoPorMi;
 
     @Data
     public static class VotacionDto {

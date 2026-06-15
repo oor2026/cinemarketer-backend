@@ -2,6 +2,7 @@ package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.FollowDto;
 import com.example.demo.application.dtos.UserProfileResponse;
+import com.example.demo.domain.follow.UserFollowRepository;
 import com.example.demo.domain.pointbatch.PointBatch;
 import com.example.demo.domain.pointbatch.PointBatchRepository;
 import com.example.demo.application.dtos.UserLevelWithAvatarDto;
@@ -15,9 +16,7 @@ import com.example.demo.domain.redemption.RedemptionRepository;
 import com.example.demo.domain.review.ReviewRepository;
 import com.example.demo.domain.sweepstake.SweepstakeEntryRepository;
 import com.example.demo.domain.sweepstake.WinnerRepository;
-import com.example.demo.domain.user.User;
-import com.example.demo.domain.user.UserLevel;
-import com.example.demo.domain.user.UserRepository;
+import com.example.demo.domain.user.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +26,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -47,6 +47,10 @@ public class UserController {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final UserDeletionService userDeletionService;
+    // Inyectar en constructor
+    private final UserBlockRepository userBlockRepository;
+    private final UserReportRepository userReportRepository;
+    private final UserFollowRepository userFollowRepository;
 
     // ==============================================
     // DEPENDENCIAS
@@ -69,7 +73,10 @@ public class UserController {
             UserService userService,
             LevelCalculatorService levelCalculatorService,
             AvatarService avatarService,
-            PointBatchRepository pointBatchRepository) {
+            PointBatchRepository pointBatchRepository,
+            UserBlockRepository userBlockRepository,
+            UserReportRepository userReportRepository,
+            UserFollowRepository userFollowRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.redemptionRepository = redemptionRepository;
@@ -83,6 +90,9 @@ public class UserController {
         this.levelCalculatorService = levelCalculatorService;
         this.pointBatchRepository = pointBatchRepository;
         this.avatarService = avatarService;
+        this.userBlockRepository = userBlockRepository;
+        this.userReportRepository = userReportRepository;
+        this.userFollowRepository = userFollowRepository;
     }
 
     @GetMapping("/me")
@@ -497,6 +507,15 @@ public class UserController {
         ));
     }
 
+    @PostMapping("/{id}/unblock")
+    @Transactional
+    public ResponseEntity<?> unblockUser(@PathVariable Long id) {
+        User me = getAuthenticatedUser();
+        userBlockRepository.findByBlockerIdAndBlockedId(me.getId(), id)
+                .ifPresent(userBlockRepository::delete);
+        return ResponseEntity.ok(Map.of("unblocked", true));
+    }
+
     private User getAuthenticatedUser() {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext()
                 .getAuthentication().getPrincipal();
@@ -537,5 +556,42 @@ public class UserController {
         boolean hasMore = pageResult.getContent().size() > size;
 
         return ResponseEntity.ok(Map.of("users", users, "hasMore", hasMore));
+    }
+
+    /**
+     * POST /api/users/{id}/block
+     * Bloquea un usuario y opcionalmente lo reporta
+     */
+    @PostMapping("/{id}/block")
+    @Transactional
+    public ResponseEntity<?> blockUser(@PathVariable Long id,
+                                       @RequestBody Map<String, Object> body) {
+        User me = getAuthenticatedUser();
+
+        if (me.getId().equals(id))
+            return ResponseEntity.badRequest().body(Map.of("error", "No podés bloquearte a vos mismo"));
+
+        User target = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        // Bloquear si no está ya bloqueado
+        if (!userBlockRepository.existsByBlockerIdAndBlockedId(me.getId(), id)) {
+            userBlockRepository.save(new UserBlock(me, target));
+        }
+
+        // Eliminar follows en ambas direcciones
+        userFollowRepository.findByFollowerIdAndFollowingId(me.getId(), id)
+                .ifPresent(userFollowRepository::delete);
+        userFollowRepository.findByFollowerIdAndFollowingId(id, me.getId())
+                .ifPresent(userFollowRepository::delete);
+
+        // Reportar si el usuario lo pidió
+        boolean reportar = Boolean.TRUE.equals(body.get("reportar"));
+        if (reportar && !userReportRepository.existsByReporterIdAndReportedId(me.getId(), id)) {
+            String reason = (String) body.getOrDefault("reason", "Reportado al bloquear");
+            userReportRepository.save(new UserReport(me, target, reason));
+        }
+
+        return ResponseEntity.ok(Map.of("blocked", true, "reported", reportar));
     }
 }
