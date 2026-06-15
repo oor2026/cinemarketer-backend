@@ -81,12 +81,24 @@ public class PublicProfileController {
         dto.setBioTexto(target.getBioTexto());
 
         // ── Stats ──────────────────────────────────────────────
-        dto.setSeguidores(followRepository.countByFollowingId(target.getId()));
-        dto.setSiguiendo(followRepository.countByFollowerId(target.getId()));
+        dto.setSeguidores(followRepository.countByFollowingIdAndStatus(target.getId(), "ACCEPTED"));
+        dto.setSiguiendo(followRepository.countByFollowerIdAndStatus(target.getId(), "ACCEPTED"));
         dto.setTotalVotaciones(reviewRepository.countByUserId(target.getId()));
         dto.setTotalComentarios(commentRepository.countByUserId(target.getId()));
         dto.setEsSeguido(me != null &&
                 followRepository.existsByFollowerIdAndFollowingId(me.getId(), target.getId()));
+
+        // Privacidad
+        dto.setEsPrivado(target.isPrivate());
+
+        // Estado del follow del usuario actual hacia el target
+        if (me != null) {
+            followRepository.findByFollowerAndFollowing(me.getId(), target.getId())
+                    .ifPresent(f -> {
+                        dto.setFollowStatus(f.getStatus());
+                        dto.setFollowId(f.getId());
+                    });
+        }
 
         // ── Últimas votaciones (máx 6) ─────────────────────────
         List<Review> reviews = reviewRepository

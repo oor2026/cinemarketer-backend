@@ -34,7 +34,7 @@ public class FollowController {
         this.notificationRepository = notificationRepository;
     }
 
-    // POST /api/follows/{userId} — seguir usuario
+    // POST /api/follows/{userId} — seguir usuario o enviar invitación
     @PostMapping("/{userId}")
     @Transactional
     public ResponseEntity<?> follow(@PathVariable Long userId,
@@ -46,29 +46,51 @@ public class FollowController {
         User target = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+        // Si ya existe un follow (cualquier estado), no hacer nada
         if (followRepository.existsByFollowerIdAndFollowingId(me.getId(), userId))
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "Ya seguís a este usuario"));
+                    .body(Map.of("error", "Ya seguís o tenés una invitación pendiente"));
 
-        followRepository.save(new UserFollow(me, target));
+        boolean esPrivado = target.isPrivate();
+        UserFollow follow = new UserFollow(me, target);
+        follow.setStatus(esPrivado ? "PENDING" : "ACCEPTED");
+        followRepository.save(follow);
 
-        // Upsert notificación: si ya existe una de este actor hacia este usuario, refrescarla
-        Notification notif = notificationRepository
-                .findTopByUserIdAndActorIdAndTypeOrderByCreatedAtDesc(target.getId(), me.getId(), NotificationType.NEW_FOLLOWER)
-                .orElse(new Notification());
-        notif.setUser(target);
-        notif.setActorName(me.getName());
-        notif.setActorId(me.getId());
-        notif.setType(NotificationType.NEW_FOLLOWER);
-        notif.setMessage(me.getName() + " comenzó a seguirte");
-        notif.setRead(false);
-        notif.setCreatedAt(java.time.LocalDateTime.now());
-        notificationRepository.save(notif);
+        if (esPrivado) {
+            // Notificación de solicitud de seguimiento
+            Notification notif = new Notification();
+            notif.setUser(target);
+            notif.setActorName(me.getName());
+            notif.setActorId(me.getId());
+            notif.setType(NotificationType.FOLLOW_REQUEST);
+            notif.setMessage(me.getName() + " quiere seguirte");
+            notif.setRead(false);
+            notif.setCreatedAt(java.time.LocalDateTime.now());
+            notificationRepository.save(notif);
 
-        return ResponseEntity.ok(Map.of(
-                "following", true,
-                "followersCount", followRepository.countByFollowingId(userId)
-        ));
+            return ResponseEntity.ok(Map.of(
+                    "status", "PENDING",
+                    "followersCount", followRepository.countByFollowingIdAndStatus(userId, "ACCEPTED")
+            ));
+        } else {
+            // Notificación de nuevo seguidor
+            Notification notif = notificationRepository
+                    .findTopByUserIdAndActorIdAndTypeOrderByCreatedAtDesc(target.getId(), me.getId(), NotificationType.NEW_FOLLOWER)
+                    .orElse(new Notification());
+            notif.setUser(target);
+            notif.setActorName(me.getName());
+            notif.setActorId(me.getId());
+            notif.setType(NotificationType.NEW_FOLLOWER);
+            notif.setMessage(me.getName() + " comenzó a seguirte");
+            notif.setRead(false);
+            notif.setCreatedAt(java.time.LocalDateTime.now());
+            notificationRepository.save(notif);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "ACCEPTED",
+                    "followersCount", followRepository.countByFollowingIdAndStatus(userId, "ACCEPTED")
+            ));
+        }
     }
 
     // DELETE /api/follows/{userId} — dejar de seguir
@@ -127,6 +149,86 @@ public class FollowController {
         ));
     }
 
+    // POST /api/follows/{followId}/accept — aceptar invitación
+    @PostMapping("/{followId}/accept")
+    @Transactional
+    public ResponseEntity<?> acceptFollow(@PathVariable Long followId,
+                                          @AuthenticationPrincipal UserDetails userDetails) {
+        User me = getUser(userDetails);
+
+        UserFollow follow = followRepository.findById(followId)
+                .orElseThrow(() -> new RuntimeException("Invitación no encontrada"));
+
+        if (!follow.getFollowing().getId().equals(me.getId()))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "No autorizado"));
+
+        follow.setStatus("ACCEPTED");
+        followRepository.save(follow);
+
+        // Actualizar la notificación FOLLOW_REQUEST original → convertirla en NEW_FOLLOWER
+        notificationRepository
+                .findTopByUserIdAndActorIdAndTypeOrderByCreatedAtDesc(
+                        me.getId(), follow.getFollower().getId(), NotificationType.FOLLOW_REQUEST)
+                .ifPresent(n -> {
+                    n.setType(NotificationType.NEW_FOLLOWER);
+                    n.setMessage(follow.getFollower().getName() + " comenzó a seguirte");
+                    notificationRepository.save(n);
+                });
+
+        // Notificar al solicitante que fue aceptado
+        Notification notif = new Notification();
+        notif.setUser(follow.getFollower());
+        notif.setActorName(me.getName());
+        notif.setActorId(me.getId());
+        notif.setType(NotificationType.FOLLOW_REQUEST_ACCEPTED);
+        notif.setMessage(me.getName() + " aceptó tu solicitud de seguimiento");
+        notif.setRead(false);
+        notif.setCreatedAt(java.time.LocalDateTime.now());
+        notificationRepository.save(notif);
+
+        return ResponseEntity.ok(Map.of("status", "ACCEPTED"));
+    }
+
+    // POST /api/follows/{followId}/reject — rechazar invitación
+    @PostMapping("/{followId}/reject")
+    @Transactional
+    public ResponseEntity<?> rejectFollow(@PathVariable Long followId,
+                                          @AuthenticationPrincipal UserDetails userDetails) {
+        User me = getUser(userDetails);
+
+        UserFollow follow = followRepository.findById(followId)
+                .orElseThrow(() -> new RuntimeException("Invitación no encontrada"));
+
+        if (!follow.getFollowing().getId().equals(me.getId()))
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "No autorizado"));
+
+        followRepository.delete(follow);
+
+        // Eliminar la notificación de FOLLOW_REQUEST asociada
+        notificationRepository
+                .findTopByUserIdAndActorIdAndTypeOrderByCreatedAtDesc(
+                        me.getId(), follow.getFollower().getId(), NotificationType.FOLLOW_REQUEST)
+                .ifPresent(notificationRepository::delete);
+
+        return ResponseEntity.ok(Map.of("status", "REJECTED"));
+    }
+
+    // PATCH /api/follows/privacy — cambiar visibilidad del perfil
+    @PatchMapping("/privacy")
+    @Transactional
+    public ResponseEntity<?> updatePrivacy(@RequestBody Map<String, String> body,
+                                           @AuthenticationPrincipal UserDetails userDetails) {
+        User me = getUser(userDetails);
+        String visibility = body.getOrDefault("visibility", "PUBLIC");
+        if (!visibility.equals("PUBLIC") && !visibility.equals("PRIVATE"))
+            return ResponseEntity.badRequest().body(Map.of("error", "Valor inválido"));
+
+        me.setProfileVisibility(visibility);
+        userRepository.save(me);
+
+        return ResponseEntity.ok(Map.of("visibility", visibility));
+    }
+
     // ── helpers ──────────────────────────────────────────────
     private User getUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
@@ -141,5 +243,19 @@ public class FollowController {
                 u.getLevel() != null ? u.getLevel().name() : "AMATEUR",
                 u.getLevel() != null ? u.getLevel().getEmoji() : "🎬"
         );
+    }
+
+    // GET /api/follows/pending/{followerId}
+    @GetMapping("/pending/{followerId}")
+    public ResponseEntity<?> getPendingFollow(@PathVariable Long followerId,
+                                              @AuthenticationPrincipal UserDetails userDetails) {
+        User me = getUser(userDetails);
+        return followRepository.findByFollowerAndFollowing(followerId, me.getId())
+                .filter(UserFollow::isPending)
+                .map(f -> ResponseEntity.ok(Map.of(
+                        "id", f.getId(),
+                        "actorName", f.getFollower().getName()
+                )))
+                .orElse(ResponseEntity.notFound().build());
     }
 }

@@ -143,6 +143,7 @@ public class UserController {
         response.setCanLevelUp(levelCalculatorService.canLevelUp(user));
         response.setPremium(user.isActivePremium());
         response.setPremiumUntil(user.getPremiumUntil());
+        response.setProfileVisibility(user.getProfileVisibility());
         response.setGoogleId(user.getGoogleId());
 
         com.example.demo.domain.user.UserLevel nextLvl = user.getLevel().getNextLevel();

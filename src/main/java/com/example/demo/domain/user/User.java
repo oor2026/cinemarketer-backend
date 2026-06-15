@@ -136,6 +136,13 @@ public class User {
     @Column(name = "bio_texto", length = 200)
     private String bioTexto;
 
+    @Column(name = "profile_visibility", length = 20, nullable = false)
+    private String profileVisibility = "PUBLIC";
+
+    public boolean isPrivate() {
+        return "PRIVATE".equals(this.profileVisibility);
+    }
+
     // ==============================================
     // MÉTODOS DE NEGOCIO (NO GETTERS/SETTERS)
     // ==============================================
