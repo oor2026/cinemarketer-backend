@@ -7,6 +7,7 @@ import com.example.demo.domain.comment.CommentReactionRepository;
 import com.example.demo.domain.comment.CommentReply;
 import com.example.demo.domain.comment.CommentReplyRepository;
 import com.example.demo.domain.comment.ReactionType;
+import com.example.demo.domain.follow.UserFollow;
 import com.example.demo.domain.follow.UserFollowRepository;
 import com.example.demo.domain.movie.Movie;
 import com.example.demo.domain.movie.MovieRepository;
@@ -246,5 +247,35 @@ public class PublicProfileController {
         if (semanas < 4)    return "hace " + semanas + " semanas";
         long meses = ChronoUnit.MONTHS.between(dt, LocalDateTime.now());
         return "hace " + meses + " meses";
+    }
+
+    // GET /api/users/{id}/seguidores
+    @GetMapping("/{id}/seguidores")
+    public ResponseEntity<?> getSeguidores(@PathVariable Long id) {
+        List<UserFollow> follows = followRepository.findFollowersByUserId(id);
+        List<java.util.Map<String, Object>> lista = follows.stream().map(f -> {
+            java.util.Map<String, Object> u = new java.util.HashMap<>();
+            u.put("id", f.getFollower().getId());
+            u.put("nombre", f.getFollower().getName());
+            u.put("avatarUrl", f.getFollower().getEffectiveAvatarUrl());
+            u.put("nivel", f.getFollower().getLevel() != null ? f.getFollower().getLevel().getDisplayName() : "Amateur");
+            return u;
+        }).toList();
+        return ResponseEntity.ok(lista);
+    }
+
+    // GET /api/users/{id}/seguidos
+    @GetMapping("/{id}/seguidos")
+    public ResponseEntity<?> getSeguidos(@PathVariable Long id) {
+        List<UserFollow> follows = followRepository.findFollowingByUserId(id);
+        List<java.util.Map<String, Object>> lista = follows.stream().map(f -> {
+            java.util.Map<String, Object> u = new java.util.HashMap<>();
+            u.put("id", f.getFollowing().getId());
+            u.put("nombre", f.getFollowing().getName());
+            u.put("avatarUrl", f.getFollowing().getEffectiveAvatarUrl());
+            u.put("nivel", f.getFollowing().getLevel() != null ? f.getFollowing().getLevel().getDisplayName() : "Amateur");
+            return u;
+        }).toList();
+        return ResponseEntity.ok(lista);
     }
 }
