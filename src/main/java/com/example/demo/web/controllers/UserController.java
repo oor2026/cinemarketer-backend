@@ -51,6 +51,8 @@ public class UserController {
     private final UserBlockRepository userBlockRepository;
     private final UserReportRepository userReportRepository;
     private final UserFollowRepository userFollowRepository;
+    private final com.example.demo.domain.recommendation.MovieRecommendationRepository recommendationRepository;
+    private final com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository;
 
     // ==============================================
     // DEPENDENCIAS
@@ -76,7 +78,7 @@ public class UserController {
             PointBatchRepository pointBatchRepository,
             UserBlockRepository userBlockRepository,
             UserReportRepository userReportRepository,
-            UserFollowRepository userFollowRepository) {
+            UserFollowRepository userFollowRepository, com.example.demo.domain.recommendation.MovieRecommendationRepository recommendationRepository, com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.redemptionRepository = redemptionRepository;
@@ -93,15 +95,20 @@ public class UserController {
         this.userBlockRepository = userBlockRepository;
         this.userReportRepository = userReportRepository;
         this.userFollowRepository = userFollowRepository;
+        this.recommendationRepository = recommendationRepository;
+        this.pointTransactionRepository = pointTransactionRepository;
     }
 
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getCurrentUser() {
         User user = getAuthenticatedUser();
 
-        long reviewsCount     = reviewRepository.countByUserId(user.getId());
-        long redemptionsCount = redemptionRepository.countByUserId(user.getId());
-        long commentsCount    = commentRepository.countCommentsByUserId(user.getId());
+        long reviewsCount          = reviewRepository.countByUserId(user.getId());
+        long redemptionsCount      = redemptionRepository.countByUserId(user.getId());
+        long commentsCount         = commentRepository.countCommentsByUserId(user.getId());
+        long recommendacionesCount = recommendationRepository.countBySenderId(user.getId());
+        long merecePuntosCount = pointTransactionRepository.countByUserIdAndAction(
+        user.getId(), com.example.demo.domain.point.PointAction.RECEIVE_MERECE_PUNTO);
 
         // Puntos próximos a vencer (lotes FREE con expiry <= 30 días)
         int expiringPts = 0;
@@ -130,6 +137,8 @@ public class UserController {
         response.setReviewsCount((int) reviewsCount);
         response.setRedemptionsCount((int) redemptionsCount);
         response.setCommentsCount((int) commentsCount);
+        response.setRecommendationsCount((int) recommendacionesCount);
+        response.setMerecePuntosCount((int) merecePuntosCount);
         response.setDni(user.getDni());
         response.setPhone(user.getPhone());
 
