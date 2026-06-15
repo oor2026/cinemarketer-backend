@@ -66,6 +66,8 @@ public class PublicProfileController {
         dto.setNivelEmoji(target.getLevel() != null ? target.getLevel().getEmoji() : "🟢");
         dto.setNivelDisplayName(target.getLevel() != null ? target.getLevel().getDisplayName() : "Amateur");
         dto.setMiembroDesde(formatMiembroDesde(target.getCreatedAt()));
+        dto.setBioTitulo(target.getBioTitulo());
+        dto.setBioTexto(target.getBioTexto());
 
         // ── Stats ──────────────────────────────────────────────
         dto.setSeguidores(followRepository.countByFollowingId(target.getId()));

@@ -21,6 +21,8 @@ public class PublicProfileDto {
     private long totalVotaciones;
     private long totalComentarios;
     private boolean esSeguido; // ¿el usuario logueado ya lo sigue?
+    private String bioTitulo;
+    private String bioTexto;
 
     // Actividad
     private List<VotacionDto> ultimasVotaciones;

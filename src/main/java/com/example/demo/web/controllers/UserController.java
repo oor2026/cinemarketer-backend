@@ -409,6 +409,44 @@ public class UserController {
         }
     }
 
+    /**
+     * Actualiza la biografía del perfil público
+     * PATCH /api/users/me/bio
+     */
+    @PatchMapping("/me/bio")
+    public ResponseEntity<?> updateBio(@RequestBody Map<String, String> body) {
+        try {
+            User user = getAuthenticatedUser();
+
+            String bioTitulo = body.getOrDefault("bioTitulo", "").trim();
+            String bioTexto  = body.getOrDefault("bioTexto", "").trim();
+
+            if (bioTitulo.length() > 50) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "El título no puede superar los 50 caracteres"));
+            }
+            if (bioTexto.length() > 180) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "La descripción no puede superar los 180 caracteres"));
+            }
+
+            user.setBioTitulo(bioTitulo.isEmpty() ? null : bioTitulo);
+            user.setBioTexto(bioTexto.isEmpty() ? null : bioTexto);
+            userRepository.save(user);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Biografía actualizada correctamente",
+                    "bioTitulo", bioTitulo,
+                    "bioTexto", bioTexto,
+                    "success", true
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Error al actualizar la biografía", "success", false));
+        }
+    }
+
     // ==============================================
     // ENDPOINTS PARA NIVEL
     // ==============================================
