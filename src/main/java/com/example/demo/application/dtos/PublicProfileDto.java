@@ -21,6 +21,8 @@ public class PublicProfileDto {
     private long totalVotaciones;
     private long totalComentarios;
     private boolean esSeguido; // ¿el usuario logueado ya lo sigue?
+    private String bioTitulo;
+    private String bioTexto;
 
     // Actividad
     private List<VotacionDto> ultimasVotaciones;
@@ -39,8 +41,12 @@ public class PublicProfileDto {
         private Long commentId;
         private Long movieId;
         private String movieTitle;
+        private String posterPath;
         private String contenido;
         private boolean spoiler;
         private String fechaRelativa;
+        private int bancoCount;
+        private int merecePuntoCount;
+        private int replyCount;
     }
 }

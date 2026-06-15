@@ -3,6 +3,10 @@ package com.example.demo.web.controllers;
 import com.example.demo.application.dtos.PublicProfileDto;
 import com.example.demo.domain.comment.Comment;
 import com.example.demo.domain.comment.CommentRepository;
+import com.example.demo.domain.comment.CommentReactionRepository;
+import com.example.demo.domain.comment.CommentReply;
+import com.example.demo.domain.comment.CommentReplyRepository;
+import com.example.demo.domain.comment.ReactionType;
 import com.example.demo.domain.follow.UserFollowRepository;
 import com.example.demo.domain.movie.Movie;
 import com.example.demo.domain.movie.MovieRepository;
@@ -31,17 +35,23 @@ public class PublicProfileController {
     private final ReviewRepository reviewRepository;
     private final CommentRepository commentRepository;
     private final MovieRepository movieRepository;
+    private final CommentReactionRepository commentReactionRepository;
+    private final CommentReplyRepository commentReplyRepository;
 
     public PublicProfileController(UserRepository userRepository,
                                    UserFollowRepository followRepository,
                                    ReviewRepository reviewRepository,
                                    CommentRepository commentRepository,
-                                   MovieRepository movieRepository) {
+                                   MovieRepository movieRepository,
+                                   CommentReactionRepository commentReactionRepository,
+                                   CommentReplyRepository commentReplyRepository) {
         this.userRepository = userRepository;
         this.followRepository = followRepository;
         this.reviewRepository = reviewRepository;
         this.commentRepository = commentRepository;
         this.movieRepository = movieRepository;
+        this.commentReactionRepository = commentReactionRepository;
+        this.commentReplyRepository = commentReplyRepository;
     }
 
     @GetMapping("/{id}/profile")
@@ -66,6 +76,8 @@ public class PublicProfileController {
         dto.setNivelEmoji(target.getLevel() != null ? target.getLevel().getEmoji() : "🟢");
         dto.setNivelDisplayName(target.getLevel() != null ? target.getLevel().getDisplayName() : "Amateur");
         dto.setMiembroDesde(formatMiembroDesde(target.getCreatedAt()));
+        dto.setBioTitulo(target.getBioTitulo());
+        dto.setBioTexto(target.getBioTexto());
 
         // ── Stats ──────────────────────────────────────────────
         dto.setSeguidores(followRepository.countByFollowingId(target.getId()));
@@ -107,12 +119,20 @@ public class PublicProfileController {
             cd.setFechaRelativa(formatRelativa(c.getCreatedAt()));
 
             String contenido = c.isSpoiler() ? "— Comentario con spoiler —" : c.getContent();
-            cd.setContenido(contenido.length() > 120
-                    ? contenido.substring(0, 120) + "..."
-                    : contenido);
+            cd.setContenido(contenido);
 
             Optional<Movie> movie = movieRepository.findByTmdbId(c.getMovieId());
-            movie.ifPresent(m -> cd.setMovieTitle(m.getTitle()));
+            movie.ifPresent(m -> {
+                cd.setMovieTitle(m.getTitle());
+                cd.setPosterPath(m.getPosterPath());
+            });
+
+            cd.setBancoCount((int) commentReactionRepository
+                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.BANCO));
+            cd.setMerecePuntoCount((int) commentReactionRepository
+                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.MERECE_PUNTO));
+            cd.setReplyCount((int) commentReplyRepository.countVisibleByCommentId(c.getId()));
+
             return cd;
         }).toList());
 
@@ -186,7 +206,15 @@ public class PublicProfileController {
             String contenido = c.isSpoiler() ? "— Comentario con spoiler —" : c.getContent();
             cd.setContenido(contenido.length() > 120 ? contenido.substring(0, 120) + "..." : contenido);
             Optional<Movie> movie = movieRepository.findByTmdbId(c.getMovieId());
-            movie.ifPresent(m -> cd.setMovieTitle(m.getTitle()));
+            movie.ifPresent(m -> {
+                cd.setMovieTitle(m.getTitle());
+                cd.setPosterPath(m.getPosterPath());
+            });
+            cd.setBancoCount((int) commentReactionRepository
+                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.BANCO));
+            cd.setMerecePuntoCount((int) commentReactionRepository
+                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.MERECE_PUNTO));
+            cd.setReplyCount((int) commentRepository.countByUserId(c.getId()));
             return cd;
         }).toList();
 

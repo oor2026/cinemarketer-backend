@@ -130,6 +130,12 @@ public class User {
     @Column(name = "banner_url")
     private String bannerUrl;
 
+    @Column(name = "bio_titulo", length = 50)
+    private String bioTitulo;
+
+    @Column(name = "bio_texto", length = 200)
+    private String bioTexto;
+
     // ==============================================
     // MÉTODOS DE NEGOCIO (NO GETTERS/SETTERS)
     // ==============================================
