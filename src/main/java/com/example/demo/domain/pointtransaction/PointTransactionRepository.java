@@ -85,4 +85,6 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
     Page<PointTransaction> findByUserIdAndTypeAndActionOrderByCreatedAtDesc(
             Long userId, PointTransactionType type,
             com.example.demo.domain.point.PointAction action, Pageable pageable);
+
+    long countByUserIdAndAction(Long userId, com.example.demo.domain.point.PointAction action);
 }

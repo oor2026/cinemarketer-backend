@@ -15,6 +15,8 @@ public interface MovieRecommendationRepository extends JpaRepository<MovieRecomm
 
     Optional<MovieRecommendation> findByIdAndReceiverId(Long id, Long receiverId);
 
+    long countBySenderId(Long senderId);
+
     // Usuarios que NO tienen ninguna interacción con una película
     // (ni voto, ni comentario, ni recomendación recibida)
     // excluye al sender

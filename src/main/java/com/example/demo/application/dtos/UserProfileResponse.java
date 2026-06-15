@@ -114,4 +114,10 @@ public class UserProfileResponse {
      * Visibilidad del perfil público: PUBLIC o PRIVATE
      */
     private String profileVisibility;
+
+    private int recommendationsCount;
+// + getter y setter
+
+    private int merecePuntosCount;
+// + getter y setter
 }
