@@ -128,6 +128,7 @@ public class FollowController {
         User me = getUser(userDetails);
         List<FollowDto> result = followRepository.findFollowersByUserId(me.getId())
                 .stream()
+                .filter(f -> "ACCEPTED".equals(f.getStatus()))
                 .map(f -> toDto(f.getFollower()))
                 .toList();
         return ResponseEntity.ok(result);
