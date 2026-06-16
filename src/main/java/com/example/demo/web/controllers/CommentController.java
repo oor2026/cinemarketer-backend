@@ -18,6 +18,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -102,6 +103,8 @@ public class CommentController {
         r.setHasGif(c.getHasGif() != null && c.getHasGif());
         r.setGifUrl(c.getGifUrl());
         r.setSpoiler(c.isSpoiler());
+        r.setEditedAt(c.getEditedAt());
+        r.setCanEdit(esPropio && c.getEditedAt() == null && c.getCreatedAt().plusMinutes(15).isAfter(LocalDateTime.now()));
         return r;
     }
 
@@ -431,7 +434,9 @@ public class CommentController {
                     esPropio, bancoCount, bancadoByMe,
                     rep.getModerationStatus().name(),
                     rep.getHasGif() != null && rep.getHasGif(),
-                    rep.getGifUrl());
+                    rep.getGifUrl(),
+                    rep.getEditedAt(),
+                    esPropio && rep.getEditedAt() == null && rep.getCreatedAt().plusMinutes(15).isAfter(LocalDateTime.now()));
         }).collect(Collectors.toList());
 
         return ResponseEntity.ok()
@@ -510,7 +515,9 @@ public class CommentController {
                 user.getEffectiveAvatarUrl(), true, 0L, false,
                 reply.getModerationStatus().name(),
                 reply.getHasGif() != null && reply.getHasGif(),
-                reply.getGifUrl());
+                reply.getGifUrl(),
+                null,
+                true);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -739,6 +746,110 @@ public class CommentController {
             spoilerAcceptedRepository.save(new SpoilerAccepted(id, user));
         }
         return ResponseEntity.ok(Map.of("accepted", true));
+    }
+
+    // PATCH /{commentId}/edit — editar comentario propio (hasta 15 min)
+    @PatchMapping("/{commentId}/edit")
+    @Transactional
+    public ResponseEntity<?> editarComentario(
+            @PathVariable Long commentId,
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User me = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Comentario no encontrado"));
+
+        // Solo el autor puede editar
+        if (!comment.getUser().getId().equals(me.getId())) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", "Solo podés editar tus propios comentarios"));
+        }
+
+        // Ventana de 15 minutos
+        LocalDateTime limite = comment.getCreatedAt().plusMinutes(15);
+        if (LocalDateTime.now().isAfter(limite)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "El tiempo para editar este comentario expiró"));
+        }
+
+        if (comment.getEditedAt() != null) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Este comentario ya fue editado"));
+        }
+
+        String nuevoContenido = body.get("content");
+        if (nuevoContenido == null || nuevoContenido.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "El contenido no puede estar vacío"));
+        }
+
+        // Verificar palabras prohibidas
+        if (bannedWordService.shouldReject(nuevoContenido.trim())) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "El comentario contiene palabras no permitidas"));
+        }
+
+        comment.setContent(nuevoContenido.trim());
+        comment.setEditedAt(LocalDateTime.now(java.time.ZoneId.of("America/Argentina/Buenos_Aires")));
+        commentRepository.save(comment);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "content", comment.getContent(),
+                "editedAt", comment.getEditedAt().toString()
+        ));
+    }
+
+    // PATCH /replies/{replyId}/edit — editar respuesta propia (hasta 15 min)
+    @PatchMapping("/replies/{replyId}/edit")
+    @Transactional
+    public ResponseEntity<?> editarRespuesta(
+            @PathVariable Long replyId,
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User me = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        CommentReply reply = commentReplyRepository.findById(replyId)
+                .orElseThrow(() -> new RuntimeException("Respuesta no encontrada"));
+
+        if (!reply.getUser().getId().equals(me.getId())) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("error", "Solo podés editar tus propias respuestas"));
+        }
+
+        if (LocalDateTime.now().isAfter(reply.getCreatedAt().plusMinutes(15))) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "El tiempo para editar esta respuesta expiró"));
+        }
+
+        if (reply.getEditedAt() != null) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Esta respuesta ya fue editada"));
+        }
+
+        String nuevoContenido = body.get("content");
+        if (nuevoContenido == null || nuevoContenido.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "El contenido no puede estar vacío"));
+        }
+
+        if (bannedWordService.shouldReject(nuevoContenido.trim())) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "El comentario contiene palabras no permitidas"));
+        }
+
+        reply.setContent(nuevoContenido.trim());
+        reply.setEditedAt(LocalDateTime.now(java.time.ZoneId.of("America/Argentina/Buenos_Aires")));
+        commentReplyRepository.save(reply);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "content", reply.getContent(),
+                "editedAt", reply.getEditedAt().toString()
+        ));
     }
 
     // ==========================================================================

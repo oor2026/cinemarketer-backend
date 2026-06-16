@@ -60,6 +60,9 @@ public class Comment {
     @Column(name = "spoiler", nullable = false)
     private boolean spoiler = false;
 
+    @Column(name = "edited_at")
+    private LocalDateTime editedAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
