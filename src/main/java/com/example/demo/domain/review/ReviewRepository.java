@@ -129,4 +129,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     long countByUserIdAndCreatedAtBetween(Long userId, LocalDateTime start, LocalDateTime end);
 
     long countByUserIdAndCommentIsNotNullAndCreatedAtBetween(Long userId, LocalDateTime start, LocalDateTime end);
+
+    // Películas únicas votadas por usuario (para insignias)
+    @Query("SELECT COUNT(DISTINCT r.targetId) FROM Review r WHERE r.user.id = :userId AND r.reviewType = 'MOVIE'")
+    long countDistinctMoviesVotedByUser(@Param("userId") Long userId);
+
 }

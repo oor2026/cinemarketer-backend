@@ -117,6 +117,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             "ORDER BY c.createdAt DESC")
     List<Comment> findPublicByUserId(@Param("userId") Long userId, Pageable pageable);
 
+    // Comentarios visibles en películas distintas
+    @Query("SELECT COUNT(DISTINCT c.movieId) FROM Comment c WHERE c.user.id = :userId AND c.moderationStatus = 'APPROVED'")
+    long countDistinctMoviesCommentedByUser(@Param("userId") Long userId);
+
     // ── Ocultamientos por usuario por película ────────────────────────────────
 
     // Cuenta cuántos comentarios ocultó el usuario sobre una película específica

@@ -95,4 +95,31 @@ public class NotificationService {
         n.setMovieTitle(movieTitle);
         notificationRepository.save(n);
     }
+
+    @Transactional
+    public void crearAscensoInsignia(User receptor,
+                                     com.example.demo.domain.user.UserLevel nivelAnterior,
+                                     com.example.demo.domain.user.UserLevel nivelNuevo) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.INSIGNIA_ASCENSO);
+        n.setMessage("🎉 ¡Felicitaciones! Completaste todos los desafíos y ahora sos "
+                + nivelNuevo.getDisplayName()
+                + ". Ingresá a Mi Cuenta para ver tu nueva insignia.");
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearPremioInsignia(User receptor,
+                                    com.example.demo.domain.user.UserLevel nivelNuevo,
+                                    int puntos) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.INSIGNIA_PREMIO);
+        n.setMessage("🎁 Por alcanzar el nivel " + nivelNuevo.getDisplayName()
+                + " te regalamos " + puntos + " puntos disponibles. ¡Seguí disfrutando Cinemarketer!");
+        notificationRepository.save(n);
+    }
 }
