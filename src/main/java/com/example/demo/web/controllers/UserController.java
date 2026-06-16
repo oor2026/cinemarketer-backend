@@ -141,6 +141,10 @@ public class UserController {
         response.setMerecePuntosCount((int) merecePuntosCount);
         response.setDni(user.getDni());
         response.setPhone(user.getPhone());
+        response.setBirthDate(user.getBirthDate());
+        response.setSexo(user.getSexo());
+        response.setProvincia(user.getProvincia());
+        response.setLocalidad(user.getLocalidad());
 
         // ==============================================
         // CAMPOS DE AVATAR Y NIVEL
@@ -200,6 +204,26 @@ public class UserController {
                 user.setVerificationToken(UUID.randomUUID().toString());
                 emailChanged = true;
             }
+        }
+
+        if (fields.containsKey("birthDate")) {
+            String bd = fields.get("birthDate");
+            user.setBirthDate(bd == null || bd.isBlank() ? null : java.time.LocalDate.parse(bd));
+        }
+
+        if (fields.containsKey("sexo")) {
+            String s = fields.get("sexo").trim();
+            user.setSexo(s.isEmpty() ? null : s);
+        }
+
+        if (fields.containsKey("provincia")) {
+            String p = fields.get("provincia").trim();
+            user.setProvincia(p.isEmpty() ? null : p);
+        }
+
+        if (fields.containsKey("localidad")) {
+            String l = fields.get("localidad").trim();
+            user.setLocalidad(l.isEmpty() ? null : l);
         }
 
         if (fields.containsKey("phone")) {

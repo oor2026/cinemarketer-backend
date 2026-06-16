@@ -139,6 +139,18 @@ public class User {
     @Column(name = "profile_visibility", length = 20, nullable = false)
     private String profileVisibility = "PUBLIC";
 
+    @Column(name = "birth_date")
+    private java.time.LocalDate birthDate;
+
+    @Column(name = "sexo", length = 1)
+    private String sexo;
+
+    @Column(name = "provincia", length = 100)
+    private String provincia;
+
+    @Column(name = "localidad", length = 100)
+    private String localidad;
+
     public boolean isPrivate() {
         return "PRIVATE".equals(this.profileVisibility);
     }

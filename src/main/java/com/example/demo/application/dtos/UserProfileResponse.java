@@ -47,6 +47,10 @@ public class UserProfileResponse {
     private String dni;
     private String phone;
     private String avatarName;
+    private java.time.LocalDate birthDate;
+    private String sexo;
+    private String provincia;
+    private String localidad;
 
     /**
      * URL del avatar actual del usuario
