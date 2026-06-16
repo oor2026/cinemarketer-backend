@@ -43,6 +43,9 @@ public class CommentReply {
     @Column(name = "gif_url", length = 500)
     private String gifUrl;
 
+    @Column(name = "edited_at")
+    private LocalDateTime editedAt;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

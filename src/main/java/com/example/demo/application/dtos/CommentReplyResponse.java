@@ -19,4 +19,6 @@ public class CommentReplyResponse {
     private String moderationStatus;
     private Boolean hasGif;
     private String gifUrl;
+    private LocalDateTime editedAt;
+    private boolean canEdit;
 }
