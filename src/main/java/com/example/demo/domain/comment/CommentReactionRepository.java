@@ -57,4 +57,17 @@ public interface CommentReactionRepository extends JpaRepository<CommentReaction
     java.util.List<CommentReaction> findAllByCommentIdAndType(
             @Param("commentId") Long commentId,
             @Param("type") ReactionType type);
+
+    // "Te banco" recibidos de usuarios DIFERENTES (para insignias)
+    @Query("SELECT COUNT(DISTINCT r.user.id) FROM CommentReaction r " +
+            "JOIN r.comment c WHERE c.user.id = :userId " +
+            "AND r.type = 'BANCO' AND r.active = true AND r.reply IS NULL " +
+            "AND r.user.id != :userId")
+    long countDistinctBancoGiversForUser(@Param("userId") Long userId);
+
+    // "Merecés un punto" recibidos (para insignias)
+    @Query("SELECT COUNT(r) FROM CommentReaction r " +
+            "JOIN r.comment c WHERE c.user.id = :userId " +
+            "AND r.type = 'MERECE_PUNTO' AND r.active = true")
+    long countMerecePuntosRecibidosByUser(@Param("userId") Long userId);
 }

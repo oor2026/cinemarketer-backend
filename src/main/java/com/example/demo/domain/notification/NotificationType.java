@@ -13,5 +13,7 @@ public enum NotificationType {
     DRAW_WINNER,            // Ganaste un sorteo premium
     POINTS_RELEASED,        // Liberación mensual de puntos
     PREMIUM_EXPIRING_SOON,  // Tu suscripción vence en 7 días
-    PREMIUM_EXPIRING_TOMORROW // Tu suscripción vence mañana
+    PREMIUM_EXPIRING_TOMORROW, // Tu suscripción vence mañana
+    INSIGNIA_ASCENSO,          // El usuario subió de insignia
+    INSIGNIA_PREMIO            // Puntos de regalo por ascenso de insignia
 }

@@ -8,14 +8,9 @@ package com.example.demo.domain.user;
 public enum UserLevel {
 
     AMATEUR("Amateur", "🟢", 0),
-    COLABORADOR("Colaborador", "🔵", 20000),
-    CRITICO("Crítico", "🟣", 40000),
-
-    /**
-     * Solo asignable automáticamente al alcanzar 60.000 pts canjeados,
-     * o manualmente por admin.
-     */
-    JURADO_EXPERTO("Jurado Experto", "🏆", 60000);
+    COLABORADOR("Colaborador", "🔵", 2000),
+    CRITICO("Crítico", "🟣", 2000),
+    JURADO_EXPERTO("Jurado Experto", "🏆", 10000);
 
     private final String displayName;
     private final String emoji;
