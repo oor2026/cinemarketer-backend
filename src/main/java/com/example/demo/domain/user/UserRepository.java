@@ -245,4 +245,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u WHERE u.id IN (SELECT ub.blocked.id FROM UserBlock ub)")
     Page<User> findUsersWithBlocks(Pageable pageable);
+
+    @Query("SELECT u FROM User u WHERE u.id IN (SELECT ur.reported.id FROM UserReport ur)")
+    Page<User> findUsersWithReports(Pageable pageable);
 }

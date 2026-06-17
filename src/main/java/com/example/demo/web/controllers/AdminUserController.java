@@ -51,6 +51,7 @@ public class AdminUserController {
     private final SupportMessageRepository messageRepository;
     private final UserSubscriptionRepository subscriptionRepository;
     private final UserBlockRepository userBlockRepository;
+    private final UserReportRepository userReportRepository;
 
     public AdminUserController(
             UserRepository userRepository,
@@ -62,7 +63,7 @@ public class AdminUserController {
             SupportTicketRepository ticketRepository,
             SupportMessageRepository messageRepository,
             UserSubscriptionRepository subscriptionRepository,
-            EmailService emailService, UserBlockRepository userBlockRepository) {
+            EmailService emailService, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.redemptionRepository = redemptionRepository;
@@ -74,6 +75,7 @@ public class AdminUserController {
         this.subscriptionRepository = subscriptionRepository;
         this.emailService = emailService;
         this.userBlockRepository = userBlockRepository;
+        this.userReportRepository = userReportRepository;
     }
 
     @GetMapping
@@ -95,6 +97,8 @@ public class AdminUserController {
                 case "suspendidos" -> userRepository.findBySuspendedTrue(
                         PageRequest.of(page, size, Sort.by("createdAt").descending()));
                 case "bloqueados"  -> userRepository.findUsersWithBlocks(
+                        PageRequest.of(page, size, Sort.by("createdAt").descending()));
+                case "reportados"  -> userRepository.findUsersWithReports(
                         PageRequest.of(page, size, Sort.by("createdAt").descending()));
                 default            -> userRepository.findAll(
                         PageRequest.of(page, size, Sort.by("createdAt").descending()));
@@ -392,6 +396,7 @@ public class AdminUserController {
         long suspended = userRepository.countBySuspended(true);
         long active = total - suspended;
         long blocked = userBlockRepository.countDistinctBlockedId();
+        long reported = userReportRepository.countDistinctReportedId();
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", total);
@@ -399,6 +404,7 @@ public class AdminUserController {
         stats.put("suspended", suspended);
         stats.put("verified", userRepository.countByEmailVerified(true));
         stats.put("blocked", blocked);
+        stats.put("reported", reported);
 
         return ResponseEntity.ok(stats);
     }
@@ -425,6 +431,7 @@ public class AdminUserController {
         // 🔧 CORREGIDO: usar isEmailVerified() en lugar de getEmailVerified()
         dto.setEmailVerified(user.isEmailVerified());
         dto.setBlockedByCount((int) userBlockRepository.countByBlockedId(user.getId()));
+        dto.setReportedByCount((int) userReportRepository.countByReportedId(user.getId()));
         return dto;
     }
 
@@ -440,5 +447,19 @@ public class AdminUserController {
             return userRepository.findByEmail(email).orElse(null);
         }
         return null;
+    }
+
+    @GetMapping("/{id}/reporters")
+    public ResponseEntity<?> getReporters(@PathVariable Long id) {
+        List<UserReport> reports = userReportRepository.findByReportedId(id);
+        List<Map<String, Object>> result = reports.stream().map(r -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("reporterId", r.getReporter().getId());
+            m.put("reporterName", r.getReporter().getName());
+            m.put("reporterEmail", r.getReporter().getEmail());
+            m.put("reportedAt", r.getCreatedAt());
+            return m;
+        }).toList();
+        return ResponseEntity.ok(result);
     }
 }
