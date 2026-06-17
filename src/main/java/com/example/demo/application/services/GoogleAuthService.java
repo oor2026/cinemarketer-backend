@@ -73,8 +73,12 @@ public class GoogleAuthService {
             // 3b. Usuario existente — vincular googleId si no lo tenía
             if (user.getGoogleId() == null) {
                 user.setGoogleId(googleId);
-                userRepository.save(user);
             }
+            // Siempre marcar email como verificado si entra por Google
+            if (!user.isEmailVerified()) {
+                user.setEmailVerified(true);
+            }
+            userRepository.save(user);
             // Verificar suspensión
             if (user.isSuspended()) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
