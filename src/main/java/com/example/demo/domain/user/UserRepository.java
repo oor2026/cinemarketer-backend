@@ -242,4 +242,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByNameContainingIgnoreCaseAndActiveTrue(String name);
 
     Page<User> findByNameContainingIgnoreCaseAndActiveTrue(String name, Pageable pageable);
+
+    @Query("SELECT u FROM User u WHERE u.id IN (SELECT ub.blocked.id FROM UserBlock ub)")
+    Page<User> findUsersWithBlocks(Pageable pageable);
 }

@@ -25,4 +25,5 @@ public class AdminUserDto {
     private LocalDateTime createdAt;
     private LocalDateTime lastLoginAt;
     private boolean emailVerified;
+    private int blockedByCount;
 }
