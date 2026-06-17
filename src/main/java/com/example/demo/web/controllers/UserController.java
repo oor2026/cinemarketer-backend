@@ -627,4 +627,26 @@ public class UserController {
 
         return ResponseEntity.ok(Map.of("blocked", true, "reported", reportar));
     }
+
+    /**
+     * GET /api/users/me/blocked
+     * Devuelve la lista de usuarios bloqueados por el usuario autenticado
+     */
+    @GetMapping("/me/blocked")
+    public ResponseEntity<?> getBlockedUsers() {
+        User me = getAuthenticatedUser();
+        List<Map<String, Object>> bloqueados = userBlockRepository
+                .findByBlockerId(me.getId())
+                .stream()
+                .map(block -> {
+                    User blocked = block.getBlocked();
+                    Map<String, Object> dto = new java.util.HashMap<>();
+                    dto.put("id", blocked.getId());
+                    dto.put("name", blocked.getName());
+                    dto.put("avatarUrl", blocked.getEffectiveAvatarUrl());
+                    return dto;
+                })
+                .toList();
+        return ResponseEntity.ok(bloqueados);
+    }
 }
