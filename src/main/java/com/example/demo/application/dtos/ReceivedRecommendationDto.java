@@ -14,6 +14,7 @@ public class ReceivedRecommendationDto {
     private Long movieId;
     private String movieTitle;
     private String moviePosterPath;
+    private String movieOverview;
     private String contextType;
     private String status;
     private LocalDateTime seenAt;

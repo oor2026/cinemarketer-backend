@@ -81,6 +81,7 @@ public class RecommendationController {
             if (tmdb != null) {
                 rec.setMovieTitle(tmdb.getTitle());
                 rec.setMoviePosterPath(tmdb.getPosterPath());
+                rec.setMovieOverview(tmdb.getOverview());
             }
         } catch(Exception ignored) {}
         rec.setContextType(req.getContextType());
@@ -152,6 +153,7 @@ public class RecommendationController {
                         r.getMovieId(),
                         r.getMovieTitle() != null ? r.getMovieTitle() : resolverTitulo(r.getMovieId()),
                         r.getMoviePosterPath() != null ? r.getMoviePosterPath() : resolverPoster(r.getMovieId()),
+                        r.getMovieOverview(),
                         r.getContextType(),
                         r.getStatus(),
                         r.getSeenAt(),

@@ -55,4 +55,7 @@ public class MovieRecommendation {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
     }
+
+    @Column(name = "movie_overview", columnDefinition = "TEXT")
+    private String movieOverview;
 }
