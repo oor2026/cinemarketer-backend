@@ -11,10 +11,8 @@ import com.example.demo.domain.support.SupportMessageRepository;
 import com.example.demo.domain.support.SupportTicket;
 import com.example.demo.domain.support.SupportTicketRepository;
 import com.example.demo.domain.subscription.UserSubscriptionRepository;
-import com.example.demo.domain.user.User;
-import com.example.demo.domain.user.UserRepository;
+import com.example.demo.domain.user.*;
 import com.example.demo.application.services.EmailService;
-import com.example.demo.domain.user.UserRole;
 import com.example.demo.application.dtos.AdminUserDetailDto;
 import com.example.demo.domain.review.ReviewRepository;
 import java.util.stream.Collectors;
@@ -52,6 +50,7 @@ public class AdminUserController {
     private final SupportTicketRepository ticketRepository;
     private final SupportMessageRepository messageRepository;
     private final UserSubscriptionRepository subscriptionRepository;
+    private final UserBlockRepository userBlockRepository;
 
     public AdminUserController(
             UserRepository userRepository,
@@ -63,7 +62,7 @@ public class AdminUserController {
             SupportTicketRepository ticketRepository,
             SupportMessageRepository messageRepository,
             UserSubscriptionRepository subscriptionRepository,
-            EmailService emailService) {
+            EmailService emailService, UserBlockRepository userBlockRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.redemptionRepository = redemptionRepository;
@@ -74,6 +73,7 @@ public class AdminUserController {
         this.messageRepository = messageRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.emailService = emailService;
+        this.userBlockRepository = userBlockRepository;
     }
 
     @GetMapping
@@ -93,6 +93,8 @@ public class AdminUserController {
                 case "activos"     -> userRepository.findBySuspendedFalseAndActiveTrue(
                         PageRequest.of(page, size, Sort.by("createdAt").descending()));
                 case "suspendidos" -> userRepository.findBySuspendedTrue(
+                        PageRequest.of(page, size, Sort.by("createdAt").descending()));
+                case "bloqueados"  -> userRepository.findUsersWithBlocks(
                         PageRequest.of(page, size, Sort.by("createdAt").descending()));
                 default            -> userRepository.findAll(
                         PageRequest.of(page, size, Sort.by("createdAt").descending()));
@@ -345,17 +347,58 @@ public class AdminUserController {
         return ResponseEntity.ok(dto);
     }
 
+    /**
+     * GET /admin/users/{id}/blockers
+     * Lista los usuarios que bloquearon a este usuario
+     */
+    @GetMapping("/{id}/blockers")
+    public ResponseEntity<?> getBlockers(@PathVariable Long id) {
+        List<UserBlock> blocks = userBlockRepository.findByBlockedId(id);
+        List<Map<String, Object>> result = blocks.stream().map(b -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("blockId", b.getId());
+            m.put("blockerId", b.getBlocker().getId());
+            m.put("blockerName", b.getBlocker().getName());
+            m.put("blockerEmail", b.getBlocker().getEmail());
+            m.put("blockedAt", b.getCreatedAt());
+            return m;
+        }).toList();
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * DELETE /admin/users/{id}/blocks
+     * Elimina bloqueos seleccionados (por blockerId)
+     */
+    @DeleteMapping("/{id}/blocks")
+    @Transactional
+    public ResponseEntity<?> removeBlocks(
+            @PathVariable Long id,
+            @RequestBody Map<String, List<Long>> body) {
+        List<Long> blockerIds = body.get("blockerIds");
+        if (blockerIds == null || blockerIds.isEmpty())
+            return ResponseEntity.badRequest().body(Map.of("error", "No se especificaron bloqueantes"));
+
+        for (Long blockerId : blockerIds) {
+            userBlockRepository.findByBlockerIdAndBlockedId(blockerId, id)
+                    .ifPresent(userBlockRepository::delete);
+        }
+        return ResponseEntity.ok(Map.of("desbloqueados", blockerIds.size()));
+    }
+
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
         long total = userRepository.count();
         long suspended = userRepository.countBySuspended(true);
         long active = total - suspended;
+        long blocked = userBlockRepository.countDistinctBlockedId();
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", total);
         stats.put("active", active);
         stats.put("suspended", suspended);
         stats.put("verified", userRepository.countByEmailVerified(true));
+        stats.put("blocked", blocked);
 
         return ResponseEntity.ok(stats);
     }
@@ -381,6 +424,7 @@ public class AdminUserController {
         dto.setLastLoginAt(user.getLastLoginAt());
         // 🔧 CORREGIDO: usar isEmailVerified() en lugar de getEmailVerified()
         dto.setEmailVerified(user.isEmailVerified());
+        dto.setBlockedByCount((int) userBlockRepository.countByBlockedId(user.getId()));
         return dto;
     }
 
