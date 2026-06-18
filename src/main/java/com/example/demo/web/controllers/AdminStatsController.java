@@ -3,6 +3,7 @@ package com.example.demo.web.controllers;
 import com.example.demo.application.dtos.*;
 import com.example.demo.domain.comment.CommentRepository;
 import com.example.demo.domain.pointtransaction.PointTransactionRepository;
+import com.example.demo.domain.recommendation.MovieRecommendationRepository;
 import com.example.demo.domain.redemption.RedemptionRepository;
 import com.example.demo.domain.redemption.RedemptionStatus;
 import com.example.demo.domain.review.ReviewRepository;
@@ -43,6 +44,7 @@ public class AdminStatsController {
     private final UserSubscriptionRepository subscriptionRepository;
     private final UserBlockRepository userBlockRepository;
     private final UserReportRepository userReportRepository;
+    private final MovieRecommendationRepository recommendationRepository;
 
     public AdminStatsController(
             UserRepository userRepository,
@@ -53,7 +55,7 @@ public class AdminStatsController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository supportTicketRepository,
             PremiumRewardRepository premiumRewardRepository,
-            UserSubscriptionRepository subscriptionRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository) {
+            UserSubscriptionRepository subscriptionRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.commentRepository = commentRepository;
@@ -65,6 +67,7 @@ public class AdminStatsController {
         this.subscriptionRepository = subscriptionRepository;
         this.userBlockRepository = userBlockRepository;
         this.userReportRepository = userReportRepository;
+        this.recommendationRepository = recommendationRepository;
     }
 
     @GetMapping
@@ -115,6 +118,7 @@ public class AdminStatsController {
         subscriptionStats.setNuevasSuscripciones(subscriptionRepository.countByCreatedAtBetween(start, end));
         subscriptionStats.setUsuariosSuscriptos(subscriptionRepository.countDistinctActiveUsers());
         response.setSubscriptions(subscriptionStats);
+        response.setRecommendations(calculateRecommendationStats());
         return ResponseEntity.ok(response);
     }
 
@@ -367,6 +371,45 @@ public class AdminStatsController {
             }
         }
         stats.setHourDistribution(hourDist);
+
+        return stats;
+    }
+
+    private RecommendationStatsDto calculateRecommendationStats() {
+        RecommendationStatsDto stats = new RecommendationStatsDto();
+
+        long total = recommendationRepository.count();
+        long vistas = recommendationRepository.countBySeenAtIsNotNull();
+        long calificadas = recommendationRepository.countByRatingIsNotNull();
+        long conContexto = recommendationRepository.countByContextTypeIsNotNull();
+
+        stats.setTotalEnviadas(total);
+        stats.setTotalVistas(vistas);
+        stats.setTasaVisualizacion(total > 0 ? (double) vistas / total * 100 : 0);
+        stats.setTotalCalificadas(calificadas);
+        stats.setTasaCalificacion(vistas > 0 ? (double) calificadas / vistas * 100 : 0);
+        stats.setTotalConContexto(conContexto);
+        stats.setTasaContexto(total > 0 ? (double) conContexto / total * 100 : 0);
+
+        // Top 5 películas
+        List<Object[]> topPeliculas = recommendationRepository
+                .findTopMoviesByRecommendations(PageRequest.of(0, 5));
+        stats.setTopPeliculas(topPeliculas.stream().map(row -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("titulo", row[0]);
+            m.put("total", row[1]);
+            return m;
+        }).toList());
+
+        // Top 5 contextos
+        List<Object[]> topContextos = recommendationRepository
+                .findTopContextTypes(PageRequest.of(0, 5));
+        stats.setTopContextos(topContextos.stream().map(row -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("contexto", row[0]);
+            m.put("total", row[1]);
+            return m;
+        }).toList());
 
         return stats;
     }
