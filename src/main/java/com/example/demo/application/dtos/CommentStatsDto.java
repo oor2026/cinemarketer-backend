@@ -15,4 +15,9 @@ public class CommentStatsDto {
     private double growth;
     private List<Map<String, Object>> topMovies;
     private List<Map<String, Object>> topUsers;
+    private long totalReplies;
+    private long gifsEnComentarios;
+    private long gifsEnRespuestas;
+    private double tasaGifComentarios;
+    private double tasaGifRespuestas;
 }

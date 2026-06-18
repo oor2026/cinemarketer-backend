@@ -45,4 +45,6 @@ public interface CommentReplyRepository extends JpaRepository<CommentReply, Long
     @Query("SELECT r FROM CommentReply r WHERE r.moderationStatus IN ('REMOVED', 'DISMISSED') " +
             "ORDER BY r.createdAt DESC")
     List<CommentReply> findResolved();
+
+    long countByHasGifTrue();
 }
