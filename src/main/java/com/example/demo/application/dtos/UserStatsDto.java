@@ -15,6 +15,8 @@ public class UserStatsDto {
     private long newUsers;
     private long usersWithPoints;
     private long inactiveUsers;
+    private long blockedUsers;
+    private long reportedUsers;
     private double growth;
     private long newUsersPrevPeriod;
 }

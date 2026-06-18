@@ -1,5 +1,6 @@
 package com.example.demo.domain.recommendation;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,16 +11,23 @@ import java.util.Optional;
 public interface MovieRecommendationRepository extends JpaRepository<MovieRecommendation, Long> {
 
     List<MovieRecommendation> findByReceiverIdOrderByCreatedAtDesc(Long receiverId);
-
     boolean existsBySenderIdAndReceiverIdAndMovieId(Long senderId, Long receiverId, Long movieId);
-
     Optional<MovieRecommendation> findByIdAndReceiverId(Long id, Long receiverId);
-
     long countBySenderId(Long senderId);
+    long countBySeenAtIsNotNull();
+    long countByRatingIsNotNull();
+    long countByContextTypeIsNotNull();
 
-    // Usuarios que NO tienen ninguna interacción con una película
-    // (ni voto, ni comentario, ni recomendación recibida)
-    // excluye al sender
+    @Query("SELECT mr.movieTitle, COUNT(mr) as total FROM MovieRecommendation mr " +
+            "WHERE mr.movieTitle IS NOT NULL " +
+            "GROUP BY mr.movieTitle ORDER BY total DESC")
+    List<Object[]> findTopMoviesByRecommendations(Pageable pageable);
+
+    @Query("SELECT mr.contextType, COUNT(mr) as total FROM MovieRecommendation mr " +
+            "WHERE mr.contextType IS NOT NULL " +
+            "GROUP BY mr.contextType ORDER BY total DESC")
+    List<Object[]> findTopContextTypes(Pageable pageable);
+
     @Query(value = """
         SELECT u.id, u.name, u.profile_image_url
         FROM users u
@@ -42,7 +50,6 @@ public interface MovieRecommendationRepository extends JpaRepository<MovieRecomm
                                                @Param("senderId") Long senderId,
                                                @Param("limit") int limit);
 
-    // Usuarios random excluyendo al sender
     @Query(value = """
         SELECT u.id, u.name, u.profile_image_url
         FROM users u

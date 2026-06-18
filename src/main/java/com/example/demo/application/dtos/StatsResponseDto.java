@@ -19,4 +19,5 @@ public class StatsResponseDto {
     private String period;
     private PremiumStatsDto premium;
     private SubscriptionStatsDto subscriptions;
+    private RecommendationStatsDto recommendations;
 }
