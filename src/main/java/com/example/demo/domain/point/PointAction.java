@@ -6,5 +6,7 @@ public enum PointAction {
     COMMENT_MOVIE,           // Comentar película         → 40 pts
     RECOMMEND_MOVIE,         // Recomendar película         → 25 pts
     REWARD_REDEMPTION,       // Canje de premio           → variable (gasto)
-    RECEIVE_MERECE_PUNTO    // Recibir ¡Merecés un punto! en comentario → 1 pt
+    RECEIVE_MERECE_PUNTO,    // Recibir ¡Merecés un punto! en comentario → 1 pt
+    REVERT_MERECE_PUNTO     // Reversión de ¡Merecés un punto!
+
 }

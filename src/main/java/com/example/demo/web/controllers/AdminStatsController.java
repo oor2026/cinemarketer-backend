@@ -299,6 +299,10 @@ public class AdminStatsController {
                 pointTransactionRepository.findTopActionsInPeriod(start, end, PageRequest.of(0, 5))
         ));
 
+        stats.setDistribucionPorAccion(sanitizeMapList(
+                pointTransactionRepository.findPointsDistributionByAction(start, end)
+        ));
+
         return stats;
     }
 
