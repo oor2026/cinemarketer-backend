@@ -20,6 +20,8 @@ import com.example.demo.domain.premium.PremiumRewardRepository;
 import com.example.demo.domain.premium.PremiumRewardType;
 import com.example.demo.domain.subscription.UserSubscriptionRepository;
 import com.example.demo.domain.subscription.SubscriptionStatus;
+import com.example.demo.domain.user.UserBlockRepository;
+import com.example.demo.domain.user.UserReportRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,6 +41,8 @@ public class AdminStatsController {
     private final SupportTicketRepository supportTicketRepository;
     private final PremiumRewardRepository premiumRewardRepository;
     private final UserSubscriptionRepository subscriptionRepository;
+    private final UserBlockRepository userBlockRepository;
+    private final UserReportRepository userReportRepository;
 
     public AdminStatsController(
             UserRepository userRepository,
@@ -49,7 +53,7 @@ public class AdminStatsController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository supportTicketRepository,
             PremiumRewardRepository premiumRewardRepository,
-            UserSubscriptionRepository subscriptionRepository) {
+            UserSubscriptionRepository subscriptionRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.commentRepository = commentRepository;
@@ -59,6 +63,8 @@ public class AdminStatsController {
         this.supportTicketRepository = supportTicketRepository;
         this.premiumRewardRepository = premiumRewardRepository;
         this.subscriptionRepository = subscriptionRepository;
+        this.userBlockRepository = userBlockRepository;
+        this.userReportRepository = userReportRepository;
     }
 
     @GetMapping
@@ -163,6 +169,8 @@ public class AdminStatsController {
         stats.setNewUsers(userRepository.countByCreatedAtBetween(start, end));
         stats.setUsersWithPoints(userRepository.countByAvailablePointsGreaterThan(0));
         stats.setInactiveUsers(calculateInactiveUsers());
+        stats.setBlockedUsers(userBlockRepository.countDistinctBlockedId());
+        stats.setReportedUsers(userReportRepository.countDistinctReportedId());
 
         long newUsersPrevPeriod = userRepository.countByCreatedAtBetween(prevStart, prevEnd);
         stats.setGrowth(calculateGrowth(stats.getNewUsers(), newUsersPrevPeriod));
