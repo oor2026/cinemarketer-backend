@@ -2,6 +2,10 @@ package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.AdminUserDto;
 import com.example.demo.application.dtos.AdminUserUpdateRequest;
+import com.example.demo.application.services.NotificationService;
+import com.example.demo.domain.point.PointAction;
+import com.example.demo.domain.pointtransaction.PointTransaction;
+import com.example.demo.domain.pointtransaction.PointTransactionType;
 import com.example.demo.domain.redemption.Redemption;
 import com.example.demo.domain.redemption.RedemptionRepository;
 import com.example.demo.domain.comment.CommentRepository;
@@ -52,6 +56,7 @@ public class AdminUserController {
     private final UserSubscriptionRepository subscriptionRepository;
     private final UserBlockRepository userBlockRepository;
     private final UserReportRepository userReportRepository;
+    private final NotificationService notificationService;
 
     public AdminUserController(
             UserRepository userRepository,
@@ -63,7 +68,7 @@ public class AdminUserController {
             SupportTicketRepository ticketRepository,
             SupportMessageRepository messageRepository,
             UserSubscriptionRepository subscriptionRepository,
-            EmailService emailService, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository) {
+            EmailService emailService, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, NotificationService notificationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.redemptionRepository = redemptionRepository;
@@ -76,6 +81,7 @@ public class AdminUserController {
         this.emailService = emailService;
         this.userBlockRepository = userBlockRepository;
         this.userReportRepository = userReportRepository;
+        this.notificationService = notificationService;
     }
 
     @GetMapping
@@ -461,5 +467,37 @@ public class AdminUserController {
             return m;
         }).toList();
         return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/{id}/grant-points")
+    @Transactional
+    public ResponseEntity<?> grantPoints(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        int points = (int) body.get("points");
+        String type = (String) body.get("type");
+
+        if ("acumulados".equals(type)) {
+            user.setAccumulatedPoints(user.getAccumulatedPoints() + points);
+        } else {
+            user.setAvailablePoints(user.getAvailablePoints() + points);
+        }
+
+        userRepository.save(user);
+
+        PointTransaction tx = new PointTransaction();
+        tx.setUser(user);
+        tx.setType(PointTransactionType.EARNED);
+        tx.setAction(PointAction.ADMIN_GRANT);
+        tx.setPoints(points);
+        tx.setReferenceTitle("Regalo de Cinemarketer");
+        pointTransactionRepository.save(tx);
+
+        notificationService.crearAdminGrantPoints(user, points, type);
+        return ResponseEntity.ok(Map.of("success", true, "points", points, "type", type));
     }
 }

@@ -15,5 +15,6 @@ public enum NotificationType {
     PREMIUM_EXPIRING_SOON,  // Tu suscripción vence en 7 días
     PREMIUM_EXPIRING_TOMORROW, // Tu suscripción vence mañana
     INSIGNIA_ASCENSO,          // El usuario subió de insignia
-    INSIGNIA_PREMIO            // Puntos de regalo por ascenso de insignia
+    INSIGNIA_PREMIO,            // Puntos de regalo por ascenso de insignia
+    ADMIN_GRANT_POINTS         // Admin otorgó puntos manualmente
 }
