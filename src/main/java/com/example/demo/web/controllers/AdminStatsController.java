@@ -1,6 +1,7 @@
 package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.*;
+import com.example.demo.domain.comment.CommentReplyRepository;
 import com.example.demo.domain.comment.CommentRepository;
 import com.example.demo.domain.pointtransaction.PointTransactionRepository;
 import com.example.demo.domain.recommendation.MovieRecommendationRepository;
@@ -45,6 +46,7 @@ public class AdminStatsController {
     private final UserBlockRepository userBlockRepository;
     private final UserReportRepository userReportRepository;
     private final MovieRecommendationRepository recommendationRepository;
+    private final CommentReplyRepository commentReplyRepository;
 
     public AdminStatsController(
             UserRepository userRepository,
@@ -55,7 +57,7 @@ public class AdminStatsController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository supportTicketRepository,
             PremiumRewardRepository premiumRewardRepository,
-            UserSubscriptionRepository subscriptionRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository) {
+            UserSubscriptionRepository subscriptionRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, CommentReplyRepository commentReplyRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.commentRepository = commentRepository;
@@ -68,6 +70,7 @@ public class AdminStatsController {
         this.userBlockRepository = userBlockRepository;
         this.userReportRepository = userReportRepository;
         this.recommendationRepository = recommendationRepository;
+        this.commentReplyRepository = commentReplyRepository;
     }
 
     @GetMapping
@@ -229,15 +232,26 @@ public class AdminStatsController {
         long days = java.time.Duration.between(start, end).toDays();
         stats.setCommentsPerDay(days > 0 ? (double) totalComments / days : totalComments);
 
-        // Top películas más comentadas - SANITIZADO
         stats.setTopMovies(sanitizeMapList(
                 commentRepository.findTopMoviesByComments(start, end, PageRequest.of(0, 5))
         ));
 
-        // Top usuarios que más comentan - SANITIZADO
         stats.setTopUsers(sanitizeMapList(
                 commentRepository.findTopUsersByComments(start, end, PageRequest.of(0, 5))
         ));
+
+        long totalGifsComentarios = commentRepository.countByHasGifTrue();
+        long totalGifsRespuestas  = commentReplyRepository.countByHasGifTrue();
+        long totalRespuestas      = commentReplyRepository.count();
+
+        stats.setTotalReplies(totalRespuestas);
+
+        stats.setGifsEnComentarios(totalGifsComentarios);
+        stats.setGifsEnRespuestas(totalGifsRespuestas);
+        stats.setTasaGifComentarios(totalComments > 0 ?
+                (double) totalGifsComentarios / commentRepository.count() * 100 : 0);
+        stats.setTasaGifRespuestas(totalRespuestas > 0 ?
+                (double) totalGifsRespuestas / totalRespuestas * 100 : 0);
 
         return stats;
     }
@@ -283,6 +297,10 @@ public class AdminStatsController {
         // Acciones más puntuadas - SANITIZADO
         stats.setTopActions(sanitizeMapList(
                 pointTransactionRepository.findTopActionsInPeriod(start, end, PageRequest.of(0, 5))
+        ));
+
+        stats.setDistribucionPorAccion(sanitizeMapList(
+                pointTransactionRepository.findPointsDistributionByAction(start, end)
         ));
 
         return stats;

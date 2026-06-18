@@ -14,4 +14,5 @@ public class PointStatsDto {
     private long totalSpent;
     private double averagePerUser;
     private List<Map<String, Object>> topActions;
+    private List<Map<String, Object>> distribucionPorAccion;
 }

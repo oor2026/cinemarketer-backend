@@ -122,4 +122,15 @@ public class NotificationService {
                 + " te regalamos " + puntos + " puntos disponibles. ¡Seguí disfrutando Cinemarketer!");
         notificationRepository.save(n);
     }
+
+    @Transactional
+    public void crearAdminGrantPoints(User receptor, int puntos, String tipo) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.ADMIN_GRANT_POINTS);
+        String tipoLabel = "acumulados".equals(tipo) ? "acumulados" : "disponibles";
+        n.setMessage("¡Cinemarketer ha decidido otorgarte " + puntos + " puntos " + tipoLabel + "! ¡Disfrutálos!");
+        notificationRepository.save(n);
+    }
 }

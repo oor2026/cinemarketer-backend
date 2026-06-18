@@ -130,4 +130,10 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             "AND c.moderationStatus = 'HIDDEN_BY_USER'")
     long countHiddenByUserAndMovie(@Param("userId") Long userId,
                                    @Param("movieId") Long movieId);
+
+    // GIFs en comentarios
+    long countByHasGifTrue();
+
+    @Query("SELECT COUNT(c) FROM Comment c WHERE c.hasGif = true AND c.createdAt BETWEEN :start AND :end")
+    long countGifsInPeriod(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }
