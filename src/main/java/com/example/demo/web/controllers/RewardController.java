@@ -120,6 +120,19 @@ public class RewardController {
         dto.setTicketsIncluded(r.getTicketsIncluded());
         dto.setIncludesSnack(r.getIncludesSnack());
 
+        // Entrega (comunes)
+        dto.setDeliveryMethod(r.getDeliveryMethod());
+        dto.setPickupPoint(r.getPickupPoint());
+        dto.setDeliveryCost(r.getDeliveryCost());
+
+        // Descuento extra
+        dto.setRedeemMethod(r.getRedeemMethod());
+
+        // Experiencia extra
+        dto.setRequiresConfirmation(r.getRequiresConfirmation());
+        dto.setTransferable(r.getTransferable());
+        dto.setOrganizer(r.getOrganizer());
+
         // Cargar imágenes
         var images = rewardImageRepository
                 .findByRewardIdAndRewardTypeOrderByPrimaryDesc(r.getId(), "COMMON");

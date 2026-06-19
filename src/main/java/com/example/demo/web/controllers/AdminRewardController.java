@@ -294,6 +294,17 @@ public class AdminRewardController {
         reward.setIncludesTransport(req.getIncludesTransport());
         reward.setRequirements(req.getRequirements());
         reward.setCompanionAllowed(req.getCompanionAllowed());
+        reward.setRequiresConfirmation(req.getRequiresConfirmation());
+        reward.setTransferable(req.getTransferable());
+        reward.setOrganizer(req.getOrganizer());
+
+        // Descuento extra
+        reward.setRedeemMethod(req.getRedeemMethod());
+
+        // Entrega (comunes)
+        reward.setDeliveryMethod(req.getDeliveryMethod());
+        reward.setPickupPoint(req.getPickupPoint());
+        reward.setDeliveryCost(req.getDeliveryCost());
     }
 
     private RewardDto toDto(Reward r, int userPoints) {
@@ -352,6 +363,17 @@ public class AdminRewardController {
         dto.setIncludesTransport(r.getIncludesTransport());
         dto.setRequirements(r.getRequirements());
         dto.setCompanionAllowed(r.getCompanionAllowed());
+        dto.setRequiresConfirmation(r.getRequiresConfirmation());
+        dto.setTransferable(r.getTransferable());
+        dto.setOrganizer(r.getOrganizer());
+
+        // Descuento extra
+        dto.setRedeemMethod(r.getRedeemMethod());
+
+        // Entrega (comunes)
+        dto.setDeliveryMethod(r.getDeliveryMethod());
+        dto.setPickupPoint(r.getPickupPoint());
+        dto.setDeliveryCost(r.getDeliveryCost());
 
         // Incluir lista de imágenes
         List<RewardImage> images = rewardImageRepository
