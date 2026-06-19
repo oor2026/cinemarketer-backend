@@ -62,6 +62,19 @@ public class RewardDto {
     private Integer ticketsIncluded;
     private Boolean includesSnack;
 
+    // Entrega (comunes)
+    private String deliveryMethod;
+    private String pickupPoint;
+    private String deliveryCost;
+
+    // Descuento extra
+    private String redeemMethod;
+
+    // Experiencia extra
+    private Boolean requiresConfirmation;
+    private Boolean transferable;
+    private String organizer;
+
     // Campos calculados para el frontend
     private Boolean canRedeem;
     private Boolean isExpired;

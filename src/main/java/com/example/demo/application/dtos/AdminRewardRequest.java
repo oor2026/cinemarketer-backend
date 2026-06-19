@@ -52,4 +52,15 @@ public class AdminRewardRequest {
     private Boolean includesTransport;
     private String requirements;
     private Boolean companionAllowed;
+    private Boolean requiresConfirmation;
+    private Boolean transferable;
+    private String organizer;
+
+    // Descuento extra
+    private String redeemMethod;
+
+    // Entrega (comunes)
+    private String deliveryMethod;
+    private String pickupPoint;
+    private String deliveryCost;
 }

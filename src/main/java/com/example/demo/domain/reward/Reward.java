@@ -173,6 +173,30 @@ public class Reward {
     @Column(name = "companion_allowed")
     private Boolean companionAllowed;
 
+    // --- Entrega (comunes a todos los tipos) ---
+    @Column(name = "delivery_method", length = 50)
+    private String deliveryMethod; // RETIRO_PRESENCIAL, ENTREGA_DIGITAL, COORDINACION_TERCERO, ENVIO_DOMICILIO
+
+    @Column(name = "pickup_point", length = 300)
+    private String pickupPoint;
+
+    @Column(name = "delivery_cost", length = 50)
+    private String deliveryCost; // GRATUITO, A_CARGO_GANADOR, COORDINAR_TERCERO
+
+    // --- Descuento extra ---
+    @Column(name = "redeem_method", length = 50)
+    private String redeemMethod; // CODIGO_DIGITAL, LINK_PROMOCIONAL, PRESENTAR_USUARIO, AUTOMATICO
+
+    // --- Experiencia extra ---
+    @Column(name = "requires_confirmation")
+    private Boolean requiresConfirmation;
+
+    @Column(name = "transferable")
+    private Boolean transferable;
+
+    @Column(length = 200)
+    private String organizer;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
