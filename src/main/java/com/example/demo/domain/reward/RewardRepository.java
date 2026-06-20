@@ -74,4 +74,8 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
     Double getAveragePointsRequired();
 
     List<Reward> findByDeletedFalse();
+
+    long countByDeletedFalse();
+    long countByActiveTrueAndDeletedFalse();
+    long countByStockZeroAndDeletedFalse();
 }
