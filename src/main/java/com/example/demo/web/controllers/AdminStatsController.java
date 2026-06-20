@@ -262,7 +262,7 @@ public class AdminStatsController {
 
         stats.setTotalRewards(rewardRepository.countByDeletedFalse());
         stats.setActiveRewards(rewardRepository.countByActiveTrueAndDeletedFalse());
-        stats.setExhaustedRewards(rewardRepository.countByStockZeroAndDeletedFalse());
+        stats.setExhaustedRewards(rewardRepository.countByStockZero());
 
         stats.setTotalRedemptions(redemptionRepository.countByRedemptionDateBetween(start, end));
         stats.setPendingRedemptions(redemptionRepository.countByStatusInPeriod(RedemptionStatus.PENDING, start, end));
