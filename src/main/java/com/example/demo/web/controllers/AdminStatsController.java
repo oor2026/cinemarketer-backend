@@ -260,9 +260,9 @@ public class AdminStatsController {
                                                         LocalDateTime prevStart, LocalDateTime prevEnd) {
         RedemptionStatsDto stats = new RedemptionStatsDto();
 
-        stats.setTotalRewards(rewardRepository.count());
-        stats.setActiveRewards(rewardRepository.countByActiveTrue());
-        stats.setExhaustedRewards(rewardRepository.countByStockZero());
+        stats.setTotalRewards(rewardRepository.countByDeletedFalse());
+        stats.setActiveRewards(rewardRepository.countByActiveTrueAndDeletedFalse());
+        stats.setExhaustedRewards(rewardRepository.countByStockZeroAndDeletedFalse());
 
         stats.setTotalRedemptions(redemptionRepository.countByRedemptionDateBetween(start, end));
         stats.setPendingRedemptions(redemptionRepository.countByStatusInPeriod(RedemptionStatus.PENDING, start, end));
