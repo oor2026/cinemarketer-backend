@@ -189,6 +189,12 @@ public class UserController {
                 return ResponseEntity.badRequest()
                         .body(Map.of("message", "El nombre no puede estar vacío."));
             }
+            // ® está reservado exclusivamente para el equipo de Cinemarketer
+            boolean esAdmin = user.getRole() == UserRole.ADMIN;
+            if (name.contains("®") && !esAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "El carácter ® está reservado para el equipo de Cinemarketer."));
+            }
             user.setName(name);
         }
 
@@ -576,6 +582,7 @@ public class UserController {
         List<FollowDto> users = pageResult.getContent()
                 .stream()
                 .filter(u -> !u.getId().equals(me.getId()))
+                .filter(u -> !u.getName().contains("®"))
                 .limit(size)
                 .map(u -> new FollowDto(
                         u.getId(),
