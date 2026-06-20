@@ -57,7 +57,7 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
     long countByActiveTrue();
 
     // Contar premios con stock = 0
-    @Query("SELECT COUNT(r) FROM Reward r WHERE r.stock = 0")
+    @Query("SELECT COUNT(r) FROM Reward r WHERE r.stock = 0 AND r.deleted = false")
     long countByStockZero();
 
     // Contar premios creados en un período
@@ -77,5 +77,5 @@ public interface RewardRepository extends JpaRepository<Reward, Long> {
 
     long countByDeletedFalse();
     long countByActiveTrueAndDeletedFalse();
-    long countByStockZeroAndDeletedFalse();
+
 }

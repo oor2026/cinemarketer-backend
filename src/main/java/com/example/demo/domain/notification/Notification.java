@@ -29,7 +29,7 @@ public class Notification {
     private Long actorId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 50)
     private NotificationType type;
 
     // Mensaje legible
