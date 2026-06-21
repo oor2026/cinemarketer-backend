@@ -27,4 +27,8 @@ public class AdminUserDto {
     private boolean emailVerified;
     private int blockedByCount;
     private int reportedByCount;
+    private java.time.LocalDate birthDate;
+    private String sexo;
+    private String provincia;
+    private String localidad;
 }

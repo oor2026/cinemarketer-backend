@@ -71,6 +71,12 @@ public class WatchlistController {
                 w.setMovieTitle(tmdb.getTitle());
                 w.setMoviePosterPath(tmdb.getPosterPath());
                 w.setMovieOverview(tmdb.getOverview());
+                if (tmdb.getGenres() != null && !tmdb.getGenres().isEmpty()) {
+                    String genresJson = tmdb.getGenres().stream()
+                            .map(g -> "\"" + g.getName() + "\"")
+                            .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+                    w.setMovieGenres(genresJson);
+                }
             }
         } catch (Exception ignored) {}
 

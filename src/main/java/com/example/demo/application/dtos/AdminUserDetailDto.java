@@ -12,6 +12,10 @@ public class AdminUserDetailDto {
     private String email;
     private String dni;
     private String telefono;
+    private java.time.LocalDate fechaNacimiento;
+    private String sexo;
+    private String provincia;
+    private String localidad;
     private boolean emailVerificado;
     private boolean googleAuth;
     private LocalDateTime creadoEn;
@@ -31,6 +35,9 @@ public class AdminUserDetailDto {
     // Actividad
     private long totalVotaciones;
     private long totalComentarios;
+    private long totalRecomendaciones;
+    private long totalMereceUnPunto;
+    private long totalGuardadas;
     private PremiosDto premios;
 
     @Data

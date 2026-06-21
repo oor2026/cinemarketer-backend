@@ -13,6 +13,7 @@ import com.example.demo.domain.reward.RewardRepository;
 import com.example.demo.domain.support.SupportTicketRepository;
 import com.example.demo.domain.support.TicketStatus;
 import com.example.demo.domain.user.UserRepository;
+import com.example.demo.domain.watchlist.WatchlistRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -47,6 +48,7 @@ public class AdminStatsController {
     private final UserReportRepository userReportRepository;
     private final MovieRecommendationRepository recommendationRepository;
     private final CommentReplyRepository commentReplyRepository;
+    private final WatchlistRepository watchlistRepository;
 
     public AdminStatsController(
             UserRepository userRepository,
@@ -57,7 +59,7 @@ public class AdminStatsController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository supportTicketRepository,
             PremiumRewardRepository premiumRewardRepository,
-            UserSubscriptionRepository subscriptionRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, CommentReplyRepository commentReplyRepository) {
+            UserSubscriptionRepository subscriptionRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.commentRepository = commentRepository;
@@ -71,6 +73,7 @@ public class AdminStatsController {
         this.userReportRepository = userReportRepository;
         this.recommendationRepository = recommendationRepository;
         this.commentReplyRepository = commentReplyRepository;
+        this.watchlistRepository = watchlistRepository;
     }
 
     @GetMapping
@@ -122,6 +125,7 @@ public class AdminStatsController {
         subscriptionStats.setUsuariosSuscriptos(subscriptionRepository.countDistinctActiveUsers());
         response.setSubscriptions(subscriptionStats);
         response.setRecommendations(calculateRecommendationStats());
+        response.setWatchlist(calculateWatchlistStats());
         return ResponseEntity.ok(response);
     }
 
@@ -429,6 +433,62 @@ public class AdminStatsController {
             return m;
         }).toList());
 
+        return stats;
+    }
+
+    private WatchlistStatsDto calculateWatchlistStats() {
+        WatchlistStatsDto stats = new WatchlistStatsDto();
+
+        long total = watchlistRepository.count();
+        long usuariosConLista = watchlistRepository.countDistinctUsers();
+
+        stats.setTotalGuardadas(total);
+        stats.setUsuariosConLista(usuariosConLista);
+        stats.setPromedioPorUsuario(usuariosConLista > 0 ?
+                Math.round((double) total / usuariosConLista * 10) / 10.0 : 0);
+
+        // Top 10 películas más guardadas
+        List<Object[]> topMovies = watchlistRepository.findTopMovies(PageRequest.of(0, 10));
+        stats.setTopPeliculas(topMovies.stream().map(row -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("titulo", row[0]);
+            m.put("total", row[1]);
+            return m;
+        }).toList());
+
+        // Géneros: parsear JSON y acumular conteos
+        List<String> genresRaw = watchlistRepository.findAllMovieGenres();
+        Map<String, Long> genreCount = new LinkedHashMap<>();
+        long totalGenreEntries = 0;
+
+        for (String json : genresRaw) {
+            try {
+                String cleaned = json.trim().replaceAll("^\\[|\\]$", "");
+                if (cleaned.isEmpty()) continue;
+                String[] parts = cleaned.split(",");
+                for (String part : parts) {
+                    String genre = part.trim().replaceAll("^\"|\"$", "");
+                    if (!genre.isEmpty()) {
+                        genreCount.merge(genre, 1L, Long::sum);
+                        totalGenreEntries++;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        final long totalEntries = totalGenreEntries;
+        List<Map<String, Object>> generosConPorcentaje = genreCount.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .map(e -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("genero", e.getKey());
+                    m.put("total", e.getValue());
+                    m.put("porcentaje", totalEntries > 0 ?
+                            Math.round((double) e.getValue() / totalEntries * 1000) / 10.0 : 0);
+                    return m;
+                }).toList();
+
+        stats.setGeneros(generosConPorcentaje);
         return stats;
     }
 
