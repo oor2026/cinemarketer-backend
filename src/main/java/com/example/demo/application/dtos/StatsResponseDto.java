@@ -20,4 +20,5 @@ public class StatsResponseDto {
     private PremiumStatsDto premium;
     private SubscriptionStatsDto subscriptions;
     private RecommendationStatsDto recommendations;
+    private WatchlistStatsDto watchlist;
 }

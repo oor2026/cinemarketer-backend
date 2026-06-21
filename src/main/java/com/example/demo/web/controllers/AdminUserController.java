@@ -6,6 +6,7 @@ import com.example.demo.application.services.NotificationService;
 import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.pointtransaction.PointTransaction;
 import com.example.demo.domain.pointtransaction.PointTransactionType;
+import com.example.demo.domain.recommendation.MovieRecommendationRepository;
 import com.example.demo.domain.redemption.Redemption;
 import com.example.demo.domain.redemption.RedemptionRepository;
 import com.example.demo.domain.comment.CommentRepository;
@@ -23,6 +24,8 @@ import java.util.stream.Collectors;
 
 import java.util.List;
 import java.util.UUID;
+
+import com.example.demo.domain.watchlist.WatchlistRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -57,6 +60,8 @@ public class AdminUserController {
     private final UserBlockRepository userBlockRepository;
     private final UserReportRepository userReportRepository;
     private final NotificationService notificationService;
+    private final WatchlistRepository watchlistRepository;
+    private final MovieRecommendationRepository movieRecommendationRepository;
 
     public AdminUserController(
             UserRepository userRepository,
@@ -68,7 +73,7 @@ public class AdminUserController {
             SupportTicketRepository ticketRepository,
             SupportMessageRepository messageRepository,
             UserSubscriptionRepository subscriptionRepository,
-            EmailService emailService, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, NotificationService notificationService) {
+            EmailService emailService, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, NotificationService notificationService, WatchlistRepository watchlistRepository, MovieRecommendationRepository movieRecommendationRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.redemptionRepository = redemptionRepository;
@@ -82,6 +87,8 @@ public class AdminUserController {
         this.userBlockRepository = userBlockRepository;
         this.userReportRepository = userReportRepository;
         this.notificationService = notificationService;
+        this.watchlistRepository = watchlistRepository;
+        this.movieRecommendationRepository = movieRecommendationRepository;
     }
 
     @GetMapping
@@ -199,6 +206,10 @@ public class AdminUserController {
         user.setEmail(nuevoEmail);
         user.setDni(request.getDni());
         user.setPhone(request.getPhone());
+        if (request.getBirthDate() != null) user.setBirthDate(request.getBirthDate());
+        if (request.getSexo() != null) user.setSexo(request.getSexo());
+        if (request.getProvincia() != null) user.setProvincia(request.getProvincia());
+        if (request.getLocalidad() != null) user.setLocalidad(request.getLocalidad());
         if (request.getRole() != null) user.setRole(request.getRole());
         if (request.getTotalPoints() != null) user.setAvailablePoints(request.getTotalPoints());
         if (request.getActive() != null) user.setActive(request.getActive());
@@ -313,6 +324,10 @@ public class AdminUserController {
         dto.setEmail(user.getEmail());
         dto.setDni(user.getDni());
         dto.setTelefono(user.getPhone());
+        dto.setFechaNacimiento(user.getBirthDate());
+        dto.setSexo(user.getSexo());
+        dto.setProvincia(user.getProvincia());
+        dto.setLocalidad(user.getLocalidad());
         dto.setEmailVerificado(user.isEmailVerified());
         dto.setGoogleAuth(user.getGoogleId() != null && !user.getGoogleId().isBlank());
         dto.setCreadoEn(user.getCreatedAt());
@@ -329,9 +344,12 @@ public class AdminUserController {
         dto.setPuntosAcumulados(user.getAccumulatedPoints());
         dto.setPuntosCanjeadosHistorico(user.getTotalRedeemedPoints());
 
-        // Actividad — votaciones y comentarios
+        // Actividad
         dto.setTotalVotaciones(reviewRepository.countByUserId(user.getId()));
         dto.setTotalComentarios(commentRepository.countByUserId(user.getId()));
+        dto.setTotalRecomendaciones(movieRecommendationRepository.countBySenderId(user.getId()));
+        dto.setTotalMereceUnPunto(pointTransactionRepository.countByUserIdAndAction(user.getId(), com.example.demo.domain.point.PointAction.RECEIVE_MERECE_PUNTO));
+        dto.setTotalGuardadas(watchlistRepository.countByUserId(user.getId()));
 
         // Premios canjeados
         List<Redemption> canjes = redemptionRepository.findByUserIdOrderByRedemptionDateDesc(user.getId());
@@ -425,6 +443,10 @@ public class AdminUserController {
         dto.setEmail(user.getEmail());
         dto.setDni(user.getDni());
         dto.setPhone(user.getPhone());
+        dto.setBirthDate(user.getBirthDate());
+        dto.setSexo(user.getSexo());
+        dto.setProvincia(user.getProvincia());
+        dto.setLocalidad(user.getLocalidad());
         dto.setRole(user.getRole());
         dto.setTotalPoints(user.getAvailablePoints());
         // 🔧 CORREGIDO: usar isActive() en lugar de getActive()

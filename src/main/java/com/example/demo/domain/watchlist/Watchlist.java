@@ -48,6 +48,9 @@ public class Watchlist {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "movie_genres", columnDefinition = "TEXT")
+    private String movieGenres; // JSON array: ["Acción","Thriller"]
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now(java.time.ZoneId.of("America/Argentina/Buenos_Aires"));

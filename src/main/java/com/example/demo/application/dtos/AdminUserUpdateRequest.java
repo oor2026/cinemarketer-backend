@@ -10,6 +10,10 @@ public class AdminUserUpdateRequest {
     private String email;
     private String dni;
     private String phone;
+    private java.time.LocalDate birthDate;
+    private String sexo;
+    private String provincia;
+    private String localidad;
     private UserRole role;
     private Integer totalPoints;
     private Boolean active;
