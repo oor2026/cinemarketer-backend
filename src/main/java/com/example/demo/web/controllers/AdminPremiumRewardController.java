@@ -27,17 +27,23 @@ public class AdminPremiumRewardController {
     private final PremiumDrawEntryRepository drawEntryRepository;
     private final CloudinaryService        cloudinaryService;
     private final RewardImageRepository    rewardImageRepository;
+    private final com.example.demo.domain.user.UserRepository userRepository;
+    private final com.example.demo.application.services.NotificationService notificationService;
 
     public AdminPremiumRewardController(PremiumRewardRepository premiumRewardRepository,
                                         PremiumRewardService premiumRewardService,
                                         PremiumDrawEntryRepository drawEntryRepository,
                                         CloudinaryService cloudinaryService,
-                                        RewardImageRepository rewardImageRepository) {
+                                        RewardImageRepository rewardImageRepository,
+                                        com.example.demo.domain.user.UserRepository userRepository,
+                                        com.example.demo.application.services.NotificationService notificationService) {
         this.premiumRewardRepository = premiumRewardRepository;
         this.premiumRewardService    = premiumRewardService;
         this.drawEntryRepository     = drawEntryRepository;
         this.cloudinaryService       = cloudinaryService;
         this.rewardImageRepository   = rewardImageRepository;
+        this.userRepository          = userRepository;
+        this.notificationService     = notificationService;
     }
 
     // =============================================
@@ -128,6 +134,21 @@ public class AdminPremiumRewardController {
 
             reward.setActive(true);
             PremiumReward saved = premiumRewardRepository.save(reward);
+
+            // Notificar a todos los usuarios activos discriminando premium vs no premium
+            try {
+                String tipo = saved.getType().name();
+                int puntos = saved.getPointsRequired();
+                String nombre = saved.getName();
+                List<com.example.demo.domain.user.User> usuarios =
+                        userRepository.findByActiveTrueAndSuspendedFalse();
+                for (com.example.demo.domain.user.User u : usuarios) {
+                    notificationService.crearNuevoPremiumReward(u, nombre, puntos, tipo, u.isActivePremium());
+                }
+            } catch (Exception ex) {
+                // No fallar la creación del premio si falla el envío de notificaciones
+            }
+
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
