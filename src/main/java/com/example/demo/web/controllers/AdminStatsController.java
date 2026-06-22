@@ -10,6 +10,8 @@ import com.example.demo.domain.redemption.RedemptionStatus;
 import com.example.demo.domain.review.ReviewRepository;
 import com.example.demo.domain.review.VoteType;
 import com.example.demo.domain.reward.RewardRepository;
+import com.example.demo.domain.subscription.SubscriptionPaymentRepository;
+import com.example.demo.domain.subscription.SubscriptionPlanRepository;
 import com.example.demo.domain.support.SupportTicketRepository;
 import com.example.demo.domain.support.TicketStatus;
 import com.example.demo.domain.user.UserRepository;
@@ -44,11 +46,13 @@ public class AdminStatsController {
     private final SupportTicketRepository supportTicketRepository;
     private final PremiumRewardRepository premiumRewardRepository;
     private final UserSubscriptionRepository subscriptionRepository;
+    private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final UserBlockRepository userBlockRepository;
     private final UserReportRepository userReportRepository;
     private final MovieRecommendationRepository recommendationRepository;
     private final CommentReplyRepository commentReplyRepository;
     private final WatchlistRepository watchlistRepository;
+    private final SubscriptionPaymentRepository subscriptionPaymentRepository;
 
     public AdminStatsController(
             UserRepository userRepository,
@@ -59,7 +63,7 @@ public class AdminStatsController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository supportTicketRepository,
             PremiumRewardRepository premiumRewardRepository,
-            UserSubscriptionRepository subscriptionRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository) {
+            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.commentRepository = commentRepository;
@@ -69,11 +73,13 @@ public class AdminStatsController {
         this.supportTicketRepository = supportTicketRepository;
         this.premiumRewardRepository = premiumRewardRepository;
         this.subscriptionRepository = subscriptionRepository;
+        this.subscriptionPlanRepository = subscriptionPlanRepository;
         this.userBlockRepository = userBlockRepository;
         this.userReportRepository = userReportRepository;
         this.recommendationRepository = recommendationRepository;
         this.commentReplyRepository = commentReplyRepository;
         this.watchlistRepository = watchlistRepository;
+        this.subscriptionPaymentRepository = subscriptionPaymentRepository;
     }
 
     @GetMapping
@@ -126,6 +132,7 @@ public class AdminStatsController {
         response.setSubscriptions(subscriptionStats);
         response.setRecommendations(calculateRecommendationStats());
         response.setWatchlist(calculateWatchlistStats());
+        response.setRevenue(calculateRevenueStats(start, end));
         return ResponseEntity.ok(response);
     }
 
@@ -429,6 +436,52 @@ public class AdminStatsController {
         stats.setTopContextos(topContextos.stream().map(row -> {
             Map<String, Object> m = new HashMap<>();
             m.put("contexto", row[0]);
+            m.put("total", row[1]);
+            return m;
+        }).toList());
+
+        return stats;
+    }
+
+    private RevenueStatsDto calculateRevenueStats(LocalDateTime start, LocalDateTime end) {
+        RevenueStatsDto stats = new RevenueStatsDto();
+
+        // Totales históricos
+        stats.setIngresoTotalHistorico(
+                subscriptionPaymentRepository.sumTotalApproved());
+        stats.setPagosAprobadosTotal(
+                subscriptionPaymentRepository.countByStatus("approved"));
+
+        // Período seleccionado
+        stats.setIngresoPeriodo(
+                subscriptionPaymentRepository.sumApprovedInPeriod(start, end));
+        stats.setPagosAprobadosPeriodo(
+                subscriptionPaymentRepository.countByStatusAndPaidAtBetween("approved", start, end));
+        stats.setPagosRechazadosPeriodo(
+                subscriptionPaymentRepository.countByStatusAndPaidAtBetween("rejected", start, end));
+        stats.setPagosPendientesPeriodo(
+                subscriptionPaymentRepository.countByStatusAndPaidAtBetween("pending", start, end));
+
+        // Tasa de aprobación
+        long totalPeriodo = stats.getPagosAprobadosPeriodo()
+                + stats.getPagosRechazadosPeriodo()
+                + stats.getPagosPendientesPeriodo();
+        stats.setTasaAprobacion(totalPeriodo > 0 ?
+                (double) stats.getPagosAprobadosPeriodo() / totalPeriodo * 100 : 0);
+
+        // MRR = suscripciones activas × precio del plan
+        long activas = subscriptionRepository.countByStatus(SubscriptionStatus.ACTIVE);
+        java.math.BigDecimal precio = subscriptionPlanRepository
+                .findFirstByActiveTrue()
+                .map(p -> p.getPrice())
+                .orElse(java.math.BigDecimal.ZERO);
+        stats.setMrr(precio.multiply(java.math.BigDecimal.valueOf(activas)));
+
+        // Tendencia mensual (últimos 12 meses)
+        List<Object[]> mensual = subscriptionPaymentRepository.findMonthlyRevenue();
+        stats.setTendenciaMensual(mensual.stream().map(row -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("mes", row[0]);
             m.put("total", row[1]);
             return m;
         }).toList());
