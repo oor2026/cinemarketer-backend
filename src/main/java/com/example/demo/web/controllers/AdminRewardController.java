@@ -26,13 +26,19 @@ public class AdminRewardController {
     private final RewardRepository       rewardRepository;
     private final CloudinaryService      cloudinaryService;
     private final RewardImageRepository  rewardImageRepository;
+    private final com.example.demo.domain.user.UserRepository userRepository;
+    private final com.example.demo.application.services.NotificationService notificationService;
 
     public AdminRewardController(RewardRepository rewardRepository,
                                  CloudinaryService cloudinaryService,
-                                 RewardImageRepository rewardImageRepository) {
+                                 RewardImageRepository rewardImageRepository,
+                                 com.example.demo.domain.user.UserRepository userRepository,
+                                 com.example.demo.application.services.NotificationService notificationService) {
         this.rewardRepository      = rewardRepository;
         this.cloudinaryService     = cloudinaryService;
         this.rewardImageRepository = rewardImageRepository;
+        this.userRepository        = userRepository;
+        this.notificationService   = notificationService;
     }
 
     // =============================================
@@ -54,6 +60,25 @@ public class AdminRewardController {
         Reward reward = new Reward();
         mapRequestToReward(request, reward);
         rewardRepository.save(reward);
+
+        // Notificar a todos los usuarios activos
+        try {
+            String rewardType = reward.getRewardType() != null
+                    ? reward.getRewardType().name() : "MERCHANDISING";
+            List<com.example.demo.domain.user.User> usuarios =
+                    userRepository.findByActiveTrueAndSuspendedFalse();
+            for (com.example.demo.domain.user.User u : usuarios) {
+                notificationService.crearNuevoPremioComun(
+                        u,
+                        reward.getName(),
+                        reward.getPointsRequired(),
+                        rewardType
+                );
+            }
+        } catch (Exception e) {
+            // No fallar la creación del premio si falla el envío de notificaciones
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(reward, 0));
     }
 

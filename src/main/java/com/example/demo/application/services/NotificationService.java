@@ -133,4 +133,57 @@ public class NotificationService {
         n.setMessage("¡Cinemarketer ha decidido otorgarte " + puntos + " puntos " + tipoLabel + "! ¡Disfrutálos!");
         notificationRepository.save(n);
     }
+
+    // =============================================
+    // NUEVO PREMIO COMÚN — notificar a todos
+    // =============================================
+    @Transactional
+    public void crearNuevoPremioComun(User receptor, String nombrePremio,
+                                      int puntos, String rewardType) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.NEW_REWARD);
+
+        String prefijo;
+        switch (rewardType) {
+            case "TICKET"        -> prefijo = "Nueva entrada disponible";
+            case "MERCHANDISING" -> prefijo = "Nuevo premio disponible";
+            case "DESCUENTO"     -> prefijo = "Nuevo descuento disponible";
+            case "EXPERIENCIA"   -> prefijo = "Nueva experiencia disponible";
+            default              -> prefijo = "Nuevo premio disponible";
+        }
+
+        n.setMessage("¡" + prefijo + ": " + nombrePremio
+                + " — podés canjearlo ahora por " + puntos + " pts!");
+        n.setReferenceType(rewardType);
+        notificationRepository.save(n);
+    }
+
+    // =============================================
+    // NUEVO PREMIO PREMIUM — discriminar premium vs no premium
+    // =============================================
+    @Transactional
+    public void crearNuevoPremiumReward(User receptor, String nombrePremio,
+                                        int puntos, String tipo, boolean esPremium) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.NEW_PREMIUM_REWARD);
+
+        String mensaje;
+        if ("SORTEO".equals(tipo)) {
+            mensaje = esPremium
+                    ? "¡Nuevo sorteo exclusivo: " + nombrePremio + " — anotate para participar!"
+                    : "¡Nuevo sorteo exclusivo: " + nombrePremio + " — suscribite a Premium y participá gratis!";
+        } else {
+            mensaje = esPremium
+                    ? "¡Nuevo premio exclusivo para vos: " + nombrePremio + " — canjealo por " + puntos + " pts!"
+                    : "¡Nuevo premio exclusivo: " + nombrePremio + " — suscribite a Premium para canjearlo!";
+        }
+
+        n.setMessage(mensaje);
+        n.setReferenceType(tipo);
+        notificationRepository.save(n);
+    }
 }

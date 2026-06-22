@@ -16,6 +16,7 @@ public class NotificationDto {
     private String movieTitle;
     private Long commentId;
     private Long replyId;
+    private String referenceType;
     private boolean read;
     private LocalDateTime createdAt;
 }
