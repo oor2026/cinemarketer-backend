@@ -4,6 +4,7 @@ import com.example.demo.domain.notification.Notification;
 import com.example.demo.domain.notification.NotificationRepository;
 import com.example.demo.domain.notification.NotificationType;
 import com.example.demo.domain.user.User;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,9 +12,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final WebPushService webPushService;
 
-    public NotificationService(NotificationRepository notificationRepository) {
+    private static final String ICON = "/assets/images/icon-192.png";
+
+    public NotificationService(NotificationRepository notificationRepository,
+                               @Lazy WebPushService webPushService) {
         this.notificationRepository = notificationRepository;
+        this.webPushService = webPushService;
     }
 
     @Transactional
@@ -80,6 +86,12 @@ public class NotificationService {
         }
         n.setMessage(msg);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🪙 Cinemarketer", msg, ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -104,10 +116,17 @@ public class NotificationService {
         n.setUser(receptor);
         n.setActorName("Cinemarketer");
         n.setType(NotificationType.INSIGNIA_ASCENSO);
-        n.setMessage("🎉 ¡Felicitaciones! Completaste todos los desafíos y ahora sos "
+        String msg = "🎉 ¡Felicitaciones! Completaste todos los desafíos y ahora sos "
                 + nivelNuevo.getDisplayName()
-                + ". Ingresá a Mi Cuenta para ver tu nueva insignia.");
+                + ". Ingresá a Mi Cuenta para ver tu nueva insignia.";
+        n.setMessage(msg);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🎉 ¡Subiste de insignia!", msg, ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -154,10 +173,17 @@ public class NotificationService {
             default              -> prefijo = "Nuevo premio disponible";
         }
 
-        n.setMessage("¡" + prefijo + ": " + nombrePremio
-                + " — podés canjearlo ahora por " + puntos + " pts!");
+        String msg = "¡" + prefijo + ": " + nombrePremio
+                + " — podés canjearlo ahora por " + puntos + " pts!";
+        n.setMessage(msg);
         n.setReferenceType(rewardType);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🎁 Cinemarketer", msg, ICON);
+        } catch (Exception e) {}
     }
 
     // =============================================
@@ -185,5 +211,58 @@ public class NotificationService {
         n.setMessage(mensaje);
         n.setReferenceType(tipo);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "⭐ Cinemarketer", mensaje, ICON);
+        } catch (Exception e) {}
+    }
+
+    // =============================================
+    // GANADOR DE SORTEO
+    // =============================================
+    @Transactional
+    public void crearGanadorSorteo(User receptor, String nombreSorteo) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.DRAW_WINNER);
+        String msg = "🏆 ¡Ganaste el sorteo: " + nombreSorteo + "! El equipo de Cinemarketer se contactará para coordinar la entrega.";
+        n.setMessage(msg);
+        notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🏆 ¡Ganaste un sorteo!", msg, ICON);
+        } catch (Exception e) {}
+    }
+
+    // =============================================
+    // VENCIMIENTO PREMIUM
+    // =============================================
+    @Transactional
+    public void crearPremiumVencimientoProximo(User receptor, int diasRestantes) {
+        NotificationType type = diasRestantes <= 1
+                ? NotificationType.PREMIUM_EXPIRING_TOMORROW
+                : NotificationType.PREMIUM_EXPIRING_SOON;
+
+        String msg = diasRestantes <= 1
+                ? "⚠️ Tu suscripción Premium vence mañana. ¡Renovála para no perder tus beneficios!"
+                : "⏰ Tu suscripción Premium vence en " + diasRestantes + " días. ¡Renovála para no perder tus beneficios!";
+
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(type);
+        n.setMessage(msg);
+        notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "⏰ Cinemarketer Premium", msg, ICON);
+        } catch (Exception e) {}
     }
 }
