@@ -115,7 +115,7 @@ public class WebPushService {
 
         // Generar par de claves efímeras del servidor
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
-        keyGen.initialize(new ECGenParameterSpec("prime256v1"));
+        keyGen.initialize(new ECGenParameterSpec("secp256r1"));
         KeyPair ephemeralKeyPair = keyGen.generateKeyPair();
 
         // Reconstruir clave pública del cliente
