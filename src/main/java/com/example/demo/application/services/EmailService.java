@@ -220,4 +220,22 @@ public class EmailService {
                         "<p>Gracias por ser parte de Cinemarketer Premium. ¡Seguí disfrutando los beneficios!</p>";
         sendHtml(to, "Cinemarketer - Tu premio premium fue entregado", body);
     }
+
+    public void sendDrawWinnerSustitutoEmail(String to, String userName, String rewardName) {
+        String body =
+                "<p>Hola <strong>" + userName + "</strong>,</p>" +
+                        "<p style='font-size:18px;font-weight:bold;color:#e23232;'>¡Felicitaciones!</p>" +
+                        "<p>El ganador original del sorteo <strong>\"" + rewardName + "\"</strong> no pudo coordinar la entrega del premio, por lo que hemos decidido seleccionarte a vos como nuevo ganador/a.</p>" +
+                        "<p>Nuestro equipo se pondrá en contacto con vos a la brevedad para coordinar la entrega. ¡El premio es tuyo!</p>";
+        sendHtml(to, "Cinemarketer - ¡Sos el nuevo ganador del sorteo!", body);
+    }
+
+    public void sendDrawDescalificadoEmail(String to, String userName, String rewardName) {
+        String body =
+                "<p>Hola <strong>" + userName + "</strong>,</p>" +
+                        "<p>Te informamos que lamentablemente no fue posible coordinar la entrega del premio del sorteo <strong>\"" + rewardName + "\"</strong> dentro de los plazos establecidos.</p>" +
+                        "<p>Por este motivo, el premio fue reasignado a otro participante del sorteo.</p>" +
+                        "<p style='font-size:13px;color:#888888;'>Seguí participando en los próximos sorteos de Cinemarketer. ¡Mucha suerte!</p>";
+        sendHtml(to, "Cinemarketer - Actualización sobre el sorteo", body);
+    }
 }

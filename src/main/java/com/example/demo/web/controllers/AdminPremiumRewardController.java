@@ -4,6 +4,8 @@ import com.example.demo.application.services.PremiumRewardService;
 import com.example.demo.domain.premium.*;
 import com.example.demo.domain.reward.RewardImage;
 import com.example.demo.domain.reward.RewardImageRepository;
+import com.example.demo.domain.support.SupportMessage;
+import com.example.demo.domain.support.SupportTicket;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,6 +24,7 @@ import java.util.Optional;
 @PreAuthorize("hasAuthority('ADMIN')")
 public class AdminPremiumRewardController {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AdminPremiumRewardController.class);
     private final PremiumRewardRepository  premiumRewardRepository;
     private final PremiumRewardService     premiumRewardService;
     private final PremiumDrawEntryRepository drawEntryRepository;
@@ -29,6 +32,10 @@ public class AdminPremiumRewardController {
     private final RewardImageRepository    rewardImageRepository;
     private final com.example.demo.domain.user.UserRepository userRepository;
     private final com.example.demo.application.services.NotificationService notificationService;
+    private final com.example.demo.domain.premium.DrawResultRepository drawResultRepository;
+    private final com.example.demo.application.services.EmailService emailService;
+    private final com.example.demo.domain.support.SupportTicketRepository supportTicketRepository;
+    private final com.example.demo.domain.support.SupportMessageRepository supportMessageRepository;
 
     public AdminPremiumRewardController(PremiumRewardRepository premiumRewardRepository,
                                         PremiumRewardService premiumRewardService,
@@ -36,7 +43,7 @@ public class AdminPremiumRewardController {
                                         CloudinaryService cloudinaryService,
                                         RewardImageRepository rewardImageRepository,
                                         com.example.demo.domain.user.UserRepository userRepository,
-                                        com.example.demo.application.services.NotificationService notificationService) {
+                                        com.example.demo.application.services.NotificationService notificationService, DrawResultRepository drawResultRepository, com.example.demo.application.services.EmailService emailService, com.example.demo.domain.support.SupportTicketRepository supportTicketRepository, com.example.demo.domain.support.SupportMessageRepository supportMessageRepository) {
         this.premiumRewardRepository = premiumRewardRepository;
         this.premiumRewardService    = premiumRewardService;
         this.drawEntryRepository     = drawEntryRepository;
@@ -44,6 +51,10 @@ public class AdminPremiumRewardController {
         this.rewardImageRepository   = rewardImageRepository;
         this.userRepository          = userRepository;
         this.notificationService     = notificationService;
+        this.drawResultRepository = drawResultRepository;
+        this.emailService = emailService;
+        this.supportTicketRepository = supportTicketRepository;
+        this.supportMessageRepository = supportMessageRepository;
     }
 
     // =============================================
@@ -437,5 +448,143 @@ public class AdminPremiumRewardController {
         java.util.Random rnd = new java.util.Random();
         for (int i = 0; i < 8; i++) sb.append(chars.charAt(rnd.nextInt(chars.length())));
         return sb.toString();
+    }
+
+    // POST /admin/premium/rewards/{id}/draw/descalificar/{position}
+    @PostMapping("/{id}/draw/descalificar/{position}")
+    @Transactional
+    public ResponseEntity<?> descalificarSeleccionado(
+            @PathVariable Long id,
+            @PathVariable int position) {
+        try {
+            PremiumReward reward = premiumRewardRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Sorteo no encontrado"));
+
+            if (!reward.isDrawExecuted()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "El sorteo aún no fue ejecutado"));
+            }
+
+            // Buscar y descalificar la posición indicada
+            List<com.example.demo.domain.premium.DrawResult> results =
+                    drawResultRepository.findByRewardIdOrderByPosition(reward.getId());
+
+            com.example.demo.domain.premium.DrawResult aDescalificar = results.stream()
+                    .filter(r -> r.getPosition() == position)
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Posición no encontrada"));
+
+            // Cambiar posición del descalificado a negativo para liberar el slot
+            aDescalificar.setStatus("DESCALIFICADO");
+            aDescalificar.setPosition(-position);
+            drawResultRepository.save(aDescalificar);
+
+            // Ascender al siguiente activo
+            com.example.demo.domain.premium.DrawResult nuevoGanador = results.stream()
+                    .filter(r -> r.getPosition() > position && "ACTIVO".equals(r.getStatus()))
+                    .findFirst()
+                    .orElse(null);
+
+            // Notificar al descalificado
+            try {
+                notificationService.crearNotifDescalificado(
+                        aDescalificar.getUser(), reward.getName());
+                emailService.sendDrawDescalificadoEmail(
+                        aDescalificar.getUser().getEmail(),
+                        aDescalificar.getUser().getName(),
+                        reward.getName());
+            } catch (Exception e) {
+                log.warn("No se pudo notificar al descalificado: {}", e.getMessage());
+            }
+
+            if (nuevoGanador != null) {
+                nuevoGanador.setPosition(1);
+                drawResultRepository.save(nuevoGanador);
+
+                reward.setWinner(nuevoGanador.getUser());
+                premiumRewardRepository.save(reward);
+
+                // Notificar al nuevo ganador
+                try {
+                    notificationService.crearNotifNuevoGanador(
+                            nuevoGanador.getUser(), reward.getName());
+                    emailService.sendDrawWinnerSustitutoEmail(
+                            nuevoGanador.getUser().getEmail(),
+                            nuevoGanador.getUser().getName(),
+                            reward.getName());
+
+                    // Ticket de soporte para coordinar entrega
+                    SupportTicket ticket = new SupportTicket();
+                    ticket.setUser(nuevoGanador.getUser());
+                    ticket.setSubject("¡Ganaste el sorteo: " + reward.getName() + "!");
+                    ticket.setStatus(com.example.demo.domain.support.TicketStatus.OPEN);
+                    SupportTicket savedTicket = supportTicketRepository.save(ticket);
+
+                    SupportMessage message = new SupportMessage();
+                    message.setTicket(savedTicket);
+                    message.setSenderType(com.example.demo.domain.support.SenderType.ADMIN);
+                    message.setSenderName("Cinemarketer");
+                    message.setContent("¡Felicitaciones " + nuevoGanador.getUser().getName() + "!\n\n" +
+                            "El ganador original del sorteo \"" + reward.getName() + "\" no pudo coordinar la entrega, " +
+                            "por lo que fuiste seleccionado/a como nuevo ganador/a.\n\n" +
+                            "Nuestro equipo se pondrá en contacto con vos a la brevedad para coordinar la entrega del premio.\n\n" +
+                            "Equipo Cinemarketer.");
+                    message.setReadByAdmin(true);
+                    message.setReadByUser(false);
+                    supportMessageRepository.save(message);
+                } catch (Exception e) {
+                    log.warn("No se pudo notificar al nuevo ganador: {}", e.getMessage());
+                }
+
+                return ResponseEntity.ok(Map.of(
+                        "nuevoGanadorName", nuevoGanador.getUser().getName(),
+                        "nuevoGanadorEmail", nuevoGanador.getUser().getEmail()
+                ));
+            } else {
+                return ResponseEntity.ok(Map.of(
+                        "nuevoGanadorName", "Sin suplentes disponibles",
+                        "nuevoGanadorEmail", ""
+                ));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/draw/results")
+    public ResponseEntity<?> getDrawResults(@PathVariable Long id) {
+        PremiumReward reward = premiumRewardRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Sorteo no encontrado"));
+
+        if (!reward.isDrawExecuted()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "El sorteo aún no fue ejecutado"));
+        }
+
+        List<com.example.demo.domain.premium.DrawResult> results =
+                drawResultRepository.findByRewardIdOrderByPosition(reward.getId());
+
+        // Armar respuesta en el mismo formato que executeDraw
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("rewardId", reward.getId());
+        response.put("rewardName", reward.getName());
+        response.put("totalParticipants", drawEntryRepository.countByRewardId(reward.getId()));
+        response.put("elegibles", results.size());
+
+        for (com.example.demo.domain.premium.DrawResult dr : results) {
+            if (dr.getPosition() == 1 && "ACTIVO".equals(dr.getStatus())) {
+                response.put("winnerId", dr.getUser().getId());
+                response.put("winnerName", dr.getUser().getName());
+                response.put("winnerEmail", dr.getUser().getEmail());
+            } else if (dr.getPosition() == 2 && "ACTIVO".equals(dr.getStatus())) {
+                response.put("suplente1Id", dr.getUser().getId());
+                response.put("suplente1Name", dr.getUser().getName());
+            } else if (dr.getPosition() == 3 && "ACTIVO".equals(dr.getStatus())) {
+                response.put("suplente2Id", dr.getUser().getId());
+                response.put("suplente2Name", dr.getUser().getName());
+            }
+        }
+
+        return ResponseEntity.ok(response);
     }
 }

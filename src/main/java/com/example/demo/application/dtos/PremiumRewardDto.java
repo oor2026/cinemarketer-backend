@@ -33,6 +33,14 @@ public class PremiumRewardDto {
     private String website;
     private String termsConditions;
 
+    // Campos para SORTEO
+    private String winner1Name;
+    private Long   winner1Id;
+    private String winner2Name;
+    private Long   winner2Id;
+    private String winner3Name;
+    private Long   winner3Id;
+
     // Campos para DESCUENTO
     private java.math.BigDecimal discountValue;
     private String discountType;
