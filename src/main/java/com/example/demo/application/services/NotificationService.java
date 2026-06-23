@@ -228,7 +228,7 @@ public class NotificationService {
         n.setUser(receptor);
         n.setActorName("Cinemarketer");
         n.setType(NotificationType.DRAW_WINNER);
-        String msg = "🏆 ¡Ganaste el sorteo: " + nombreSorteo + "! El equipo de Cinemarketer se contactará para coordinar la entrega.";
+        String msg = "¡Ganaste el sorteo: " + nombreSorteo + "! El equipo de Cinemarketer se contactará para coordinar la entrega.";
         n.setMessage(msg);
         notificationRepository.save(n);
 
@@ -263,6 +263,38 @@ public class NotificationService {
         try {
             webPushService.sendToUser(receptor.getId(),
                     "⏰ Cinemarketer Premium", msg, ICON);
+        } catch (Exception e) {}
+    }
+
+    // =============================================
+    // DESCALIFICACIÓN DE GANADOR
+    // =============================================
+    @Transactional
+    public void crearNotifDescalificado(User receptor, String nombreSorteo) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.DRAW_WINNER);
+        n.setMessage("Lamentablemente no pudimos coordinar la entrega de tu premio del sorteo \"" + nombreSorteo + "\". El premio fue reasignado a otro participante. ¡Seguí participando!");
+        notificationRepository.save(n);
+    }
+
+    // =============================================
+    // NUEVO GANADOR POR SUPLENCIA
+    // =============================================
+    @Transactional
+    public void crearNotifNuevoGanador(User receptor, String nombreSorteo) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.DRAW_WINNER);
+        n.setMessage("¡Felicitaciones! El ganador original no pudo coordinar la entrega del sorteo \"" + nombreSorteo + "\". ¡Fuiste seleccionado/a como nuevo ganador/a! Nuestro equipo se contactará con vos.");
+        notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🏆 ¡Ganaste el sorteo!", n.getMessage(), ICON);
         } catch (Exception e) {}
     }
 }
