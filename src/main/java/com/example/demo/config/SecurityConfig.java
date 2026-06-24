@@ -57,6 +57,7 @@ public class SecurityConfig {
                                 "/api/auth/google/complete-profile",
                                 "/api/banners",
                                 "/api/faq",
+                                "/api/public/**",
                                 "/api/webhooks/mercadopago",
                                 "/h2-console/**",
                                 "/swagger-ui/**",
