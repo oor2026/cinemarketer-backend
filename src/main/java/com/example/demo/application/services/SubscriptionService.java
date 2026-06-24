@@ -25,10 +25,10 @@ public class SubscriptionService {
     private final MercadoPagoService mercadoPagoService;
 
     public SubscriptionService(UserSubscriptionRepository userSubscriptionRepository,
-                                SubscriptionPlanRepository subscriptionPlanRepository,
-                                SubscriptionPaymentRepository subscriptionPaymentRepository,
-                                UserRepository userRepository,
-                                MercadoPagoService mercadoPagoService) {
+                               SubscriptionPlanRepository subscriptionPlanRepository,
+                               SubscriptionPaymentRepository subscriptionPaymentRepository,
+                               UserRepository userRepository,
+                               MercadoPagoService mercadoPagoService) {
         this.userSubscriptionRepository = userSubscriptionRepository;
         this.subscriptionPlanRepository = subscriptionPlanRepository;
         this.subscriptionPaymentRepository = subscriptionPaymentRepository;
@@ -76,16 +76,44 @@ public class SubscriptionService {
         try {
             Map<String, Object> mpData = mercadoPagoService.getSubscription(preapprovalId);
             String mpStatus = (String) mpData.get("status");
+            String payerEmail = (String) mpData.get("payerEmail");
 
             Optional<UserSubscription> subOpt = userSubscriptionRepository
                     .findByMpPreapprovalId(preapprovalId);
 
-            if (subOpt.isEmpty()) {
-                log.warn("⚠️ No se encontró suscripción local para preapprovalId: {}", preapprovalId);
-                return;
-            }
+            UserSubscription sub;
 
-            UserSubscription sub = subOpt.get();
+            if (subOpt.isEmpty()) {
+                // Suscripción via plan de MP — no hay registro previo en DB
+                // Usamos el payer_email para identificar al usuario
+                if (payerEmail == null || payerEmail.isBlank()) {
+                    log.warn("⚠️ No se encontró payer_email para preapprovalId: {}", preapprovalId);
+                    return;
+                }
+
+                Optional<User> userOpt = userRepository.findByEmail(payerEmail);
+                if (userOpt.isEmpty()) {
+                    log.warn("⚠️ No se encontró usuario con email: {}", payerEmail);
+                    return;
+                }
+
+                SubscriptionPlan plan = subscriptionPlanRepository.findFirstByActiveTrue()
+                        .orElse(null);
+                if (plan == null) {
+                    log.warn("⚠️ No hay plan activo para crear suscripción");
+                    return;
+                }
+
+                sub = new UserSubscription();
+                sub.setUser(userOpt.get());
+                sub.setPlan(plan);
+                sub.setMpPreapprovalId(preapprovalId);
+                sub.setStatus(SubscriptionStatus.PENDING);
+                log.info("📋 Creando nueva suscripción via plan para usuario: {}", payerEmail);
+
+            } else {
+                sub = subOpt.get();
+            }
 
             switch (mpStatus) {
                 case "authorized" -> {
@@ -149,7 +177,6 @@ public class SubscriptionService {
             }
             if ("approved".equals(status)) {
                 payment.setPaidAt(LocalDateTime.now());
-                // Renovar suscripción
                 sub.setEndDate(LocalDateTime.now().plusMonths(1));
                 sub.setLastPaymentStatus("approved");
                 sub.setLastPaymentDate(LocalDateTime.now());
@@ -175,7 +202,6 @@ public class SubscriptionService {
 
     @Transactional
     public void cancelSubscription(UserSubscription sub) {
-        // Cancelar en MP si tiene ID
         if (sub.getMpPreapprovalId() != null) {
             try {
                 mercadoPagoService.cancelSubscription(sub.getMpPreapprovalId());
@@ -186,10 +212,8 @@ public class SubscriptionService {
 
         sub.setStatus(SubscriptionStatus.CANCELLED);
         sub.setCancelledAt(LocalDateTime.now());
-        // endDate se mantiene — el usuario conserva acceso hasta fin del período pagado
         userSubscriptionRepository.save(sub);
 
-        // Si ya venció, desactivar premium inmediatamente
         if (sub.getEndDate() != null && sub.getEndDate().isBefore(LocalDateTime.now())) {
             deactivatePremiumOnUser(sub.getUser());
         }
@@ -278,8 +302,6 @@ public class SubscriptionService {
     private List<String> parseBenefits(String benefitsJson) {
         if (benefitsJson == null || benefitsJson.isBlank()) return List.of();
         try {
-            // Parseo simple de JSON array de strings
-            // En producción usar ObjectMapper
             String cleaned = benefitsJson.replace("[", "").replace("]", "").replace("\"", "");
             return Arrays.asList(cleaned.split(","));
         } catch (Exception e) {
