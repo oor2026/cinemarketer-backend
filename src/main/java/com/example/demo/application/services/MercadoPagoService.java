@@ -38,11 +38,8 @@ public class MercadoPagoService {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    @Value("${mercadopago.payer-email:oor2710988@gmail.com}")
-    private String payerEmail;
-
-    @Value("${subscription.price:999.0}")
-    private double subscriptionPrice;
+    @Value("${mercadopago.plan-url:https://mpago.la/1jbrd2K}")
+    private String planUrl;
 
     public MercadoPagoService() {
         this.restClient = RestClient.builder()
@@ -55,47 +52,19 @@ public class MercadoPagoService {
     // ==============================================
 
     /**
-     * Crea una suscripción (preapproval) en MP para el usuario.
-     * Devuelve el init_point y el preapproval_id para el frontend.
+     * Devuelve el init_point del plan de suscripción para el frontend.
+     * Usa URL fija del plan para permitir que cualquier usuario pague
+     * con cualquier cuenta de MP sin restricción de email.
      */
     public Map<String, Object> createSubscription(User user) {
-        log.info("🔄 Creando suscripción en MP para usuario: {}", user.getEmail());
+        log.info("🔄 Iniciando suscripción para usuario: {}", user.getEmail());
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("reason", "Cinemarketer Premium - Suscripción Mensual");
-        body.put("auto_recurring", Map.of(
-                "frequency", 1,
-                "frequency_type", "months",
-                "transaction_amount", getPlanPrice(),
-                "currency_id", "ARS"
-        ));
-        body.put("back_url", frontendUrl + "/dashboard.html?module=mi-cuenta");
-        body.put("payer_email", payerEmail);
-        body.put("status", "pending");
-        body.put("notification_url", appBaseUrl + "/api/webhooks/mercadopago");
-
-        try {
-            Map<?, ?> response = restClient.post()
-                    .uri("/preapproval")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .body(body)
-                    .retrieve()
-                    .body(Map.class);
-
-            log.info("✅ Suscripción MP creada: {}", response != null ? response.get("id") : "null");
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("preapprovalId", response != null ? response.get("id") : null);
-            result.put("initPoint", response != null ? response.get("init_point") : null);
-            result.put("publicKey", publicKey);
-            result.put("sandbox", sandbox);
-            return result;
-
-        } catch (Exception e) {
-            log.error("❌ Error creando suscripción en MP: {}", e.getMessage(), e);
-            throw new RuntimeException("Error al conectar con Mercado Pago: " + e.getMessage());
-        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("preapprovalId", null);
+        result.put("initPoint", planUrl);
+        result.put("publicKey", publicKey);
+        result.put("sandbox", sandbox);
+        return result;
     }
 
     // ==============================================
@@ -103,7 +72,8 @@ public class MercadoPagoService {
     // ==============================================
 
     /**
-     * Consulta el estado de una suscripción por su preapproval_id
+     * Consulta el estado de una suscripción por su preapproval_id.
+     * Incluye payer_email para identificar al usuario cuando viene del plan.
      */
     public Map<String, Object> getSubscription(String preapprovalId) {
         log.info("🔍 Consultando suscripción MP: {}", preapprovalId);
@@ -121,6 +91,7 @@ public class MercadoPagoService {
                 result.put("status", response.get("status"));
                 result.put("nextPaymentDate", response.get("next_payment_date"));
                 result.put("lastModified", response.get("last_modified"));
+                result.put("payerEmail", response.get("payer_email"));
             }
             return result;
 
@@ -193,10 +164,6 @@ public class MercadoPagoService {
     // ==============================================
     // HELPERS
     // ==============================================
-
-    private double getPlanPrice() {
-        return subscriptionPrice;
-    }
 
     public String getPublicKey() {
         return publicKey;
