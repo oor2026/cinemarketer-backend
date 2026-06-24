@@ -29,18 +29,20 @@ public class MercadoPagoService {
     @Value("${mercadopago.public-key}")
     private String publicKey;
 
-    @Value("${mercadopago.sandbox:true}")
+    @Value("${mercadopago.sandbox:false}")
     private boolean sandbox;
 
-    // URL base del backend — necesaria para el webhook
     @Value("${app.base-url}")
     private String appBaseUrl;
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    @Value("${mercadopago.payer-email:info@cinemarketer.com.ar}")
+    @Value("${mercadopago.payer-email:oor2710988@gmail.com}")
     private String payerEmail;
+
+    @Value("${subscription.price:999.0}")
+    private double subscriptionPrice;
 
     public MercadoPagoService() {
         this.restClient = RestClient.builder()
@@ -191,12 +193,6 @@ public class MercadoPagoService {
     // ==============================================
     // HELPERS
     // ==============================================
-
-    /**
-     * Precio del plan — en producción vendría de la BD.
-     */
-    @Value("${subscription.price:999.0}")
-    private double subscriptionPrice;
 
     private double getPlanPrice() {
         return subscriptionPrice;
