@@ -39,6 +39,9 @@ public class MercadoPagoService {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
+    @Value("${mercadopago.payer-email:info@cinemarketer.com.ar}")
+    private String payerEmail;
+
     public MercadoPagoService() {
         this.restClient = RestClient.builder()
                 .baseUrl(MP_BASE_URL)
@@ -65,6 +68,7 @@ public class MercadoPagoService {
                 "currency_id", "ARS"
         ));
         body.put("back_url", frontendUrl + "/dashboard.html?module=mi-cuenta");
+        body.put("payer_email", payerEmail);
         body.put("status", "pending");
         body.put("notification_url", appBaseUrl + "/api/webhooks/mercadopago");
 
