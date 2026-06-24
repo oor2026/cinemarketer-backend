@@ -16,7 +16,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/public/movies")
-@CrossOrigin(origins = "*")
 public class PublicMovieController {
 
     private final TmdbService tmdbService;
