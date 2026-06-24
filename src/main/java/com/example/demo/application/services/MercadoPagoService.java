@@ -65,7 +65,6 @@ public class MercadoPagoService {
                 "currency_id", "ARS"
         ));
         body.put("back_url", frontendUrl + "/dashboard.html?module=mi-cuenta");
-        body.put("payer_email", user.getEmail());
         body.put("status", "pending");
         body.put("notification_url", appBaseUrl + "/api/webhooks/mercadopago");
 
