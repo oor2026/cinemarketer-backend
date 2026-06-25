@@ -163,9 +163,36 @@ public class SubscriptionService {
             Optional<UserSubscription> subOpt = userSubscriptionRepository
                     .findByMpPreapprovalId(preapprovalId);
 
-            if (subOpt.isEmpty()) return;
+            UserSubscription sub;
 
-            UserSubscription sub = subOpt.get();
+            if (subOpt.isEmpty()) {
+                // Pago de suscripción via plan — no hay registro previo en DB
+                // Usamos el payer_email para identificar al usuario
+                String payerEmail = (String) paymentData.get("payerEmail");
+                if (payerEmail == null || payerEmail.isBlank()) {
+                    log.warn("⚠️ Pago {} sin preapprovalId en DB ni payerEmail", paymentId);
+                    return;
+                }
+
+                Optional<User> userOpt = userRepository.findByEmail(payerEmail);
+                if (userOpt.isEmpty()) {
+                    log.warn("⚠️ No se encontró usuario con email: {}", payerEmail);
+                    return;
+                }
+
+                SubscriptionPlan plan = subscriptionPlanRepository.findFirstByActiveTrue().orElse(null);
+                if (plan == null) return;
+
+                sub = new UserSubscription();
+                sub.setUser(userOpt.get());
+                sub.setPlan(plan);
+                sub.setMpPreapprovalId(preapprovalId);
+                sub.setStatus(SubscriptionStatus.PENDING);
+                sub = userSubscriptionRepository.save(sub);
+                log.info("📋 Creando nueva suscripción via pago para usuario: {}", payerEmail);
+            } else {
+                sub = subOpt.get();
+            }
 
             // Registrar el pago
             SubscriptionPayment payment = new SubscriptionPayment();
