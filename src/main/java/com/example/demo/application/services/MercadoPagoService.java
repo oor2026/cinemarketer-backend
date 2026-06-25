@@ -38,8 +38,11 @@ public class MercadoPagoService {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    @Value("${mercadopago.plan-url:https://mpago.la/1jbrd2K}")
-    private String planUrl;
+    @Value("${mercadopago.plan-id}")
+    private String planId;
+
+    @Value("${subscription.price:999.0}")
+    private double subscriptionPrice;
 
     public MercadoPagoService() {
         this.restClient = RestClient.builder()
@@ -52,19 +55,41 @@ public class MercadoPagoService {
     // ==============================================
 
     /**
-     * Devuelve el init_point del plan de suscripción para el frontend.
-     * Usa URL fija del plan para permitir que cualquier usuario pague
-     * con cualquier cuenta de MP sin restricción de email.
+     * Crea un preapproval asociado al plan de suscripción.
+     * Al usar preapproval_plan_id, MP no requiere payer_email
+     * y cualquier usuario puede pagar con cualquier cuenta.
      */
     public Map<String, Object> createSubscription(User user) {
-        log.info("🔄 Iniciando suscripción para usuario: {}", user.getEmail());
+        log.info("🔄 Creando suscripción en MP para usuario: {}", user.getEmail());
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("preapprovalId", null);
-        result.put("initPoint", planUrl);
-        result.put("publicKey", publicKey);
-        result.put("sandbox", sandbox);
-        return result;
+        Map<String, Object> body = new HashMap<>();
+        body.put("preapproval_plan_id", planId);
+        body.put("back_url", frontendUrl + "/dashboard.html?module=mi-cuenta");
+        body.put("status", "pending");
+        body.put("notification_url", appBaseUrl + "/api/webhooks/mercadopago");
+
+        try {
+            Map<?, ?> response = restClient.post()
+                    .uri("/preapproval")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
+
+            log.info("✅ Suscripción MP creada: {}", response != null ? response.get("id") : "null");
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("preapprovalId", response != null ? response.get("id") : null);
+            result.put("initPoint", response != null ? response.get("init_point") : null);
+            result.put("publicKey", publicKey);
+            result.put("sandbox", sandbox);
+            return result;
+
+        } catch (Exception e) {
+            log.error("❌ Error creando suscripción en MP: {}", e.getMessage(), e);
+            throw new RuntimeException("Error al conectar con Mercado Pago: " + e.getMessage());
+        }
     }
 
     // ==============================================
@@ -164,6 +189,10 @@ public class MercadoPagoService {
     // ==============================================
     // HELPERS
     // ==============================================
+
+    private double getPlanPrice() {
+        return subscriptionPrice;
+    }
 
     public String getPublicKey() {
         return publicKey;
