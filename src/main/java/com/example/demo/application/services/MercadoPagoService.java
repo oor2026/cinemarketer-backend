@@ -34,7 +34,7 @@ public class MercadoPagoService {
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
-    @Value("${mercadopago.plan-url:https://mpago.la/1jbrd2K}")
+    @Value("${mercadopago.plan-url:https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=ad2d7a186bac4013bc75f40b76759b1b}")
     private String planUrl;
 
     public MercadoPagoService() {
