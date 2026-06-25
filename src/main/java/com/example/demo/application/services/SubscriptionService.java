@@ -21,19 +21,25 @@ public class SubscriptionService {
     private final UserSubscriptionRepository userSubscriptionRepository;
     private final SubscriptionPlanRepository subscriptionPlanRepository;
     private final SubscriptionPaymentRepository subscriptionPaymentRepository;
+    private final SubscriptionPendingConfirmationRepository pendingConfirmationRepository;
     private final UserRepository userRepository;
     private final MercadoPagoService mercadoPagoService;
+    private final EmailService emailService;
 
     public SubscriptionService(UserSubscriptionRepository userSubscriptionRepository,
                                SubscriptionPlanRepository subscriptionPlanRepository,
                                SubscriptionPaymentRepository subscriptionPaymentRepository,
+                               SubscriptionPendingConfirmationRepository pendingConfirmationRepository,
                                UserRepository userRepository,
-                               MercadoPagoService mercadoPagoService) {
+                               MercadoPagoService mercadoPagoService,
+                               EmailService emailService) {
         this.userSubscriptionRepository = userSubscriptionRepository;
         this.subscriptionPlanRepository = subscriptionPlanRepository;
         this.subscriptionPaymentRepository = subscriptionPaymentRepository;
+        this.pendingConfirmationRepository = pendingConfirmationRepository;
         this.userRepository = userRepository;
         this.mercadoPagoService = mercadoPagoService;
+        this.emailService = emailService;
     }
 
     // ==============================================
@@ -84,8 +90,6 @@ public class SubscriptionService {
             UserSubscription sub;
 
             if (subOpt.isEmpty()) {
-                // Suscripción via plan de MP — no hay registro previo en DB
-                // Usamos el payer_email para identificar al usuario
                 if (payerEmail == null || payerEmail.isBlank()) {
                     log.warn("⚠️ No se encontró payer_email para preapprovalId: {}", preapprovalId);
                     return;
@@ -97,8 +101,7 @@ public class SubscriptionService {
                     return;
                 }
 
-                SubscriptionPlan plan = subscriptionPlanRepository.findFirstByActiveTrue()
-                        .orElse(null);
+                SubscriptionPlan plan = subscriptionPlanRepository.findFirstByActiveTrue().orElse(null);
                 if (plan == null) {
                     log.warn("⚠️ No hay plan activo para crear suscripción");
                     return;
@@ -166,8 +169,6 @@ public class SubscriptionService {
             UserSubscription sub;
 
             if (subOpt.isEmpty()) {
-                // Pago de suscripción via plan — no hay registro previo en DB
-                // Usamos el payer_email para identificar al usuario
                 String payerEmail = (String) paymentData.get("payerEmail");
                 if (payerEmail == null || payerEmail.isBlank()) {
                     log.warn("⚠️ Pago {} sin preapprovalId en DB ni payerEmail", paymentId);
@@ -177,6 +178,24 @@ public class SubscriptionService {
                 Optional<User> userOpt = userRepository.findByEmail(payerEmail);
                 if (userOpt.isEmpty()) {
                     log.warn("⚠️ No se encontró usuario con email: {}", payerEmail);
+
+                    // Crear confirmación pendiente y enviar emails solo si no existe ya
+                    if (!pendingConfirmationRepository.existsByMpPreapprovalId(preapprovalId)) {
+                        SubscriptionPendingConfirmation pending = new SubscriptionPendingConfirmation();
+                        pending.setToken(UUID.randomUUID().toString());
+                        pending.setMpPayerEmail(payerEmail);
+                        pending.setMpPreapprovalId(preapprovalId);
+                        pending.setMpPaymentId(paymentId);
+                        double amount = paymentData.get("transactionAmount") != null
+                                ? Double.parseDouble(paymentData.get("transactionAmount").toString()) : 999.0;
+                        pending.setAmount(amount);
+                        pendingConfirmationRepository.save(pending);
+
+                        String confirmUrl = "https://cinemarketer.com.ar/api/subscriptions/confirm?token=" + pending.getToken();
+                        emailService.sendSubscriptionConfirmationEmail(payerEmail, confirmUrl, amount);
+                        emailService.sendAdminSubscriptionAlert(payerEmail, preapprovalId, amount);
+                        log.info("📧 Emails enviados para confirmación pendiente: {}", payerEmail);
+                    }
                     return;
                 }
 
@@ -221,6 +240,53 @@ public class SubscriptionService {
         } catch (Exception e) {
             log.error("❌ Error procesando webhook pago {}: {}", paymentId, e.getMessage());
         }
+    }
+
+    // ==============================================
+    // CONFIRMAR SUSCRIPCIÓN PENDIENTE
+    // ==============================================
+
+    @Transactional
+    public void confirmarSuscripcionPendiente(String token, String userEmail) {
+        SubscriptionPendingConfirmation pending = pendingConfirmationRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Token inválido o no encontrado"));
+
+        if (pending.isExpired()) {
+            throw new RuntimeException("El link de confirmación expiró. Contactá a info@cinemarketer.com.ar");
+        }
+
+        if (pending.isConfirmed()) {
+            throw new RuntimeException("Esta suscripción ya fue confirmada anteriormente");
+        }
+
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        SubscriptionPlan plan = subscriptionPlanRepository.findFirstByActiveTrue()
+                .orElseThrow(() -> new RuntimeException("No hay planes activos"));
+
+        // Crear la suscripción
+        UserSubscription sub = new UserSubscription();
+        sub.setUser(user);
+        sub.setPlan(plan);
+        sub.setMpPreapprovalId(pending.getMpPreapprovalId());
+        sub.setStatus(SubscriptionStatus.ACTIVE);
+        sub.setStartDate(LocalDateTime.now());
+        sub.setEndDate(LocalDateTime.now().plusMonths(1));
+        sub.setNextBillingDate(LocalDateTime.now().plusMonths(1));
+        sub.setLastPaymentStatus("approved");
+        sub.setLastPaymentDate(LocalDateTime.now());
+        userSubscriptionRepository.save(sub);
+
+        // Activar premium
+        activatePremiumOnUser(user);
+
+        // Marcar confirmación como usada
+        pending.setConfirmedAt(LocalDateTime.now());
+        pending.setConfirmedUserId(user.getId());
+        pendingConfirmationRepository.save(pending);
+
+        log.info("✅ Suscripción confirmada para usuario: {} (MP email: {})", userEmail, pending.getMpPayerEmail());
     }
 
     // ==============================================

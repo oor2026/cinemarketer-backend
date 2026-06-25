@@ -212,4 +212,27 @@ public class EmailService {
                 "<p style='font-size:13px;color:#888888;'>Seguí participando en los próximos sorteos de Cinemarketer. ¡Mucha suerte!</p>";
         sendHtml(to, "Cinemarketer - Actualización sobre el sorteo", body);
     }
+
+    public void sendSubscriptionConfirmationEmail(String to, String confirmUrl, double amount) {
+        String body = "<p>Hola,</p>" +
+                "<p>Recibimos un pago de <strong>$" + (int) amount + "</strong> para <strong>Cinemarketer Premium</strong> desde esta dirección de email.</p>" +
+                "<p>Para activar tu suscripción, hacé clic en el siguiente botón y confirmá tu cuenta de Cinemarketer:</p>" +
+                btn(confirmUrl, "Activar mi suscripción Premium") +
+                "<p style='font-size:13px;color:#888888;'>Este enlace es válido por 7 días. Si no realizaste este pago, podés ignorar este mensaje.</p>" +
+                "<p style='font-size:13px;color:#888888;'>¿Necesitás ayuda? Escribinos a <a href='mailto:info@cinemarketer.com.ar' style='color:#e23232;'>info@cinemarketer.com.ar</a></p>";
+        sendHtml(to, "Cinemarketer - Activá tu suscripción Premium", body);
+    }
+
+    public void sendAdminSubscriptionAlert(String mpPayerEmail, String mpPreapprovalId, double amount) {
+        String body = "<p>Hola,</p>" +
+                "<p>Se recibió un pago de suscripción Premium que <strong>no pudo asociarse automáticamente</strong> a ningún usuario de Cinemarketer.</p>" +
+                "<div style='background-color:#fff8e1;border-left:4px solid #f59e0b;padding:14px 18px;margin:20px 0;border-radius:4px;'>" +
+                "<p style='margin:0 0 8px;'><strong>Email de Mercado Pago:</strong> " + mpPayerEmail + "</p>" +
+                "<p style='margin:0 0 8px;'><strong>Preapproval ID:</strong> " + mpPreapprovalId + "</p>" +
+                "<p style='margin:0;'><strong>Monto:</strong> $" + (int) amount + "</p>" +
+                "</div>" +
+                "<p>Se envió un email de confirmación al pagador para que vincule su cuenta de Cinemarketer.</p>" +
+                "<p style='font-size:13px;color:#888888;'>Si el usuario no confirma en 7 días, deberás activar la suscripción manualmente.</p>";
+        sendHtml("info@cinemarketer.com.ar", "⚠️ Cinemarketer Admin - Pago sin usuario asociado", body);
+    }
 }
