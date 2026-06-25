@@ -43,8 +43,8 @@ public class MovieShareController {
                     <meta name="twitter:title" content="%s — Cinemarketer">
                     <meta name="twitter:image" content="%s">
                     <meta name="twitter:description" content="Mirá lo que opina la comunidad de Cinemarketer sobre esta película 🎬">
-                    <meta http-equiv="refresh" content="0;url=https://cinemarketer.com.ar/pelicula.html?id=%d">
-                    <script>window.location.href='https://cinemarketer.com.ar/pelicula.html?id=%d';</script>
+                    <meta http-equiv="refresh" content="0;url=https://cinemarketer.com.ar/pelicula?id=%d">
+                    <script>window.location.href='https://cinemarketer.com.ar/pelicula?id=%d';</script>
                 </head>
                 <body></body>
                 </html>
