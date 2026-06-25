@@ -122,6 +122,19 @@ public class MercadoPagoService {
                 result.put("transactionAmount", response.get("transaction_amount"));
                 result.put("dateApproved", response.get("date_approved"));
                 result.put("preapprovalId", response.get("preapproval_id"));
+// Para pagos de suscripciones, el preapproval_id está en otro lugar
+                Map<?, ?> poi = (Map<?, ?>) response.get("point_of_interaction");
+                if (poi != null) {
+                    Map<?, ?> txData = (Map<?, ?>) poi.get("transaction_data");
+                    if (txData != null && result.get("preapprovalId") == null) {
+                        result.put("preapprovalId", txData.get("subscription_id"));
+                    }
+                }
+// Email del pagador
+                Map<?, ?> payer = (Map<?, ?>) response.get("payer");
+                if (payer != null) {
+                    result.put("payerEmail", payer.get("email"));
+                }
             }
             return result;
 
