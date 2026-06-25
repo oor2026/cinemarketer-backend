@@ -32,6 +32,7 @@ public class PremiumRewardDto {
     private String partner;
     private String website;
     private String termsConditions;
+    private String prizeDetails;
 
     // Campos para SORTEO
     private String winner1Name;

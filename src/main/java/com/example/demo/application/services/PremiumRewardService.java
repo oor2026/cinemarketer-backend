@@ -287,6 +287,7 @@ public class PremiumRewardService {
         dto.setPartner(reward.getPartner());
         dto.setWebsite(reward.getWebsite());
         dto.setTermsConditions(reward.getTermsConditions());
+        dto.setPrizeDetails(reward.getPrizeDetails());
 
         // Descuento
         dto.setDiscountValue(reward.getDiscountValue());

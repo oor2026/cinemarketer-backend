@@ -84,6 +84,7 @@ public class AdminPremiumRewardController {
             reward.setPartner((String) body.get("partner"));
             reward.setWebsite((String) body.get("website"));
             reward.setTermsConditions((String) body.get("termsConditions"));
+            reward.setPrizeDetails((String) body.get("prizeDetails"));
             reward.setPointsRequired(body.get("pointsRequired") != null
                     ? ((Number) body.get("pointsRequired")).intValue() : 0);
             reward.setStock(body.get("stock") != null
@@ -181,6 +182,7 @@ public class AdminPremiumRewardController {
             if (body.get("partner") != null)          reward.setPartner((String) body.get("partner"));
             if (body.get("website") != null)          reward.setWebsite((String) body.get("website"));
             if (body.get("termsConditions") != null)  reward.setTermsConditions((String) body.get("termsConditions"));
+            if (body.get("prizeDetails") != null)     reward.setPrizeDetails((String) body.get("prizeDetails"));
             if (body.get("pointsRequired") != null)
                 reward.setPointsRequired(((Number) body.get("pointsRequired")).intValue());
             if (body.get("stock") != null)
