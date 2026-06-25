@@ -32,16 +32,23 @@ public class MovieShareController {
                     <meta charset="UTF-8">
                     <meta property="og:title" content="%s — Cinemarketer">
                     <meta property="og:image" content="%s">
+                    <meta property="og:image:width" content="500">
+                    <meta property="og:image:height" content="750">
+                    <meta property="og:image:type" content="image/jpeg">
                     <meta property="og:description" content="Mirá lo que opina la comunidad de Cinemarketer sobre esta película 🎬">
                     <meta property="og:url" content="https://cinemarketer.com.ar/pelicula?id=%d">
                     <meta property="og:type" content="website">
+                    <meta property="og:site_name" content="Cinemarketer">
                     <meta name="twitter:card" content="summary_large_image">
+                    <meta name="twitter:title" content="%s — Cinemarketer">
+                    <meta name="twitter:image" content="%s">
+                    <meta name="twitter:description" content="Mirá lo que opina la comunidad de Cinemarketer sobre esta película 🎬">
                     <meta http-equiv="refresh" content="0;url=/pelicula?id=%d">
                     <script>window.location.href='/pelicula?id=%d';</script>
                 </head>
                 <body></body>
                 </html>
-                """.formatted(titulo, poster, id, id, id);
+                """.formatted(titulo, poster, id, titulo, poster, id, id);
 
             return ResponseEntity.ok()
                     .header("Content-Type", "text/html; charset=UTF-8")
