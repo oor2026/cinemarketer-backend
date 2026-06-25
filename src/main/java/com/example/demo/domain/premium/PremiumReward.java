@@ -69,6 +69,9 @@ public class PremiumReward {
     @Column(name = "terms_conditions", columnDefinition = "TEXT")
     private String termsConditions;
 
+    @Column(name = "prize_details", columnDefinition = "TEXT")
+    private String prizeDetails;
+
     @Column(name = "discount_value", precision = 10, scale = 2)
     private java.math.BigDecimal discountValue;
 
