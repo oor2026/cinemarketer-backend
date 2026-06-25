@@ -58,6 +58,7 @@ public class SecurityConfig {
                                 "/api/banners",
                                 "/api/faq",
                                 "/api/public/**",
+                                "/api/movies/og/**",
                                 "/api/webhooks/mercadopago",
                                 "/api/subscriptions/confirm",
                                 "/h2-console/**",
