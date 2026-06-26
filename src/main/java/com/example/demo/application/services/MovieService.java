@@ -270,4 +270,14 @@ public class MovieService {
         }
         return tmdbService.getMovieVideos(movieId, language);
     }
+
+    /**
+     * Obtener películas similares por ID
+     */
+    public TmdbPageResponseDto getSimilarMovies(Long movieId) {
+        if (movieId == null || movieId <= 0) {
+            throw new IllegalArgumentException("ID de película inválido");
+        }
+        return tmdbService.getSimilarMovies(movieId);
+    }
 }

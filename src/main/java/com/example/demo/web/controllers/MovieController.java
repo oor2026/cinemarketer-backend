@@ -166,4 +166,14 @@ public class MovieController {
         TmdbVideoDto response = movieService.getMovieVideos(id, language);
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * Obtener películas similares
+     * GET /api/movies/{id}/similar
+     */
+    @GetMapping("/{id}/similar")
+    public ResponseEntity<TmdbPageResponseDto> getSimilarMovies(@PathVariable Long id) {
+        TmdbPageResponseDto response = movieService.getSimilarMovies(id);
+        return ResponseEntity.ok(response);
+    }
 }

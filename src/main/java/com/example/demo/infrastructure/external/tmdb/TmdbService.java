@@ -230,4 +230,16 @@ public class TmdbService {
                 builder.build().toUriString(), HttpMethod.GET, entity, TmdbVideoDto.class);
         return response.getBody();
     }
+
+    /**
+     * Obtener películas similares por ID
+     */
+    public TmdbPageResponseDto getSimilarMovies(Long movieId) {
+        String path = "/movie/" + movieId + "/similar";
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<TmdbPageResponseDto> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, TmdbPageResponseDto.class);
+        return response.getBody();
+    }
 }
