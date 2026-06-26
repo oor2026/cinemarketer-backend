@@ -382,7 +382,17 @@ public class SubscriptionService {
         Map<String, Object> result = new HashMap<>();
         result.put("subscription", toDto(sub));
         result.put("payments", subscriptionPaymentRepository
-                .findBySubscriptionIdOrderByCreatedAtDesc(sub.getId()));
+                .findBySubscriptionIdOrderByCreatedAtDesc(sub.getId())
+                .stream()
+                .map(p -> Map.of(
+                        "id",          p.getId(),
+                        "mpPaymentId", p.getMpPaymentId() != null ? p.getMpPaymentId() : "",
+                        "amount",      p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO,
+                        "status",      p.getStatus() != null ? p.getStatus() : "",
+                        "paidAt",      p.getPaidAt() != null ? p.getPaidAt().toString() : "",
+                        "createdAt",   p.getCreatedAt() != null ? p.getCreatedAt().toString() : ""
+                ))
+                .toList());
         return result;
     }
 
