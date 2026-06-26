@@ -333,10 +333,20 @@ public class SubscriptionService {
         sub.setStartDate(LocalDateTime.now());
         sub.setEndDate(LocalDateTime.now().plusMonths(1));
         sub.setNextBillingDate(LocalDateTime.now().plusMonths(1));
-        sub.setLastPaymentStatus("manual");
+        sub.setLastPaymentStatus("approved");
         sub.setLastPaymentDate(LocalDateTime.now());
 
         userSubscriptionRepository.save(sub);
+
+        // Registrar pago manual en historial
+        SubscriptionPayment payment = new SubscriptionPayment();
+        payment.setSubscription(sub);
+        payment.setMpPaymentId("MANUAL-" + userId + "-" + System.currentTimeMillis());
+        payment.setStatus("approved");
+        payment.setAmount(new BigDecimal("999.00"));
+        payment.setPaidAt(LocalDateTime.now());
+        subscriptionPaymentRepository.save(payment);
+
         activatePremiumOnUser(user);
 
         log.info("✅ Suscripción activada manualmente para usuario: {}", user.getEmail());
