@@ -280,4 +280,14 @@ public class MovieService {
         }
         return tmdbService.getSimilarMovies(movieId);
     }
+
+    /**
+     * Obtener proveedores de streaming por ID de película
+     */
+    public Object getWatchProviders(Long movieId) {
+        if (movieId == null || movieId <= 0) {
+            throw new IllegalArgumentException("ID de película inválido");
+        }
+        return tmdbService.getWatchProviders(movieId);
+    }
 }
