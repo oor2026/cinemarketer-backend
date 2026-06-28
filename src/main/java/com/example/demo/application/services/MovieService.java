@@ -290,4 +290,21 @@ public class MovieService {
         }
         return tmdbService.getWatchProviders(movieId);
     }
+
+    public Object getMovieCredits(Long movieId) {
+        if (movieId == null || movieId <= 0) {
+            throw new IllegalArgumentException("ID de película inválido");
+        }
+        return tmdbService.getMovieCredits(movieId);
+    }
+
+    public Object getPersonDetails(Long personId) {
+        if (personId == null || personId <= 0) throw new IllegalArgumentException("ID inválido");
+        return tmdbService.getPersonDetails(personId);
+    }
+
+    public Object getPersonMovieCredits(Long personId) {
+        if (personId == null || personId <= 0) throw new IllegalArgumentException("ID inválido");
+        return tmdbService.getPersonMovieCredits(personId);
+    }
 }

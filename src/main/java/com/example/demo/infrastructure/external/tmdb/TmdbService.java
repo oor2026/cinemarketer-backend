@@ -254,4 +254,31 @@ public class TmdbService {
                 url, HttpMethod.GET, entity, Object.class);
         return response.getBody();
     }
+
+    public Object getMovieCredits(Long movieId) {
+        String path = "/movie/" + movieId + "/credits";
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    public Object getPersonDetails(Long personId) {
+        String path = "/person/" + personId;
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    public Object getPersonMovieCredits(Long personId) {
+        String path = "/person/" + personId + "/movie_credits";
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
 }
