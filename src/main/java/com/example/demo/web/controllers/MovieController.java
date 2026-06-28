@@ -176,4 +176,14 @@ public class MovieController {
         TmdbPageResponseDto response = movieService.getSimilarMovies(id);
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * Obtener proveedores de streaming
+     * GET /api/movies/{id}/watch-providers
+     */
+    @GetMapping("/{id}/watch-providers")
+    public ResponseEntity<Object> getWatchProviders(@PathVariable Long id) {
+        Object response = movieService.getWatchProviders(id);
+        return ResponseEntity.ok(response);
+    }
 }

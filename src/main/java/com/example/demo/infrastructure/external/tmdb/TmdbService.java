@@ -242,4 +242,16 @@ public class TmdbService {
                 url, HttpMethod.GET, entity, TmdbPageResponseDto.class);
         return response.getBody();
     }
+
+    /**
+     * Obtener proveedores de streaming por ID de película
+     */
+    public Object getWatchProviders(Long movieId) {
+        String path = "/movie/" + movieId + "/watch/providers";
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
 }
