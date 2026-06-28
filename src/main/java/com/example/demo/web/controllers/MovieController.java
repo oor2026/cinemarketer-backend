@@ -186,4 +186,20 @@ public class MovieController {
         Object response = movieService.getWatchProviders(id);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/{id}/credits")
+    public ResponseEntity<Object> getMovieCredits(@PathVariable Long id) {
+        Object response = movieService.getMovieCredits(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/person/{id}")
+    public ResponseEntity<Object> getPersonDetails(@PathVariable Long id) {
+        return ResponseEntity.ok(movieService.getPersonDetails(id));
+    }
+
+    @GetMapping("/person/{id}/credits")
+    public ResponseEntity<Object> getPersonMovieCredits(@PathVariable Long id) {
+        return ResponseEntity.ok(movieService.getPersonMovieCredits(id));
+    }
 }
