@@ -111,6 +111,12 @@ public class Publication {
     @Column(name = "author_was_creator", nullable = false)
     private boolean authorWasCreator = false;
 
+    // Creator Tools — "Ficha rápida de película": si true, el frontend reemplaza
+    // el link simple a la película por la ficha rica (poster + datos), resolviendo
+    // siempre en vivo contra GET /movies/{movieId} (no se congela nada acá).
+    @Column(name = "movie_ficha_enabled", nullable = false)
+    private boolean movieFichaEnabled = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
