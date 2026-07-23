@@ -124,6 +124,9 @@ public class PublicationService {
         if (tieneImagen && tieneVideo) {
             throw new IllegalArgumentException("No podés combinar imagen y video en la misma publicación.");
         }
+        if (req.isMovieFichaEnabled() && (tieneImagen || tieneVideo)) {
+            throw new IllegalArgumentException("El modo Ficha técnica no se puede combinar con imagen o video, solo texto.");
+        }
 
         // Validar formato según plan: imagen requiere Premium o Creator, video solo Creator
         if (tieneImagen && !user.puedeSubirImagen()) {
@@ -145,6 +148,10 @@ public class PublicationService {
         Publication pub = new Publication();
         pub.setUser(user);
         pub.setAuthorWasCreator(user.isActiveCreator());
+        // Solo un Creator puede activar la ficha rica — si un Free/Premium manda
+        // el flag en true (bug de cliente o manipulación directa del request),
+        // se ignora silenciosamente y cae al link simple de siempre.
+        pub.setMovieFichaEnabled(user.isActiveCreator() && req.isMovieFichaEnabled() && req.getMovieId() != null);
         pub.setTitle(req.getTitle().trim());
         pub.setHashtags(hashtagsNormalizados);
         pub.setMovieId(req.getMovieId());
@@ -371,6 +378,15 @@ public class PublicationService {
             hashtagService.ajustarPorEdicion(pub.getHashtags(), hashtagsNormalizados);
             pub.setHashtags(hashtagsNormalizados);
         }
+        if (imageUrls != null && imageUrls.length > 0 && pub.isMovieFichaEnabled()) {
+            throw new IllegalArgumentException(
+                    "Esta publicación usa el modo Ficha técnica y no admite imagen ni video — solo texto.");
+        }
+        if (videoUid != null && !videoUid.isBlank() && pub.isMovieFichaEnabled()) {
+            throw new IllegalArgumentException(
+                    "Esta publicación usa el modo Ficha técnica y no admite imagen ni video — solo texto.");
+        }
+
         if (imageUrls != null) {
             // Validar permiso de plan antes de aceptar la nueva imagen —
             // mismo control que en createPublication, para que editar no sea
