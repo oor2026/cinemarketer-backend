@@ -48,7 +48,7 @@ public class SubscriptionService {
 
     public boolean isActivePremium(Long userId) {
         Optional<UserSubscription> sub = userSubscriptionRepository
-                .findByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE);
+                .findByUserIdAndStatusAndPlanName(userId, SubscriptionStatus.ACTIVE, "Premium");
         return sub.isPresent() && sub.get().isActive();
     }
 

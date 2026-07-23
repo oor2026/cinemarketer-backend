@@ -12,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -41,11 +42,15 @@ public class SubscriptionController {
     public ResponseEntity<?> getMySubscription(@AuthenticationPrincipal UserDetails userDetails) {
         User user = getAuthenticatedUser(userDetails);
 
-        Optional<UserSubscription> activeSub = userSubscriptionRepository
-                .findByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE);
+        List<UserSubscription> activeSubs = userSubscriptionRepository
+                .findAllByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE);
 
-        if (activeSub.isPresent()) {
-            return ResponseEntity.ok(subscriptionService.toDto(activeSub.get()));
+        if (!activeSubs.isEmpty()) {
+            UserSubscription elegida = activeSubs.stream()
+                    .filter(s -> "Premium".equalsIgnoreCase(s.getPlan().getName()))
+                    .findFirst()
+                    .orElse(activeSubs.get(0));
+            return ResponseEntity.ok(subscriptionService.toDto(elegida));
         }
 
         Optional<UserSubscription> cancelledSub = userSubscriptionRepository

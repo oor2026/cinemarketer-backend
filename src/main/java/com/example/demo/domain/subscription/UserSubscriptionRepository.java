@@ -12,6 +12,8 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
 
     Optional<UserSubscription> findByUserIdAndStatus(Long userId, SubscriptionStatus status);
 
+    List<UserSubscription> findAllByUserIdAndStatus(Long userId, SubscriptionStatus status);
+
     @Query("SELECT s FROM UserSubscription s WHERE s.user.id = :userId AND s.status = :status AND s.plan.name = :planName")
     Optional<UserSubscription> findByUserIdAndStatusAndPlanName(@Param("userId") Long userId,
                                                                 @Param("status") SubscriptionStatus status,
