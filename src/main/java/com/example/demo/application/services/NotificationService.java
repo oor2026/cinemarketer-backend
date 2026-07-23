@@ -36,6 +36,53 @@ public class NotificationService {
     }
 
     @Transactional
+    public void crearComentarioEnPublicacion(User receptor, String actorName, Long publicationId, Long comentarioId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName(actorName);
+        n.setType(NotificationType.PUB_COMENTARIO);
+        n.setMessage(actorName + " comentó tu publicación en Comunidad");
+        n.setPublicationId(publicationId);
+        n.setCommentId(comentarioId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearRespuestaEnComentarioPublicacion(User receptor, String actorName, Long publicationId, Long comentarioId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName(actorName);
+        n.setType(NotificationType.PUB_RESPUESTA);
+        n.setMessage(actorName + " respondió tu comentario en una publicación de Comunidad");
+        n.setPublicationId(publicationId);
+        n.setCommentId(comentarioId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearBancoComentarioPublicacion(User receptor, String actorName, Long publicationId, Long comentarioId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName(actorName);
+        n.setType(NotificationType.PUB_BANCO_COMENTARIO);
+        n.setMessage(actorName + " bancó tu comentario en una publicación de Comunidad");
+        n.setPublicationId(publicationId);
+        n.setCommentId(comentarioId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearBancoPublicacion(User receptor, String actorName, Long publicationId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName(actorName);
+        n.setType(NotificationType.PUB_BANCO);
+        n.setMessage(actorName + " bancó tu publicación en Comunidad");
+        n.setPublicationId(publicationId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
     public void crearMerecePunto(User receptor, String actorName, Long movieId, String movieTitle, Long commentId) {
         Notification n = new Notification();
         n.setUser(receptor);
@@ -49,14 +96,153 @@ public class NotificationService {
     }
 
     @Transactional
-    public void crearComentarioEliminado(User receptor, Long movieId, String movieTitle) {
+    public void crearMerecePuntoPublicacion(User receptor, String actorName, Long pubId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName(actorName);
+        n.setType(NotificationType.PUB_MERECE_PUNTO);
+        n.setMessage(actorName + " consideró que tu publicación en Comunidad merece un punto");
+        n.setPublicationId(pubId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearPublicacionOculta(User receptor, String reason, Long pubId, String pubTitle) {
+        String tituloDisplay = (pubTitle != null && !pubTitle.isBlank())
+                ? "\"" + pubTitle + "\"" : "(sin título)";
         Notification n = new Notification();
         n.setUser(receptor);
         n.setActorName("Cinemarketer");
         n.setType(NotificationType.COMMENT_REMOVED);
-        n.setMessage("Tu comentario en " + movieTitle + " fue reportado y eliminado por no cumplir con nuestras normas de convivencia.");
+        n.setMessage("Tu publicación " + tituloDisplay + " en Comunidad fue ocultada por moderación. Motivo: " + reason);
+        n.setPublicationId(pubId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearPublicacionAprobada(User receptor, Long pubId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.PUB_APROBADA);
+        n.setMessage("Tu publicación fue aprobada, ya la podés ver en Comunidad.");
+        n.setPublicationId(pubId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearPublicacionPendienteRevision(User receptor, Long pubId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.PUB_PENDIENTE_REVISION);
+        n.setMessage("Tu publicación está pendiente de revisión. En caso de no violar nuestras normas de convivencia " +
+                "la misma será publicada, en caso contrario no.");
+        n.setPublicationId(pubId);
+        notificationRepository.save(n);
+    }
+
+    // Video agregado por edición a una publicación que ya estaba viva —
+    // a diferencia de crearPublicacionAprobada, el resto de la publicación
+    // (comentarios, puntos, engagement) nunca estuvo en riesgo.
+    @Transactional
+    public void crearPublicacionRechazadaPorDuracion(User receptor, Long pubId, int maxSegundos) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.VIDEO_RECHAZADO);
+        n.setMessage("Tu publicación no pudo publicarse porque el video supera los " + maxSegundos +
+                " segundos permitidos. Podés volver a intentarlo con un video de menor duración.");
+        n.setPublicationId(pubId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearVideoRechazadoPorDuracion(User receptor, Long pubId, int maxSegundos) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.VIDEO_RECHAZADO);
+        n.setMessage("Tu video no pudo agregarse porque supera los " + maxSegundos +
+                " segundos permitidos. El resto de tu publicación sigue visible con normalidad.");
+        n.setPublicationId(pubId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearVideoAprobado(User receptor, Long pubId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.VIDEO_APROBADO);
+        n.setMessage("Tu video fue aprobado, ya lo podés ver en tu publicación.");
+        n.setPublicationId(pubId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearVideoRechazado(User receptor, Long pubId, String reason) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.VIDEO_RECHAZADO);
+        n.setMessage("Tu video no pasó la revisión y fue retirado. Motivo: " + reason +
+                ". El resto de tu publicación sigue visible con normalidad.");
+        n.setPublicationId(pubId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearVideoPendienteRevision(User receptor, Long pubId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.VIDEO_PENDIENTE_REVISION);
+        n.setMessage("Tu video está pendiente de revisión. El resto de tu publicación sigue visible con normalidad. " +
+                "En caso de no violar nuestras normas de convivencia, el video será publicado; en caso contrario no.");
+        n.setPublicationId(pubId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearComentarioEliminado(User receptor, Long movieId, String movieTitle, String contenido, String tipoLabel) {
+        String contenidoCorto = (contenido != null && contenido.length() > 150)
+                ? contenido.substring(0, 150) + "..." : contenido;
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.COMMENT_REMOVED);
+        n.setMessage("Tu " + tipoLabel + " en la película \"" + movieTitle + "\" fue reportado y eliminado por no cumplir " +
+                "con nuestras normas de convivencia.\n\n\"" + contenidoCorto + "\"");
         n.setMovieId(movieId);
         n.setMovieTitle(movieTitle);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearComentarioPublicacionEliminado(User receptor, Long publicationId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.COMMENT_REMOVED);
+        n.setMessage("Tu comentario en una publicación de Comunidad fue reportado y eliminado por no cumplir con nuestras normas de convivencia.");
+        n.setPublicationId(publicationId);
+        notificationRepository.save(n);
+    }
+
+    @Transactional
+    public void crearComentarioPublicacionEliminado(User receptor, Long publicationId, String publicationTitle, String contenido) {
+        String tituloDisplay = (publicationTitle != null && !publicationTitle.isBlank())
+                ? "\"" + publicationTitle + "\"" : "(sin título)";
+        String contenidoCorto = (contenido != null && contenido.length() > 150)
+                ? contenido.substring(0, 150) + "..." : contenido;
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.COMMENT_REMOVED);
+        n.setMessage("Tu comentario en la publicación " + tituloDisplay + " fue eliminado por no cumplir " +
+                "con nuestras normas de convivencia.\n\n\"" + contenidoCorto + "\"");
+        n.setPublicationId(publicationId);
         notificationRepository.save(n);
     }
 

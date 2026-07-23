@@ -27,7 +27,8 @@ public interface SupportMessageRepository extends JpaRepository<SupportMessage, 
 
     // Contar mensajes no leídos de ADMIN para un usuario específico
     @Query("SELECT COUNT(m) FROM SupportMessage m WHERE m.ticket.user.id = :userId " +
-           "AND m.senderType = 'ADMIN' AND m.readByUser = false")
+            "AND m.senderType = 'ADMIN' AND m.readByUser = false " +
+            "AND m.ticket.deletedByUser = false")
     long countUnreadForUser(@Param("userId") Long userId);
 
     @Modifying

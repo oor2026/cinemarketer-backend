@@ -30,20 +30,23 @@ public interface CommentReplyRepository extends JpaRepository<CommentReply, Long
     List<CommentReply> findByModerationStatusOrderByCreatedAtDesc(ModerationStatus status);
 
     // Respuestas pendientes: reportadas que el admin aún no revisó
-    @Query("SELECT r FROM CommentReply r WHERE r.moderationStatus = 'PENDING_REVIEW' " +
+    @Query("SELECT r FROM CommentReply r WHERE r.reportCount > 0 " +
             "AND r.adminReviewed = false " +
+            "AND r.moderationStatus NOT IN ('REMOVED', 'DISMISSED') " +
             "ORDER BY r.createdAt DESC")
     List<CommentReply> findPending();
 
     // Respuestas en revisión: reportadas que el admin ya vio pero no resolvió
-    @Query("SELECT r FROM CommentReply r WHERE r.moderationStatus = 'PENDING_REVIEW' " +
+    @Query("SELECT r FROM CommentReply r WHERE r.reportCount > 0 " +
             "AND r.adminReviewed = true " +
+            "AND r.moderationStatus NOT IN ('REMOVED', 'DISMISSED') " +
             "ORDER BY r.createdAt DESC")
     List<CommentReply> findInReview();
 
     // Respuestas resueltas
     @Query("SELECT r FROM CommentReply r WHERE r.moderationStatus IN ('REMOVED', 'DISMISSED') " +
-            "ORDER BY r.createdAt DESC")
+            "AND r.moderationReviewedAt IS NOT NULL " +
+            "ORDER BY r.moderationReviewedAt DESC")
     List<CommentReply> findResolved();
 
     long countByHasGifTrue();

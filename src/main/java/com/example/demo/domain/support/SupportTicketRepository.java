@@ -33,7 +33,8 @@ public interface SupportTicketRepository extends JpaRepository<SupportTicket, Lo
 
     // Contar mensajes no leídos por el usuario (mensajes de ADMIN no leídos)
     @Query("SELECT COUNT(m) FROM SupportMessage m WHERE m.ticket.user.id = :userId " +
-            "AND m.senderType = 'ADMIN' AND m.readByUser = false")
+            "AND m.senderType = 'ADMIN' AND m.readByUser = false " +
+            "AND m.ticket.deletedByUser = false")
     long countUnreadByUser(@Param("userId") Long userId);
 
     // Contar tickets por estado

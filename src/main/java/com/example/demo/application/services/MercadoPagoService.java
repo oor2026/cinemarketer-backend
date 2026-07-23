@@ -37,6 +37,12 @@ public class MercadoPagoService {
     @Value("${mercadopago.plan-url:https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=ad2d7a186bac4013bc75f40b76759b1b}")
     private String planUrl;
 
+    // TODO: hardcodeado a propósito por ahora — se va a reemplazar por la
+    // integración de medios de pago de un banco más adelante, momento en
+    // el que esto deja de ser Mercado Pago por completo.
+    @Value("${mercadopago.creator-plan-url:https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=361bed10c37d4719818bb86388044ff0}")
+    private String creatorPlanUrl;
+
     public MercadoPagoService() {
         this.restClient = RestClient.builder()
                 .baseUrl(MP_BASE_URL)
@@ -44,16 +50,21 @@ public class MercadoPagoService {
     }
 
     /**
-     * Devuelve la URL del plan de suscripción.
+     * Devuelve la URL del plan de suscripción correspondiente.
      * El usuario paga con cualquier cuenta de MP sin restricción de email.
      * El webhook llega con el preapproval_id y payer_email del pagador.
+     *
+     * @param planName "Premium" o "Creator" — determina a qué URL de checkout
+     *                 se dirige al usuario.
      */
-    public Map<String, Object> createSubscription(User user) {
-        log.info("🔄 Iniciando suscripción para usuario: {}", user.getEmail());
+    public Map<String, Object> createSubscription(User user, String planName) {
+        log.info("🔄 Iniciando suscripción a {} para usuario: {}", planName, user.getEmail());
+
+        String urlElegida = "Creator".equalsIgnoreCase(planName) ? creatorPlanUrl : planUrl;
 
         Map<String, Object> result = new HashMap<>();
         result.put("preapprovalId", null);
-        result.put("initPoint", planUrl);
+        result.put("initPoint", urlElegida);
         result.put("publicKey", publicKey);
         result.put("sandbox", sandbox);
         return result;
@@ -76,6 +87,9 @@ public class MercadoPagoService {
                 result.put("nextPaymentDate", response.get("next_payment_date"));
                 result.put("lastModified", response.get("last_modified"));
                 result.put("payerEmail", response.get("payer_email"));
+                // Clave para distinguir a qué plan (Premium/Creator) pertenece
+                // este preapproval, cuando el webhook no tiene registro local previo.
+                result.put("preapprovalPlanId", response.get("preapproval_plan_id"));
             }
             return result;
 
@@ -128,6 +142,18 @@ public class MercadoPagoService {
                     Map<?, ?> txData = (Map<?, ?>) poi.get("transaction_data");
                     if (txData != null && result.get("preapprovalId") == null) {
                         result.put("preapprovalId", txData.get("subscription_id"));
+                    }
+                }
+                // El pago en sí no trae el preapproval_plan_id directo — hay
+                // que consultar el preapproval asociado para conseguirlo.
+                Object preapprovalIdParaPlan = result.get("preapprovalId");
+                if (preapprovalIdParaPlan != null) {
+                    try {
+                        Map<String, Object> subInfo = getSubscription(preapprovalIdParaPlan.toString());
+                        result.put("preapprovalPlanId", subInfo.get("preapprovalPlanId"));
+                    } catch (Exception ignored) {
+                        // Si falla, seguimos sin ese dato — confirmarSuscripcionPendiente
+                        // caerá al fallback de Premium, mismo comportamiento que antes.
                     }
                 }
 // Email del pagador

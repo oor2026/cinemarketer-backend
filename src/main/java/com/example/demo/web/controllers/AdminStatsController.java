@@ -53,6 +53,7 @@ public class AdminStatsController {
     private final CommentReplyRepository commentReplyRepository;
     private final WatchlistRepository watchlistRepository;
     private final SubscriptionPaymentRepository subscriptionPaymentRepository;
+    private final com.example.demo.domain.publication.PublicationRepository publicationRepository;
 
     public AdminStatsController(
             UserRepository userRepository,
@@ -63,7 +64,7 @@ public class AdminStatsController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository supportTicketRepository,
             PremiumRewardRepository premiumRewardRepository,
-            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository) {
+            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.commentRepository = commentRepository;
@@ -80,6 +81,7 @@ public class AdminStatsController {
         this.commentReplyRepository = commentReplyRepository;
         this.watchlistRepository = watchlistRepository;
         this.subscriptionPaymentRepository = subscriptionPaymentRepository;
+        this.publicationRepository = publicationRepository;
     }
 
     @GetMapping
@@ -133,6 +135,7 @@ public class AdminStatsController {
         response.setRecommendations(calculateRecommendationStats());
         response.setWatchlist(calculateWatchlistStats());
         response.setRevenue(calculateRevenueStats(start, end));
+        response.setPublications(calculatePublicationStats(start, end, prevStart, prevEnd));
         return ResponseEntity.ok(response);
     }
 
@@ -436,6 +439,61 @@ public class AdminStatsController {
         stats.setTopContextos(topContextos.stream().map(row -> {
             Map<String, Object> m = new HashMap<>();
             m.put("contexto", row[0]);
+            m.put("total", row[1]);
+            return m;
+        }).toList());
+
+        return stats;
+    }
+
+    private PublicationStatsDto calculatePublicationStats(LocalDateTime start, LocalDateTime end,
+                                                          LocalDateTime prevStart, LocalDateTime prevEnd) {
+        PublicationStatsDto stats = new PublicationStatsDto();
+
+        long total = publicationRepository.countByCreatedAtBetween(start, end);
+        long totalPrev = publicationRepository.countByCreatedAtBetween(prevStart, prevEnd);
+        stats.setTotalPublicaciones(total);
+        stats.setGrowth(calculateGrowth(total, totalPrev));
+
+        long days = java.time.Duration.between(start, end).toDays();
+        stats.setPromedioPorDia(days > 0 ? Math.round((double) total / days * 10) / 10.0 : total);
+
+        long texto = publicationRepository.countTextoInPeriod(start, end);
+        long imagen = publicationRepository.countImagenInPeriod(start, end);
+        long video = publicationRepository.countVideoInPeriod(start, end);
+        stats.setPublicacionesTexto(texto);
+        stats.setPublicacionesImagen(imagen);
+        stats.setPublicacionesVideo(video);
+        long totalFormato = texto + imagen + video;
+        stats.setPorcentajeTexto(totalFormato > 0 ? Math.round((double) texto / totalFormato * 1000) / 10.0 : 0);
+        stats.setPorcentajeImagen(totalFormato > 0 ? Math.round((double) imagen / totalFormato * 1000) / 10.0 : 0);
+        stats.setPorcentajeVideo(totalFormato > 0 ? Math.round((double) video / totalFormato * 1000) / 10.0 : 0);
+
+        long aprobadasAuto = publicationRepository.countAprobadasAutomaticamente(start, end);
+        stats.setTasaAprobacionAutomatica(total > 0 ? Math.round((double) aprobadasAuto / total * 1000) / 10.0 : 0);
+        stats.setPublicacionesEnRevision(publicationRepository.countPasaronPorRevision(start, end));
+        stats.setPublicacionesOcultasSancionadas(publicationRepository.countByCreatedAtBetweenAndHiddenTrue(start, end));
+
+        long totalBanco = publicationRepository.sumBancoInPeriod(start, end);
+        long totalPuntos = publicationRepository.sumPuntoInPeriod(start, end);
+        long totalComentarios = publicationRepository.sumComentariosInPeriod(start, end);
+        stats.setTotalBanco(totalBanco);
+        stats.setPromedioBancoPorPublicacion(total > 0 ? Math.round((double) totalBanco / total * 10) / 10.0 : 0);
+        stats.setTotalPuntos(totalPuntos);
+        stats.setPromedioPuntosPorPublicacion(total > 0 ? Math.round((double) totalPuntos / total * 10) / 10.0 : 0);
+        stats.setTotalComentarios(totalComentarios);
+        stats.setPromedioComentariosPorPublicacion(total > 0 ? Math.round((double) totalComentarios / total * 10) / 10.0 : 0);
+
+        stats.setTopUsuarios(publicationRepository.findTopUsuariosByPublicaciones(start, end, 5).stream().map(row -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("nombre", row[0]);
+            m.put("total", row[1]);
+            return m;
+        }).toList());
+
+        stats.setTopCategorias(publicationRepository.findTopCategoriasByPublicaciones(start, end, 5).stream().map(row -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("categoria", row[0]);
             m.put("total", row[1]);
             return m;
         }).toList());

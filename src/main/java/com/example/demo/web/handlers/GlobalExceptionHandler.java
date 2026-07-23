@@ -27,11 +27,17 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+
+        // Reporte duplicado → 409
+        if (msg.contains("Ya reportaste")) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", msg, "code", "DUPLICATE_REPORT"));
+        }
+
+        // Resto → 422
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(Map.of(
-                        "error", ex.getMessage(),
-                        "code", "INSUFFICIENT_POINTS"
-                ));
+                .body(Map.of("error", msg, "code", "ILLEGAL_STATE"));
     }
 
     /**

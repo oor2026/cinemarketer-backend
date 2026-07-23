@@ -30,6 +30,12 @@ public class SubscriptionPendingConfirmation {
     @Column(name = "amount")
     private Double amount;
 
+    // El preapproval_plan_id real que informó MP — identifica si el pago
+    // corresponde a Premium o Creator, sin lo cual confirmarSuscripcionPendiente()
+    // no tiene forma de saber a cuál de los dos planes activar.
+    @Column(name = "mp_preapproval_plan_id")
+    private String mpPreapprovalPlanId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

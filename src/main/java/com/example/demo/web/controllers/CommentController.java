@@ -43,6 +43,7 @@ public class CommentController {
     private final NotificationService       notificationService;
     private final MovieService movieService;
     private final SpoilerAcceptedRepository spoilerAcceptedRepository;
+    private final CommentReplyReportRepository commentReplyReportRepository;
 
     public CommentController(CommentRepository commentRepository,
                              CommentReportRepository commentReportRepository,
@@ -55,7 +56,7 @@ public class CommentController {
                              BannedWordService bannedWordService,
                              NotificationService notificationService,
                              MovieService movieService,
-                             SpoilerAcceptedRepository spoilerAcceptedRepository, SpoilerAcceptedRepository spoilerAcceptedRepository1) {
+                             SpoilerAcceptedRepository spoilerAcceptedRepository, SpoilerAcceptedRepository spoilerAcceptedRepository1, CommentReplyReportRepository commentReplyReportRepository) {
         this.commentRepository         = commentRepository;
         this.commentReportRepository   = commentReportRepository;
         this.commentReactionRepository = commentReactionRepository;
@@ -68,6 +69,7 @@ public class CommentController {
         this.notificationService       = notificationService;
         this.movieService = movieService;
         this.spoilerAcceptedRepository = spoilerAcceptedRepository;
+        this.commentReplyReportRepository = commentReplyReportRepository;
     }
 
     // ── Helper: construir CommentResponse con reacciones ──────────────────────
@@ -671,6 +673,12 @@ public class CommentController {
 
         int nuevoConteo = comment.getReportCount() + 1;
         comment.setReportCount(nuevoConteo);
+        comment.setAdminReviewed(false);
+
+        // Si ya había sido desestimado antes, un reporte nuevo lo vuelve a poner a la vista del admin
+        if (comment.getModerationStatus() == ModerationStatus.DISMISSED) {
+            comment.setModerationStatus(ModerationStatus.APPROVED);
+        }
 
         if (nuevoConteo >= AUTO_HIDE_THRESHOLD && comment.getModerationStatus() == ModerationStatus.APPROVED) {
             comment.setModerationStatus(ModerationStatus.AUTO_HIDDEN);
@@ -701,13 +709,31 @@ public class CommentController {
                     .body(Map.of("error", "No podés reportar tu propia respuesta"));
         }
 
+        if (commentReplyReportRepository.existsByReplyIdAndReporterId(replyId, reporter.getId())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "Ya reportaste esta respuesta"));
+        }
+
         if (request.getReason() == null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", "El motivo del reporte es obligatorio"));
         }
 
-        // Reutilizamos ModerationStatus de la respuesta
-        reply.setModerationStatus(ModerationStatus.PENDING_REVIEW);
+        CommentReplyReport report = new CommentReplyReport();
+        report.setReply(reply);
+        report.setReporter(reporter);
+        report.setReason(request.getReason());
+        report.setDescription(request.getDescription());
+        commentReplyReportRepository.save(report);
+
+        reply.setReportCount(reply.getReportCount() + 1);
+        reply.setAdminReviewed(false);
+
+        // Si ya había sido desestimada antes, un reporte nuevo la vuelve a poner a la vista del admin
+        if (reply.getModerationStatus() == ModerationStatus.DISMISSED) {
+            reply.setModerationStatus(ModerationStatus.APPROVED);
+        }
+
         commentReplyRepository.save(reply);
 
         return ResponseEntity.ok(Map.of(

@@ -3,6 +3,7 @@ package com.example.demo.application.services;
 import com.example.demo.domain.comment.CommentReactionRepository;
 import com.example.demo.domain.comment.CommentRepository;
 import com.example.demo.domain.follow.UserFollowRepository;
+import com.example.demo.domain.publication.PublicationRepository;
 import com.example.demo.domain.recommendation.MovieRecommendationRepository;
 import com.example.demo.domain.review.ReviewRepository;
 import com.example.demo.domain.user.User;
@@ -10,6 +11,7 @@ import com.example.demo.domain.user.UserLevel;
 import com.example.demo.domain.user.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +25,7 @@ public class LevelCalculatorService {
     private final CommentReactionRepository commentReactionRepository;
     private final UserFollowRepository userFollowRepository;
     private final MovieRecommendationRepository recommendationRepository;
+    private final PublicationRepository publicationRepository;
 
     public LevelCalculatorService(
             UserRepository userRepository,
@@ -30,13 +33,15 @@ public class LevelCalculatorService {
             CommentRepository commentRepository,
             CommentReactionRepository commentReactionRepository,
             UserFollowRepository userFollowRepository,
-            MovieRecommendationRepository recommendationRepository) {
+            MovieRecommendationRepository recommendationRepository,
+            PublicationRepository publicationRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.commentRepository = commentRepository;
         this.commentReactionRepository = commentReactionRepository;
         this.userFollowRepository = userFollowRepository;
         this.recommendationRepository = recommendationRepository;
+        this.publicationRepository = publicationRepository;
     }
 
     /**
@@ -111,8 +116,11 @@ public class LevelCalculatorService {
         // 20 "Te banco" recibidos de usuarios diferentes
         if (commentReactionRepository.countDistinctBancoGiversForUser(userId) < 20) return false;
 
-        // 2.000 puntos canjeados históricos
-        if (user.getTotalRedeemedPoints() < 2000) return false;
+        // 50 publicaciones en Comunidad
+        if (publicationRepository.countByUserIdAndHiddenFalse(user.getId()) < 50) return false;
+
+        // 4.000 puntos canjeados históricos (ajustado v2.0)
+        if (user.getTotalRedeemedPoints() < 4000) return false;
 
         return true;
     }
@@ -148,8 +156,11 @@ public class LevelCalculatorService {
         // 100 seguidores ganados
         if (userFollowRepository.countByFollowingId(userId) < 100) return false;
 
-        // 10.000 puntos canjeados históricos
-        if (user.getTotalRedeemedPoints() < 10000) return false;
+        // 200 publicaciones en Comunidad
+        if (publicationRepository.countByUserIdAndHiddenFalse(user.getId()) < 200) return false;
+
+        // 20.000 puntos canjeados históricos (ajustado v2.0)
+        if (user.getTotalRedeemedPoints() < 20000) return false;
 
         return true;
     }
@@ -181,17 +192,21 @@ public class LevelCalculatorService {
         if (current == UserLevel.COLABORADOR) {
             long peliculas = reviewRepository.countDistinctMoviesVotedByUser(userId);
             long comentarios = commentRepository.countDistinctMoviesCommentedByUser(userId);
+            long publicaciones = publicationRepository.countByUserIdAndHiddenFalse(userId);
             double pPeliculas = Math.min(100.0, (peliculas / 200.0) * 100);
             double pComentarios = Math.min(100.0, (comentarios / 100.0) * 100);
-            double pPuntos = Math.min(100.0, (user.getTotalRedeemedPoints() / 2000.0) * 100);
-            return Math.min(Math.min(pPeliculas, pComentarios), pPuntos);
+            double pPublicaciones = Math.min(100.0, (publicaciones / 50.0) * 100);
+            double pPuntos = Math.min(100.0, (user.getTotalRedeemedPoints() / 4000.0) * 100);
+            return Math.min(Math.min(Math.min(pPeliculas, pComentarios), pPublicaciones), pPuntos);
         }
 
         if (current == UserLevel.CRITICO) {
             long peliculas = reviewRepository.countDistinctMoviesVotedByUser(userId);
+            long publicaciones = publicationRepository.countByUserIdAndHiddenFalse(userId);
             double pPeliculas = Math.min(100.0, (peliculas / 500.0) * 100);
-            double pPuntos = Math.min(100.0, (user.getTotalRedeemedPoints() / 10000.0) * 100);
-            return Math.min(pPeliculas, pPuntos);
+            double pPublicaciones = Math.min(100.0, (publicaciones / 200.0) * 100);
+            double pPuntos = Math.min(100.0, (user.getTotalRedeemedPoints() / 20000.0) * 100);
+            return Math.min(Math.min(pPeliculas, pPublicaciones), pPuntos);
         }
 
         return 0.0;
@@ -203,9 +218,9 @@ public class LevelCalculatorService {
 
     public int getPointsToNextLevel(User user) {
         UserLevel current = user.getLevel();
-        if (current == UserLevel.AMATEUR) return Math.max(0, 2000 - user.getTotalRedeemedPoints());
-        if (current == UserLevel.COLABORADOR) return Math.max(0, 2000 - user.getTotalRedeemedPoints());
-        if (current == UserLevel.CRITICO) return Math.max(0, 10000 - user.getTotalRedeemedPoints());
+        if (current == UserLevel.AMATEUR) return 0;
+        if (current == UserLevel.COLABORADOR) return Math.max(0, 4000 - user.getTotalRedeemedPoints());
+        if (current == UserLevel.CRITICO) return Math.max(0, 20000 - user.getTotalRedeemedPoints());
         return 0;
     }
 

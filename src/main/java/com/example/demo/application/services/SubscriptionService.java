@@ -57,8 +57,12 @@ public class SubscriptionService {
     // ==============================================
 
     public SubscriptionDto getPlanInfo() {
-        SubscriptionPlan plan = subscriptionPlanRepository.findFirstByActiveTrue()
-                .orElseThrow(() -> new RuntimeException("No hay planes de suscripción activos"));
+        return getPlanInfo("Premium");
+    }
+
+    public SubscriptionDto getPlanInfo(String planName) {
+        SubscriptionPlan plan = subscriptionPlanRepository.findByNameAndActiveTrue(planName)
+                .orElseThrow(() -> new RuntimeException("No hay plan de suscripción activo: " + planName));
 
         SubscriptionDto dto = new SubscriptionDto();
         dto.setPlanId(plan.getId());
@@ -83,6 +87,7 @@ public class SubscriptionService {
             Map<String, Object> mpData = mercadoPagoService.getSubscription(preapprovalId);
             String mpStatus = (String) mpData.get("status");
             String payerEmail = (String) mpData.get("payerEmail");
+            String mpPlanId = (String) mpData.get("preapprovalPlanId");
 
             Optional<UserSubscription> subOpt = userSubscriptionRepository
                     .findByMpPreapprovalId(preapprovalId);
@@ -101,9 +106,15 @@ public class SubscriptionService {
                     return;
                 }
 
-                SubscriptionPlan plan = subscriptionPlanRepository.findFirstByActiveTrue().orElse(null);
+                // Identificar el plan correcto (Premium o Creator) por el
+                // preapproval_plan_id real que informó MP — no asumir "el
+                // primero que haya", ahora que hay más de un plan activo.
+                SubscriptionPlan plan = (mpPlanId != null)
+                        ? subscriptionPlanRepository.findByMpPreapprovalPlanId(mpPlanId).orElse(null)
+                        : subscriptionPlanRepository.findByNameAndActiveTrue("Premium").orElse(null);
+
                 if (plan == null) {
-                    log.warn("⚠️ No hay plan activo para crear suscripción");
+                    log.warn("⚠️ No se pudo identificar el plan para preapprovalPlanId: {}", mpPlanId);
                     return;
                 }
 
@@ -112,7 +123,7 @@ public class SubscriptionService {
                 sub.setPlan(plan);
                 sub.setMpPreapprovalId(preapprovalId);
                 sub.setStatus(SubscriptionStatus.PENDING);
-                log.info("📋 Creando nueva suscripción via plan para usuario: {}", payerEmail);
+                log.info("📋 Creando nueva suscripción a {} via plan para usuario: {}", plan.getName(), payerEmail);
 
             } else {
                 sub = subOpt.get();
@@ -127,8 +138,8 @@ public class SubscriptionService {
                     if (nextBilling != null) {
                         sub.setNextBillingDate(LocalDateTime.parse(nextBilling.substring(0, 19)));
                     }
-                    activatePremiumOnUser(sub.getUser());
-                    log.info("✅ Suscripción activada para usuario: {}", sub.getUser().getEmail());
+                    activatePlanOnUser(sub.getUser(), sub.getPlan());
+                    log.info("✅ Suscripción a {} activada para usuario: {}", sub.getPlan().getName(), sub.getUser().getEmail());
                 }
                 case "cancelled", "paused" -> {
                     sub.setStatus(SubscriptionStatus.CANCELLED);
@@ -189,6 +200,10 @@ public class SubscriptionService {
                         double amount = paymentData.get("transactionAmount") != null
                                 ? Double.parseDouble(paymentData.get("transactionAmount").toString()) : 999.0;
                         pending.setAmount(amount);
+                        // Guardamos el plan real que informó MP, para que la
+                        // confirmación posterior active el plan correcto y no
+                        // asuma Premium por defecto.
+                        pending.setMpPreapprovalPlanId((String) paymentData.get("preapprovalPlanId"));
                         pendingConfirmationRepository.save(pending);
 
                         String confirmUrl = "https://cinemarketer.com.ar/api/subscriptions/confirm?token=" + pending.getToken();
@@ -199,7 +214,10 @@ public class SubscriptionService {
                     return;
                 }
 
-                SubscriptionPlan plan = subscriptionPlanRepository.findFirstByActiveTrue().orElse(null);
+                String mpPlanIdPago = (String) paymentData.get("preapprovalPlanId");
+                SubscriptionPlan plan = (mpPlanIdPago != null)
+                        ? subscriptionPlanRepository.findByMpPreapprovalPlanId(mpPlanIdPago).orElse(null)
+                        : subscriptionPlanRepository.findByNameAndActiveTrue("Premium").orElse(null);
                 if (plan == null) return;
 
                 sub = new UserSubscription();
@@ -208,7 +226,7 @@ public class SubscriptionService {
                 sub.setMpPreapprovalId(preapprovalId);
                 sub.setStatus(SubscriptionStatus.PENDING);
                 sub = userSubscriptionRepository.save(sub);
-                log.info("📋 Creando nueva suscripción via pago para usuario: {}", payerEmail);
+                log.info("📋 Creando nueva suscripción a {} via pago para usuario: {}", plan.getName(), payerEmail);
             } else {
                 sub = subOpt.get();
             }
@@ -226,8 +244,8 @@ public class SubscriptionService {
                 sub.setEndDate(LocalDateTime.now().plusMonths(1));
                 sub.setLastPaymentStatus("approved");
                 sub.setLastPaymentDate(LocalDateTime.now());
-                activatePremiumOnUser(sub.getUser());
-                log.info("✅ Pago aprobado — suscripción renovada para: {}", sub.getUser().getEmail());
+                activatePlanOnUser(sub.getUser(), sub.getPlan());
+                log.info("✅ Pago aprobado — suscripción {} renovada para: {}", sub.getPlan().getName(), sub.getUser().getEmail());
             } else if ("rejected".equals(status)) {
                 sub.setLastPaymentStatus("rejected");
                 sub.setLastPaymentDate(LocalDateTime.now());
@@ -262,8 +280,14 @@ public class SubscriptionService {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        SubscriptionPlan plan = subscriptionPlanRepository.findFirstByActiveTrue()
-                .orElseThrow(() -> new RuntimeException("No hay planes activos"));
+        // Identificar el plan real por el dato guardado al crear la confirmación
+        // pendiente — nunca asumir Premium por defecto, para no activarle a
+        // alguien un plan distinto del que efectivamente pagó.
+        SubscriptionPlan plan = (pending.getMpPreapprovalPlanId() != null)
+                ? subscriptionPlanRepository.findByMpPreapprovalPlanId(pending.getMpPreapprovalPlanId())
+                .orElseThrow(() -> new RuntimeException("No se pudo identificar el plan pagado"))
+                : subscriptionPlanRepository.findByNameAndActiveTrue("Premium")
+                .orElseThrow(() -> new RuntimeException("No hay plan Premium activo"));
 
         // Crear la suscripción
         UserSubscription sub = new UserSubscription();
@@ -279,7 +303,7 @@ public class SubscriptionService {
         userSubscriptionRepository.save(sub);
 
         // Activar premium
-        activatePremiumOnUser(user);
+        activatePlanOnUser(user, plan);
 
         // Marcar confirmación como usada
         pending.setConfirmedAt(LocalDateTime.now());
@@ -308,7 +332,7 @@ public class SubscriptionService {
         userSubscriptionRepository.save(sub);
 
         if (sub.getEndDate() != null && sub.getEndDate().isBefore(LocalDateTime.now())) {
-            deactivatePremiumOnUser(sub.getUser());
+            deactivatePlanOnUser(sub.getUser(), sub.getPlan());
         }
 
         log.info("🚫 Suscripción cancelada para usuario: {}", sub.getUser().getEmail());
@@ -323,8 +347,8 @@ public class SubscriptionService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        SubscriptionPlan plan = subscriptionPlanRepository.findFirstByActiveTrue()
-                .orElseThrow(() -> new RuntimeException("No hay planes activos"));
+        SubscriptionPlan plan = subscriptionPlanRepository.findByNameAndActiveTrue("Premium")
+                .orElseThrow(() -> new RuntimeException("No hay plan Premium activo"));
 
         UserSubscription sub = new UserSubscription();
         sub.setUser(user);
@@ -347,7 +371,7 @@ public class SubscriptionService {
         payment.setPaidAt(LocalDateTime.now());
         subscriptionPaymentRepository.save(payment);
 
-        activatePremiumOnUser(user);
+        activatePlanOnUser(user, plan);
 
         log.info("✅ Suscripción activada manualmente para usuario: {}", user.getEmail());
         return sub;
@@ -400,14 +424,25 @@ public class SubscriptionService {
     // HELPERS PRIVADOS
     // ==============================================
 
-    private void activatePremiumOnUser(User user) {
-        user.setPremium(true);
-        user.setPremiumUntil(LocalDateTime.now().plusMonths(1));
+    // Activa el flag correcto según el plan de la suscripción — Premium o
+    // Creator son independientes, uno no pisa al otro.
+    private void activatePlanOnUser(User user, SubscriptionPlan plan) {
+        if ("Creator".equalsIgnoreCase(plan.getName())) {
+            user.setCreator(true);
+            user.setCreatorUntil(LocalDateTime.now().plusMonths(1));
+        } else {
+            user.setPremium(true);
+            user.setPremiumUntil(LocalDateTime.now().plusMonths(1));
+        }
         userRepository.save(user);
     }
 
-    private void deactivatePremiumOnUser(User user) {
-        user.setPremium(false);
+    private void deactivatePlanOnUser(User user, SubscriptionPlan plan) {
+        if ("Creator".equalsIgnoreCase(plan.getName())) {
+            user.setCreator(false);
+        } else {
+            user.setPremium(false);
+        }
         userRepository.save(user);
     }
 

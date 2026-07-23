@@ -115,6 +115,16 @@ public class UserProfileResponse {
     private LocalDateTime premiumUntil;
 
     /**
+     * Indica si el usuario tiene suscripción Creator activa
+     */
+    private boolean isCreator;
+
+    /**
+     * Fecha hasta la que tiene acceso Creator
+     */
+    private LocalDateTime creatorUntil;
+
+    /**
      * Visibilidad del perfil público: PUBLIC o PRIVATE
      */
     private String profileVisibility;
@@ -124,4 +134,6 @@ public class UserProfileResponse {
 
     private int merecePuntosCount;
 // + getter y setter
+
+    private int publicationsCount;
 }
