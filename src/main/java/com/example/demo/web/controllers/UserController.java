@@ -62,6 +62,7 @@ public class UserController {
     private final LevelCalculatorService levelCalculatorService;
     private final PointBatchRepository pointBatchRepository;
     private final AvatarService avatarService;
+    private final com.example.demo.application.services.NombreReservadoService nombreReservadoService;
 
     public UserController(
             UserRepository userRepository,
@@ -79,7 +80,7 @@ public class UserController {
             PointBatchRepository pointBatchRepository,
             UserBlockRepository userBlockRepository,
             UserReportRepository userReportRepository,
-            UserFollowRepository userFollowRepository, com.example.demo.domain.recommendation.MovieRecommendationRepository recommendationRepository, com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository) {
+            UserFollowRepository userFollowRepository, com.example.demo.domain.recommendation.MovieRecommendationRepository recommendationRepository, com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, com.example.demo.application.services.NombreReservadoService nombreReservadoService) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.redemptionRepository = redemptionRepository;
@@ -99,6 +100,7 @@ public class UserController {
         this.recommendationRepository = recommendationRepository;
         this.pointTransactionRepository = pointTransactionRepository;
         this.publicationRepository = publicationRepository;
+        this.nombreReservadoService = nombreReservadoService;
     }
 
     @GetMapping("/me")
@@ -195,11 +197,16 @@ public class UserController {
                 return ResponseEntity.badRequest()
                         .body(Map.of("message", "El nombre no puede estar vacío."));
             }
-            // ® está reservado exclusivamente para el equipo de Cinemarketer
             boolean esAdmin = user.getRole() == UserRole.ADMIN;
+            // ® está reservado exclusivamente para el equipo de Cinemarketer
             if (name.contains("®") && !esAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("message", "El carácter ® está reservado para el equipo de Cinemarketer."));
+            }
+            // "Cinemarketer" y variantes, mismo criterio que el símbolo de arriba
+            if (nombreReservadoService.esNombreReservado(name) && !esAdmin) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "Ese nombre está reservado para el equipo de Cinemarketer."));
             }
             user.setName(name);
         }
