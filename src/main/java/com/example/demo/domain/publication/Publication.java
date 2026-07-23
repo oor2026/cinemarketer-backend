@@ -105,6 +105,12 @@ public class Publication {
     @Column(name = "points_awarded")
     private int pointsAwarded = 0;
 
+    // Foto del estado del autor AL MOMENTO de publicar — no el estado actual.
+    // Así la insignia "Autor" de Creator Tools no aparece/desaparece
+    // retroactivamente si el usuario después cambia de plan.
+    @Column(name = "author_was_creator", nullable = false)
+    private boolean authorWasCreator = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

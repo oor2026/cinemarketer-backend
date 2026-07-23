@@ -144,6 +144,7 @@ public class PublicationService {
         // Construir entidad
         Publication pub = new Publication();
         pub.setUser(user);
+        pub.setAuthorWasCreator(user.isActiveCreator());
         pub.setTitle(req.getTitle().trim());
         pub.setHashtags(hashtagsNormalizados);
         pub.setMovieId(req.getMovieId());
