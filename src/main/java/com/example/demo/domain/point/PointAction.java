@@ -8,6 +8,10 @@ public enum PointAction {
     REWARD_REDEMPTION,       // Canje de premio           → variable (gasto)
     RECEIVE_MERECE_PUNTO,    // Recibir ¡Merecés un punto! en comentario → 1 pt
     REVERT_MERECE_PUNTO,    // Reversión de ¡Merecés un punto!
-    ADMIN_GRANT             // Otorgado manualmente por admin
+    ADMIN_GRANT,            // Otorgado manualmente por admin
+    PUBLISH_POST,           // Publicar en Comunidad → variable según plan
+    RECEIVE_BANCO_POST,     // Recibir Te banco en publicación → 1 pt
+    RECEIVE_MERECE_POST,     // Recibir Merecés un punto en publicación → 1 pt
+    PUBLICATION_SANCTION
 
 }

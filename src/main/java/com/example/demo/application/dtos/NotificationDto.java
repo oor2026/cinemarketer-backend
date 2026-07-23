@@ -19,4 +19,5 @@ public class NotificationDto {
     private String referenceType;
     private boolean read;
     private LocalDateTime createdAt;
+    private Long publicationId;
 }

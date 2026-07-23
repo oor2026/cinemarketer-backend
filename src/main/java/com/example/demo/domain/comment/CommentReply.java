@@ -37,6 +37,12 @@ public class CommentReply {
     @Column(name = "admin_reviewed", nullable = false)
     private boolean adminReviewed = false;
 
+    @Column(name = "report_count", nullable = false)
+    private int reportCount = 0;
+
+    @Column(name = "moderation_reviewed_at")
+    private LocalDateTime moderationReviewedAt;
+
     @Column(name = "has_gif")
     private Boolean hasGif = false;
 

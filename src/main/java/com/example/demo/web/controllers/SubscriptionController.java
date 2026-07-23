@@ -61,11 +61,12 @@ public class SubscriptionController {
     }
 
     @PostMapping("/subscribe")
-    public ResponseEntity<?> subscribe(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<?> subscribe(@AuthenticationPrincipal UserDetails userDetails,
+                                       @RequestParam(defaultValue = "Premium") String plan) {
         User user = getAuthenticatedUser(userDetails);
 
         Optional<UserSubscription> existing = userSubscriptionRepository
-                .findByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE);
+                .findByUserIdAndStatusAndPlanName(user.getId(), SubscriptionStatus.ACTIVE, plan);
 
         if (existing.isPresent()) {
             UserSubscription sub = existing.get();
@@ -73,34 +74,22 @@ public class SubscriptionController {
             if (!sub.isActive()) {
                 sub.setStatus(SubscriptionStatus.EXPIRED);
                 userSubscriptionRepository.save(sub);
-                user.setPremium(false);
-                user.setPremiumUntil(null);
+                if ("Creator".equalsIgnoreCase(plan)) {
+                    user.setCreator(false);
+                    user.setCreatorUntil(null);
+                } else {
+                    user.setPremium(false);
+                    user.setPremiumUntil(null);
+                }
                 userRepository.save(user);
             } else {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(Map.of("error", "Ya tenés una suscripción activa"));
+                        .body(Map.of("error", "Ya tenés una suscripción " + plan + " activa"));
             }
         }
 
         try {
-            Map<String, Object> mpResponse = mercadoPagoService.createSubscription(user);
-
-            String preapprovalId = (String) mpResponse.get("preapprovalId");
-            if (preapprovalId != null) {
-                SubscriptionPlan plan = subscriptionService.getPlanInfo().getPlanId() != null
-                        ? subscriptionPlanRepository.findFirstByActiveTrue().orElse(null)
-                        : null;
-
-                if (plan != null) {
-                    UserSubscription sub = new UserSubscription();
-                    sub.setUser(user);
-                    sub.setPlan(plan);
-                    sub.setMpPreapprovalId(preapprovalId);
-                    sub.setStatus(SubscriptionStatus.PENDING);
-                    userSubscriptionRepository.save(sub);
-                }
-            }
-
+            Map<String, Object> mpResponse = mercadoPagoService.createSubscription(user, plan);
             return ResponseEntity.ok(mpResponse);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -109,15 +98,16 @@ public class SubscriptionController {
     }
 
     @PostMapping("/cancel")
-    public ResponseEntity<?> cancel(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<?> cancel(@AuthenticationPrincipal UserDetails userDetails,
+                                    @RequestParam(defaultValue = "Premium") String plan) {
         User user = getAuthenticatedUser(userDetails);
 
         Optional<UserSubscription> sub = userSubscriptionRepository
-                .findByUserIdAndStatus(user.getId(), SubscriptionStatus.ACTIVE);
+                .findByUserIdAndStatusAndPlanName(user.getId(), SubscriptionStatus.ACTIVE, plan);
 
         if (sub.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "No tenés una suscripción activa"));
+                    .body(Map.of("error", "No tenés una suscripción " + plan + " activa"));
         }
 
         try {

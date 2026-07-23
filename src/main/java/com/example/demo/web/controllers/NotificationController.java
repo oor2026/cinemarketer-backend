@@ -42,7 +42,8 @@ public class NotificationController {
                         n.getId(), n.getType(), n.getMessage(),
                         n.getActorId(),
                         n.getMovieId(), n.getMovieTitle(), n.getCommentId(),
-                        n.getReplyId(), n.getReferenceType(), n.isRead(), n.getCreatedAt()))
+                        n.getReplyId(), n.getReferenceType(), n.isRead(), n.getCreatedAt(),
+                        n.getPublicationId()))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);
