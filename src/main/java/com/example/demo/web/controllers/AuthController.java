@@ -42,6 +42,7 @@ public class AuthController {
     private final JwtService jwtService;
     private final TokenBlacklistService tokenBlacklistService;
     private final SubscriptionService subscriptionService;
+    private final com.example.demo.application.services.NombreReservadoService nombreReservadoService;
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
@@ -59,7 +60,8 @@ public class AuthController {
             AuthenticationManager authenticationManager,
             JwtService jwtService,
             TokenBlacklistService tokenBlacklistService,
-            SubscriptionService subscriptionService) {
+            SubscriptionService subscriptionService,
+            com.example.demo.application.services.NombreReservadoService nombreReservadoService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
@@ -67,6 +69,7 @@ public class AuthController {
         this.jwtService = jwtService;
         this.tokenBlacklistService = tokenBlacklistService;
         this.subscriptionService = subscriptionService;
+        this.nombreReservadoService = nombreReservadoService;
     }
 
     @PostMapping("/register")
@@ -103,6 +106,19 @@ public class AuthController {
                     .status(HttpStatus.CONFLICT)  // 409 Conflict es más apropiado
                     .body(new RegisterResponse(
                             "Este DNI ya se encuentra registrado en nuestra base de datos. Si cree que es una confusión o alguien está haciendo un uso indebido del mismo, por favor, comuníquese con nosotros para brindarle nuestra ayuda.",
+                            request.getEmail(),
+                            false
+                    ));
+        }
+
+        // 3.5 Verificar que el nombre no sea "Cinemarketer" ni una variante
+        // (protección anti-impersonación de la marca) — sin excepción acá,
+        // el registro público siempre crea usuarios con rol USER.
+        if (nombreReservadoService.esNombreReservado(request.getName())) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(new RegisterResponse(
+                            "Ese nombre no está disponible. Elegí otro para continuar con tu registro.",
                             request.getEmail(),
                             false
                     ));
