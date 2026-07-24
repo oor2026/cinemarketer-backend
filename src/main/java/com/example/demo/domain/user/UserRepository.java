@@ -250,4 +250,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findUsersWithReports(Pageable pageable);
 
     List<User> findByActiveTrueAndSuspendedFalse();
+
+    // ==============================================
+    // VENCIMIENTO DE FLAGS DE SUSCRIPCIÓN
+    // is_premium/is_creator no se apagan solos por tiempo — sólo isActivePremium()/
+    // isActiveCreator() (que sí chequean la fecha) se usan para gating real. Este
+    // scheduled job los desactiva cuando corresponde, para que la tabla no muestre
+    // usuarios "premium"/"creator" vencidos en paneles/reportes que filtren por el
+    // booleano crudo.
+    // ==============================================
+
+    @Modifying
+    @Query("UPDATE User u SET u.premium = false WHERE u.premium = true AND u.premiumUntil IS NOT NULL AND u.premiumUntil < :now")
+    int expirePremiumFlags(@Param("now") LocalDateTime now);
+
+    @Modifying
+    @Query("UPDATE User u SET u.creator = false WHERE u.creator = true AND u.creatorUntil IS NOT NULL AND u.creatorUntil < :now")
+    int expireCreatorFlags(@Param("now") LocalDateTime now);
 }

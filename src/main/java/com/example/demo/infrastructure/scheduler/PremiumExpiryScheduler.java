@@ -6,6 +6,7 @@ import com.example.demo.domain.notification.NotificationType;
 import com.example.demo.domain.subscription.SubscriptionStatus;
 import com.example.demo.domain.subscription.UserSubscription;
 import com.example.demo.domain.subscription.UserSubscriptionRepository;
+import com.example.demo.domain.user.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,11 +23,30 @@ public class PremiumExpiryScheduler {
 
     private final UserSubscriptionRepository userSubscriptionRepository;
     private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
 
     public PremiumExpiryScheduler(UserSubscriptionRepository userSubscriptionRepository,
-                                  NotificationRepository notificationRepository) {
+                                  NotificationRepository notificationRepository,
+                                  UserRepository userRepository) {
         this.userSubscriptionRepository = userSubscriptionRepository;
         this.notificationRepository = notificationRepository;
+        this.userRepository = userRepository;
+    }
+
+    // Corre todos los días a las 3:00 AM — antes que checkPremiumExpiry, así
+    // las notificaciones de más abajo ya trabajan sobre el estado del día
+    // actualizado, no sobre flags vencidos de ayer. is_premium/is_creator no
+    // se apagan solos con el tiempo (isActivePremium()/isActiveCreator() sí
+    // chequean la fecha para el gating real) — esto es solo para que la
+    // tabla no muestre usuarios vencidos como activos en paneles/reportes
+    // que filtren por el booleano crudo.
+    @Scheduled(cron = "0 0 3 * * *")
+    @Transactional
+    public void deactivateExpiredFlags() {
+        LocalDateTime now = LocalDateTime.now();
+        int premiumDesactivados = userRepository.expirePremiumFlags(now);
+        int creatorDesactivados = userRepository.expireCreatorFlags(now);
+        log.info("🧹 Flags vencidos desactivados — Premium: {}, Creator: {}", premiumDesactivados, creatorDesactivados);
     }
 
     // Corre todos los días a las 9:00 AM

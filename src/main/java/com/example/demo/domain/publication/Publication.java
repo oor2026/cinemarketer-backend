@@ -117,6 +117,14 @@ public class Publication {
     @Column(name = "movie_ficha_enabled", nullable = false)
     private boolean movieFichaEnabled = false;
 
+    // Creator Tools — "Cuenta regresiva de estreno". No se congela la fecha:
+    // solo el país elegido por el Creator, resuelto en vivo contra TMDb.
+    @Column(name = "countdown_enabled", nullable = false)
+    private boolean countdownEnabled = false;
+
+    @Column(name = "countdown_country_code", length = 5)
+    private String countdownCountryCode;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

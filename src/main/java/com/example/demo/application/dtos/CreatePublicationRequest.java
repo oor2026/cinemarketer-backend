@@ -16,4 +16,6 @@ public class CreatePublicationRequest {
     private String videoUid; // UID de Cloudflare Stream — distinto de videoUrl, que es la URL final de reproducción
     private String[] hashtags;
     private boolean movieFichaEnabled = false; // Creator Tools: mostrar ficha rica en vez del link simple a la película
+    private boolean countdownEnabled = false;
+    private String countdownCountryCode;
 }
