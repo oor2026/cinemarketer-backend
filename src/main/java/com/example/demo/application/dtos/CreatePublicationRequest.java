@@ -18,4 +18,7 @@ public class CreatePublicationRequest {
     private boolean movieFichaEnabled = false; // Creator Tools: mostrar ficha rica en vez del link simple a la película
     private boolean countdownEnabled = false;
     private String countdownCountryCode;
+    private boolean votacionEnabled = false;
+    private java.util.List<OpcionVotacionRequest> opciones;
+    private Integer votacionDuracionMinutos;
 }

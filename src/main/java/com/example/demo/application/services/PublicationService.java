@@ -37,6 +37,8 @@ public class PublicationService {
 
     private final HashtagService hashtagService;
     private final com.example.demo.infrastructure.external.tmdb.TmdbService tmdbService;
+    private final com.example.demo.domain.publication.PublicationVotacionOpcionRepository votacionOpcionRepository;
+    private final com.example.demo.domain.publication.PublicationVotacionVotoRepository votacionVotoRepository;
 
     public PublicationService(
             PublicationRepository publicationRepository,
@@ -51,7 +53,9 @@ public class PublicationService {
             com.example.demo.domain.support.SupportTicketRepository supportTicketRepository,
             com.example.demo.domain.support.SupportMessageRepository supportMessageRepository,
             com.example.demo.domain.moderation.ImageModerationRepository imageModerationRepository, ImageModerationService imageModerationService, CloudflareStreamService cloudflareStreamService, HashtagService hashtagService,
-            com.example.demo.infrastructure.external.tmdb.TmdbService tmdbService) {
+            com.example.demo.infrastructure.external.tmdb.TmdbService tmdbService,
+            com.example.demo.domain.publication.PublicationVotacionOpcionRepository votacionOpcionRepository,
+            com.example.demo.domain.publication.PublicationVotacionVotoRepository votacionVotoRepository) {
         this.publicationRepository = publicationRepository;
         this.reactionRepository = reactionRepository;
         this.commentRepository = commentRepository;
@@ -68,6 +72,8 @@ public class PublicationService {
         this.cloudflareStreamService = cloudflareStreamService;
         this.hashtagService = hashtagService;
         this.tmdbService = tmdbService;
+        this.votacionOpcionRepository = votacionOpcionRepository;
+        this.votacionVotoRepository = votacionVotoRepository;
     }
 
     // Consulta las fechas de estreno de TMDb y confirma que la fecha para el
@@ -195,6 +201,26 @@ public class PublicationService {
         }
         pub.setCountdownEnabled(countdownSolicitado);
         pub.setCountdownCountryCode(countdownSolicitado ? req.getCountdownCountryCode() : null);
+
+        boolean votacionSolicitada = user.isActiveCreator() && req.isVotacionEnabled() && req.getMovieId() != null
+                && req.getOpciones() != null;
+        if (votacionSolicitada) {
+            long validas = req.getOpciones().stream()
+                    .filter(o -> o.getTexto() != null && !o.getTexto().isBlank())
+                    .count();
+            if (validas < 2 || validas > 5) {
+                throw new IllegalArgumentException("Una votación necesita entre 2 y 5 opciones.");
+            }
+            Integer duracionMin = req.getVotacionDuracionMinutos();
+            int maxMinutos = 3 * 30 * 24 * 60; // 3 meses (30 días cada uno) — mismo tope que el frontend
+            if (duracionMin == null || duracionMin <= 0 || duracionMin > maxMinutos) {
+                throw new IllegalArgumentException("Elegí una duración válida para la votación (entre 1 minuto y 3 meses).");
+            }
+        }
+        pub.setVotacionEnabled(votacionSolicitada);
+        pub.setVotacionCierreEn(votacionSolicitada
+                ? java.time.LocalDateTime.now().plusMinutes(req.getVotacionDuracionMinutos())
+                : null);
         pub.setTitle(req.getTitle().trim());
         pub.setHashtags(hashtagsNormalizados);
         pub.setMovieId(req.getMovieId());
@@ -240,6 +266,19 @@ public class PublicationService {
         pub.setPointsAwarded(points);
 
         Publication saved = publicationRepository.save(pub);
+
+        if (votacionSolicitada) {
+            int orden = 1;
+            for (var o : req.getOpciones()) {
+                if (o.getTexto() == null || o.getTexto().isBlank()) continue;
+                PublicationVotacionOpcion opcion = new PublicationVotacionOpcion();
+                opcion.setPublication(saved);
+                opcion.setTexto(o.getTexto().trim());
+                opcion.setMovieId(o.getMovieId());
+                opcion.setOrden(orden++);
+                votacionOpcionRepository.save(opcion);
+            }
+        }
 
         hashtagService.incrementar(hashtagsNormalizados);
 
@@ -1254,4 +1293,65 @@ public class PublicationService {
             }
         } catch (Exception ignored) {}
     }
+
+    @Transactional
+    public void votar(User user, Long publicationId, Long opcionId) {
+        Publication pub = getById(publicationId);
+        if (pub.getVotacionCierreEn() != null && pub.getVotacionCierreEn().isBefore(java.time.LocalDateTime.now())) {
+            throw new IllegalStateException("Esta votación ya cerró.");
+        }
+        if (votacionVotoRepository.existsByPublicationIdAndUserId(publicationId, user.getId())) {
+            throw new IllegalStateException("Ya votaste en esta encuesta.");
+        }
+        PublicationVotacionOpcion opcion = votacionOpcionRepository.findById(opcionId)
+                .orElseThrow(() -> new IllegalArgumentException("Opción no encontrada."));
+        if (!opcion.getPublication().getId().equals(publicationId)) {
+            throw new IllegalArgumentException("La opción no pertenece a esta publicación.");
+        }
+
+        PublicationVotacionVoto voto = new PublicationVotacionVoto();
+        voto.setPublicationId(publicationId);
+        voto.setOpcion(opcion);
+        voto.setUser(user);
+        votacionVotoRepository.save(voto);
+    }
+
+    public Map<String, Object> getVotacionResultado(Long publicationId, Long userId) {
+        Publication pub = getById(publicationId);
+        List<PublicationVotacionOpcion> opciones = votacionOpcionRepository.findByPublicationIdOrderByOrdenAsc(publicationId);
+
+        boolean cerrada = pub.getVotacionCierreEn() != null && pub.getVotacionCierreEn().isBefore(java.time.LocalDateTime.now());
+        boolean yaVoto = userId != null && votacionVotoRepository.existsByPublicationIdAndUserId(publicationId, userId);
+        Long opcionElegidaId = userId != null
+                ? votacionVotoRepository.findByPublicationIdAndUserId(publicationId, userId)
+                .map(v -> v.getOpcion().getId()).orElse(null)
+                : null;
+
+        List<Map<String, Object>> opcionesConVotos = new java.util.ArrayList<>();
+        long totalVotos = 0;
+        for (PublicationVotacionOpcion o : opciones) {
+            long votos = votacionVotoRepository.countByOpcionId(o.getId());
+            totalVotos += votos;
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", o.getId());
+            m.put("texto", o.getTexto());
+            m.put("movieId", o.getMovieId());
+            m.put("votos", votos);
+            opcionesConVotos.add(m);
+        }
+        for (Map<String, Object> m : opcionesConVotos) {
+            long votos = (long) m.get("votos");
+            m.put("porcentaje", totalVotos > 0 ? Math.round(votos * 100.0 / totalVotos) : 0);
+        }
+
+        Map<String, Object> resultado = new java.util.LinkedHashMap<>();
+        resultado.put("opciones", opcionesConVotos);
+        resultado.put("totalVotos", totalVotos);
+        resultado.put("yaVoto", yaVoto);
+        resultado.put("opcionElegidaId", opcionElegidaId);
+        resultado.put("cerrada", cerrada);
+        resultado.put("cierreEn", pub.getVotacionCierreEn() != null ? pub.getVotacionCierreEn().toString() : null);
+        return resultado;
+    }
 }
+
