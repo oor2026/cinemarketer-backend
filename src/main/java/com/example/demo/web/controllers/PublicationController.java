@@ -255,6 +255,34 @@ public class PublicationController {
         return ResponseEntity.noContent().build();
     }
 
+    // GET /api/publications/{id}/votacion
+    @GetMapping("/{id}/votacion")
+    public ResponseEntity<Map<String, Object>> getVotacion(
+            @AuthenticationPrincipal UserDetails ud,
+            @PathVariable Long id) {
+        Long userId = (ud != null) ? getUser(ud).getId() : null;
+        return ResponseEntity.ok(publicationService.getVotacionResultado(id, userId));
+    }
+
+    // POST /api/publications/{id}/votar
+    @PostMapping("/{id}/votar")
+    public ResponseEntity<Map<String, Object>> votar(
+            @AuthenticationPrincipal UserDetails ud,
+            @PathVariable Long id,
+            @RequestBody Map<String, Long> body) {
+        User user = getUser(ud);
+        Long opcionId = body.get("opcionId");
+        if (opcionId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Falta indicar la opción."));
+        }
+        try {
+            publicationService.votar(user, id, opcionId);
+            return ResponseEntity.ok(publicationService.getVotacionResultado(id, user.getId()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // GET /api/publications/{id}/reactions/count
     @GetMapping("/{id}/reactions/count")
     public ResponseEntity<Map<String, Long>> getReactionCounts(@PathVariable Long id) {

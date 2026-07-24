@@ -125,6 +125,14 @@ public class Publication {
     @Column(name = "countdown_country_code", length = 5)
     private String countdownCountryCode;
 
+    @Column(name = "votacion_enabled", nullable = false)
+    private boolean votacionEnabled = false;
+
+    // Momento exacto en que cierra la votación — calculado UNA vez al crear
+    // (ahora + la duración que eligió el Creator), nunca recalculado después.
+    @Column(name = "votacion_cierre_en")
+    private LocalDateTime votacionCierreEn;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
