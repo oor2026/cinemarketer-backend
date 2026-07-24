@@ -36,6 +36,7 @@ public class PublicationService {
     private final CloudflareStreamService cloudflareStreamService;
 
     private final HashtagService hashtagService;
+    private final com.example.demo.infrastructure.external.tmdb.TmdbService tmdbService;
 
     public PublicationService(
             PublicationRepository publicationRepository,
@@ -49,7 +50,8 @@ public class PublicationService {
             NotificationService notificationService,
             com.example.demo.domain.support.SupportTicketRepository supportTicketRepository,
             com.example.demo.domain.support.SupportMessageRepository supportMessageRepository,
-            com.example.demo.domain.moderation.ImageModerationRepository imageModerationRepository, ImageModerationService imageModerationService, CloudflareStreamService cloudflareStreamService, HashtagService hashtagService) {
+            com.example.demo.domain.moderation.ImageModerationRepository imageModerationRepository, ImageModerationService imageModerationService, CloudflareStreamService cloudflareStreamService, HashtagService hashtagService,
+            com.example.demo.infrastructure.external.tmdb.TmdbService tmdbService) {
         this.publicationRepository = publicationRepository;
         this.reactionRepository = reactionRepository;
         this.commentRepository = commentRepository;
@@ -65,6 +67,35 @@ public class PublicationService {
         this.imageModerationService = imageModerationService;
         this.cloudflareStreamService = cloudflareStreamService;
         this.hashtagService = hashtagService;
+        this.tmdbService = tmdbService;
+    }
+
+    // Consulta las fechas de estreno de TMDb y confirma que la fecha para el
+    // país elegido todavía no haya pasado — Cuenta regresiva de estreno es
+    // solo para próximos estrenos, nunca para películas ya estrenadas.
+    @SuppressWarnings("unchecked")
+    private boolean esFechaDeEstrenoFutura(Long movieId, String countryCode) {
+        try {
+            Object raw = tmdbService.getReleaseDates(movieId);
+            if (!(raw instanceof Map)) return false;
+            List<Map<String, Object>> resultados = (List<Map<String, Object>>) ((Map<String, Object>) raw).get("results");
+            if (resultados == null) return false;
+
+            for (Map<String, Object> pais : resultados) {
+                if (!countryCode.equalsIgnoreCase((String) pais.get("iso_3166_1"))) continue;
+                List<Map<String, Object>> fechas = (List<Map<String, Object>>) pais.get("release_dates");
+                if (fechas == null || fechas.isEmpty()) return false;
+                String fechaStr = (String) fechas.get(0).get("release_date");
+                if (fechaStr == null) return false;
+                LocalDate fecha = LocalDate.parse(fechaStr.substring(0, 10));
+                return fecha.isAfter(LocalDate.now()) || fecha.isEqual(LocalDate.now());
+            }
+            return false;
+        } catch (Exception e) {
+            // Si TMDb falla o cambia de forma, no dejamos pasar por defecto —
+            // más seguro rechazar la herramienta que arriesgar un countdown roto.
+            return false;
+        }
     }
 
     // ==============================================
@@ -124,8 +155,8 @@ public class PublicationService {
         if (tieneImagen && tieneVideo) {
             throw new IllegalArgumentException("No podés combinar imagen y video en la misma publicación.");
         }
-        if (req.isMovieFichaEnabled() && (tieneImagen || tieneVideo)) {
-            throw new IllegalArgumentException("El modo Ficha técnica no se puede combinar con imagen o video, solo texto.");
+        if ((req.isMovieFichaEnabled() || req.isCountdownEnabled()) && (tieneImagen || tieneVideo)) {
+            throw new IllegalArgumentException("Esta herramienta no se puede combinar con imagen o video, solo texto.");
         }
 
         // Validar formato según plan: imagen requiere Premium o Creator, video solo Creator
@@ -152,6 +183,18 @@ public class PublicationService {
         // el flag en true (bug de cliente o manipulación directa del request),
         // se ignora silenciosamente y cae al link simple de siempre.
         pub.setMovieFichaEnabled(user.isActiveCreator() && req.isMovieFichaEnabled() && req.getMovieId() != null);
+        boolean countdownSolicitado = user.isActiveCreator() && req.isCountdownEnabled() && req.getMovieId() != null;
+        if (countdownSolicitado) {
+            if (req.getCountdownCountryCode() == null || req.getCountdownCountryCode().isBlank()) {
+                throw new IllegalArgumentException("Falta elegir el país de estreno para la cuenta regresiva.");
+            }
+            if (!esFechaDeEstrenoFutura(req.getMovieId(), req.getCountdownCountryCode())) {
+                throw new IllegalArgumentException(
+                        "La fecha de estreno para el país elegido ya pasó — la cuenta regresiva es solo para próximos estrenos.");
+            }
+        }
+        pub.setCountdownEnabled(countdownSolicitado);
+        pub.setCountdownCountryCode(countdownSolicitado ? req.getCountdownCountryCode() : null);
         pub.setTitle(req.getTitle().trim());
         pub.setHashtags(hashtagsNormalizados);
         pub.setMovieId(req.getMovieId());
@@ -1108,6 +1151,17 @@ public class PublicationService {
     @Transactional
     public void adminApprovePendingReview(Long pubId) {
         Publication pub = getById(pubId);
+
+        // Guarda contra pantallas de admin desactualizadas: si mientras tanto
+        // esta misma publicación ya fue sancionada/ocultada por otra acción
+        // más reciente, su estado actual ya no es PENDING_REVIEW — no
+        // corresponde aprobarla y resucitar por error algo que ya se rechazó.
+        if (pub.getModerationStatus() != PublicationModerationStatus.PENDING_REVIEW) {
+            throw new IllegalStateException(
+                    "Esta publicación ya no está pendiente de revisión (estado actual: " +
+                            pub.getModerationStatus() + "). Probablemente ya fue procesada por otra acción.");
+        }
+
         pub.setModerationStatus(PublicationModerationStatus.APPROVED);
         pub.setAdminReviewed(true);
         publicationRepository.save(pub);

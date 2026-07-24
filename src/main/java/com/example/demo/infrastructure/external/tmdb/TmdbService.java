@@ -264,6 +264,20 @@ public class TmdbService {
         return response.getBody();
     }
 
+    /**
+     * Obtener fechas de estreno por país — usado por Creator Tools
+     * (Cuenta regresiva de estreno) para validar que la fecha elegida
+     * todavía no haya pasado.
+     */
+    public Object getReleaseDates(Long movieId) {
+        String path = "/movie/" + movieId + "/release_dates";
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
     public Object getPersonDetails(Long personId) {
         String path = "/person/" + personId;
         String url = buildUrl(path);
