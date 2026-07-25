@@ -21,4 +21,8 @@ public class CreatePublicationRequest {
     private boolean votacionEnabled = false;
     private java.util.List<OpcionVotacionRequest> opciones;
     private Integer votacionDuracionMinutos;
+    private boolean rankingEnabled = false;
+    private String rankingFormato;
+    private String rankingModoTexto;
+    private java.util.List<RankingItemRequest> rankingItems;
 }

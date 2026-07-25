@@ -39,6 +39,7 @@ public class PublicationService {
     private final com.example.demo.infrastructure.external.tmdb.TmdbService tmdbService;
     private final com.example.demo.domain.publication.PublicationVotacionOpcionRepository votacionOpcionRepository;
     private final com.example.demo.domain.publication.PublicationVotacionVotoRepository votacionVotoRepository;
+    private final com.example.demo.domain.publication.PublicationRankingItemRepository rankingItemRepository;
 
     public PublicationService(
             PublicationRepository publicationRepository,
@@ -55,7 +56,8 @@ public class PublicationService {
             com.example.demo.domain.moderation.ImageModerationRepository imageModerationRepository, ImageModerationService imageModerationService, CloudflareStreamService cloudflareStreamService, HashtagService hashtagService,
             com.example.demo.infrastructure.external.tmdb.TmdbService tmdbService,
             com.example.demo.domain.publication.PublicationVotacionOpcionRepository votacionOpcionRepository,
-            com.example.demo.domain.publication.PublicationVotacionVotoRepository votacionVotoRepository) {
+            com.example.demo.domain.publication.PublicationVotacionVotoRepository votacionVotoRepository,
+            com.example.demo.domain.publication.PublicationRankingItemRepository rankingItemRepository) {
         this.publicationRepository = publicationRepository;
         this.reactionRepository = reactionRepository;
         this.commentRepository = commentRepository;
@@ -74,6 +76,7 @@ public class PublicationService {
         this.tmdbService = tmdbService;
         this.votacionOpcionRepository = votacionOpcionRepository;
         this.votacionVotoRepository = votacionVotoRepository;
+        this.rankingItemRepository = rankingItemRepository;
     }
 
     // Consulta las fechas de estreno de TMDb y confirma que la fecha para el
@@ -161,7 +164,8 @@ public class PublicationService {
         if (tieneImagen && tieneVideo) {
             throw new IllegalArgumentException("No podés combinar imagen y video en la misma publicación.");
         }
-        if ((req.isMovieFichaEnabled() || req.isCountdownEnabled()) && (tieneImagen || tieneVideo)) {
+        if ((req.isMovieFichaEnabled() || req.isCountdownEnabled() || req.isVotacionEnabled() || req.isRankingEnabled())
+                && (tieneImagen || tieneVideo)) {
             throw new IllegalArgumentException("Esta herramienta no se puede combinar con imagen o video, solo texto.");
         }
 
@@ -221,13 +225,44 @@ public class PublicationService {
         pub.setVotacionCierreEn(votacionSolicitada
                 ? java.time.LocalDateTime.now().plusMinutes(req.getVotacionDuracionMinutos())
                 : null);
+
+        boolean rankingSolicitado = user.isActiveCreator() && req.isRankingEnabled() && req.getRankingItems() != null;
+        boolean rankingSegmentada = false;
+        if (rankingSolicitado) {
+            long validos = req.getRankingItems().stream().filter(i -> i.getMovieId() != null).count();
+            if (validos < 3 || validos > 10) {
+                throw new IllegalArgumentException("Un ranking necesita entre 3 y 10 películas.");
+            }
+            if (!"LISTA".equals(req.getRankingFormato()) && !"CARRUSEL".equals(req.getRankingFormato())) {
+                throw new IllegalArgumentException("Elegí un formato válido para el ranking.");
+            }
+            rankingSegmentada = "SEGMENTADA".equals(req.getRankingModoTexto());
+            if (!"ESTANDAR".equals(req.getRankingModoTexto()) && !rankingSegmentada) {
+                throw new IllegalArgumentException("Elegí un modo de texto válido para el ranking.");
+            }
+            if (rankingSegmentada) {
+                long conTexto = req.getRankingItems().stream()
+                        .filter(i -> i.getMovieId() != null && i.getTexto() != null && !i.getTexto().isBlank())
+                        .count();
+                if (conTexto < validos) {
+                    throw new IllegalArgumentException("En modo Segmentada, cada película necesita su propio texto de opinión.");
+                }
+            }
+        }
+        pub.setRankingEnabled(rankingSolicitado);
+        pub.setRankingFormato(rankingSolicitado ? req.getRankingFormato() : null);
+        pub.setRankingModoTexto(rankingSolicitado ? req.getRankingModoTexto() : null);
+
         pub.setTitle(req.getTitle().trim());
         pub.setHashtags(hashtagsNormalizados);
         pub.setMovieId(req.getMovieId());
         pub.setTerritoryGroup(req.getTerritoryGroup());
         pub.setTerritorySub(req.getTerritorySub());
         pub.setTone(req.getTone());
-        pub.setContent(req.getContent());
+        // Modo Segmentada: la opinión general vive en cada ítem del ranking,
+        // no en el content de la publicación — se guarda vacío en vez de null
+        // porque la columna es NOT NULL.
+        pub.setContent(rankingSegmentada ? "" : req.getContent());
         pub.setSpoiler(req.isSpoiler());
         pub.setImageUrls(req.getImageUrls());
         pub.setVideoUrl(req.getVideoUrl());
@@ -277,6 +312,19 @@ public class PublicationService {
                 opcion.setMovieId(o.getMovieId());
                 opcion.setOrden(orden++);
                 votacionOpcionRepository.save(opcion);
+            }
+        }
+
+        if (rankingSolicitado) {
+            int orden = 1;
+            for (var it : req.getRankingItems()) {
+                if (it.getMovieId() == null) continue;
+                PublicationRankingItem item = new PublicationRankingItem();
+                item.setPublication(saved);
+                item.setMovieId(it.getMovieId());
+                item.setTexto(it.getTexto() != null ? it.getTexto().trim() : null);
+                item.setOrden(orden++);
+                rankingItemRepository.save(item);
             }
         }
 
@@ -1351,6 +1399,19 @@ public class PublicationService {
         resultado.put("opcionElegidaId", opcionElegidaId);
         resultado.put("cerrada", cerrada);
         resultado.put("cierreEn", pub.getVotacionCierreEn() != null ? pub.getVotacionCierreEn().toString() : null);
+        return resultado;
+    }
+
+    public List<Map<String, Object>> getRankingItems(Long publicationId) {
+        List<PublicationRankingItem> items = rankingItemRepository.findByPublicationIdOrderByOrdenAsc(publicationId);
+        List<Map<String, Object>> resultado = new java.util.ArrayList<>();
+        for (PublicationRankingItem it : items) {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("movieId", it.getMovieId());
+            m.put("texto", it.getTexto());
+            m.put("orden", it.getOrden());
+            resultado.add(m);
+        }
         return resultado;
     }
 }

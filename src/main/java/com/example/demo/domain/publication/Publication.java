@@ -133,6 +133,18 @@ public class Publication {
     @Column(name = "votacion_cierre_en")
     private LocalDateTime votacionCierreEn;
 
+    // Creator Tools — "Ranking de películas". A diferencia de Votación, no
+    // es interactivo para el público — es contenido fijo del Creator, sin
+    // tabla de votos/interacción.
+    @Column(name = "ranking_enabled", nullable = false)
+    private boolean rankingEnabled = false;
+
+    @Column(name = "ranking_formato", length = 15)
+    private String rankingFormato; // LISTA | CARRUSEL
+
+    @Column(name = "ranking_modo_texto", length = 15)
+    private String rankingModoTexto; // ESTANDAR | SEGMENTADA
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

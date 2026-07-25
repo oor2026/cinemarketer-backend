@@ -255,6 +255,12 @@ public class PublicationController {
         return ResponseEntity.noContent().build();
     }
 
+    // GET /api/publications/{id}/ranking
+    @GetMapping("/{id}/ranking")
+    public ResponseEntity<List<Map<String, Object>>> getRanking(@PathVariable Long id) {
+        return ResponseEntity.ok(publicationService.getRankingItems(id));
+    }
+
     // GET /api/publications/{id}/votacion
     @GetMapping("/{id}/votacion")
     public ResponseEntity<Map<String, Object>> getVotacion(
