@@ -63,3 +63,11 @@ CLOUDINARY_API_SECRET=tu_api_secret
 # MULTIPART
 MAX_FILE_SIZE=5MB
 MAX_REQUEST_SIZE=5MB
+
+# NSFW_SERVICE
+nsfw.service.url=${NSFW_SERVICE_URL}
+nsfw.service.token=${NSFW_SERVICE_TOKEN}
+
+# CLOUDFLARE STREAM
+cloudflare.stream.account-id=${CLOUDFLARE_ACCOUNT_ID}
+cloudflare.stream.api-token=${CLOUDFLARE_API_TOKEN}

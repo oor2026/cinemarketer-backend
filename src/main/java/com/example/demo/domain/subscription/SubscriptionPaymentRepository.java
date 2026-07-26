@@ -13,6 +13,13 @@ public interface SubscriptionPaymentRepository extends JpaRepository<Subscriptio
 
     List<SubscriptionPayment> findBySubscriptionIdOrderByCreatedAtDesc(Long subscriptionId);
 
+    // Idempotencia del webhook de pago — necesitamos la fila completa, no solo
+    // si existe, porque un mismo mp_payment_id puede legítimamente pasar de
+    // "pending" a "approved" en un webhook posterior (no es un duplicado, es
+    // una actualización de estado real) — hay que actualizar esa fila, no
+    // ignorarla ni crear una nueva.
+    java.util.Optional<SubscriptionPayment> findByMpPaymentId(String mpPaymentId);
+
     // Total recaudado (pagos aprobados)
     @Query("SELECT COALESCE(SUM(p.amount), 0) FROM SubscriptionPayment p WHERE p.status = 'approved'")
     BigDecimal sumTotalApproved();
