@@ -37,6 +37,7 @@ public class PublicationService {
 
     private final HashtagService hashtagService;
     private final com.example.demo.infrastructure.external.tmdb.TmdbService tmdbService;
+    private final MovieService movieService;
     private final com.example.demo.domain.publication.PublicationVotacionOpcionRepository votacionOpcionRepository;
     private final com.example.demo.domain.publication.PublicationVotacionVotoRepository votacionVotoRepository;
     private final com.example.demo.domain.publication.PublicationRankingItemRepository rankingItemRepository;
@@ -56,7 +57,7 @@ public class PublicationService {
             com.example.demo.domain.support.SupportTicketRepository supportTicketRepository,
             com.example.demo.domain.support.SupportMessageRepository supportMessageRepository,
             com.example.demo.domain.moderation.ImageModerationRepository imageModerationRepository, ImageModerationService imageModerationService, CloudflareStreamService cloudflareStreamService, HashtagService hashtagService,
-            com.example.demo.infrastructure.external.tmdb.TmdbService tmdbService,
+            com.example.demo.infrastructure.external.tmdb.TmdbService tmdbService, MovieService movieService,
             com.example.demo.domain.publication.PublicationVotacionOpcionRepository votacionOpcionRepository,
             com.example.demo.domain.publication.PublicationVotacionVotoRepository votacionVotoRepository,
             com.example.demo.domain.publication.PublicationRankingItemRepository rankingItemRepository,
@@ -78,6 +79,7 @@ public class PublicationService {
         this.cloudflareStreamService = cloudflareStreamService;
         this.hashtagService = hashtagService;
         this.tmdbService = tmdbService;
+        this.movieService = movieService;
         this.votacionOpcionRepository = votacionOpcionRepository;
         this.votacionVotoRepository = votacionVotoRepository;
         this.rankingItemRepository = rankingItemRepository;
@@ -111,6 +113,27 @@ public class PublicationService {
             // más seguro rechazar la herramienta que arriesgar un countdown roto.
             return false;
         }
+    }
+
+    // Revalida el youtubeKey que mandó el cliente contra los videos reales de
+    // TMDb para esa película — no confiamos en lo que venga del frontend.
+    private boolean esTrailerValido(Long movieId, String youtubeKey) {
+        if (youtubeKey == null || youtubeKey.isBlank()) return false;
+        try {
+            if (contieneTrailerConKey(movieId, "es-MX", youtubeKey)) return true;
+            return contieneTrailerConKey(movieId, "en-US", youtubeKey);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean contieneTrailerConKey(Long movieId, String language, String youtubeKey) {
+        var video = movieService.getMovieVideos(movieId, language);
+        if (video == null || video.getResults() == null) return false;
+        return video.getResults().stream()
+                .anyMatch(v -> "YouTube".equals(v.getSite())
+                        && "Trailer".equals(v.getType())
+                        && youtubeKey.equals(v.getKey()));
     }
 
     // ==============================================
@@ -170,7 +193,7 @@ public class PublicationService {
         if (tieneImagen && tieneVideo) {
             throw new IllegalArgumentException("No podés combinar imagen y video en la misma publicación.");
         }
-        if ((req.isMovieFichaEnabled() || req.isCountdownEnabled() || req.isVotacionEnabled() || req.isRankingEnabled() || req.isTriviaEnabled())
+        if ((req.isMovieFichaEnabled() || req.isCountdownEnabled() || req.isVotacionEnabled() || req.isRankingEnabled() || req.isTriviaEnabled() || req.isTrailerEnabled())
                 && (tieneImagen || tieneVideo)) {
             throw new IllegalArgumentException("Esta herramienta no se puede combinar con imagen o video, solo texto.");
         }
@@ -308,6 +331,15 @@ public class PublicationService {
         pub.setTriviaCierreEn(triviaSolicitado
                 ? java.time.LocalDateTime.now().plusMinutes(req.getTriviaDuracionMinutos())
                 : null);
+
+        boolean trailerSolicitado = user.isActiveCreator() && req.isTrailerEnabled() && req.getMovieId() != null;
+        if (trailerSolicitado) {
+            if (!esTrailerValido(req.getMovieId(), req.getTrailerYoutubeKey())) {
+                throw new IllegalArgumentException("No pudimos validar el tráiler para esta película.");
+            }
+        }
+        pub.setTrailerEnabled(trailerSolicitado);
+        pub.setTrailerYoutubeKey(trailerSolicitado ? req.getTrailerYoutubeKey() : null);
 
         pub.setTitle(req.getTitle().trim());
         pub.setHashtags(hashtagsNormalizados);

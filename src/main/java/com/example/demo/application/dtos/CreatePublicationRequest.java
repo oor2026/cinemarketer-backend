@@ -31,4 +31,6 @@ public class CreatePublicationRequest {
     private Long triviaReferenciaId;
     private java.util.List<TriviaOpcionRequest> triviaOpciones;
     private Integer triviaDuracionMinutos;
+    private boolean trailerEnabled = false;
+    private String trailerYoutubeKey;
 }
