@@ -162,6 +162,15 @@ public class Publication {
     @Column(name = "trivia_cierre_en")
     private LocalDateTime triviaCierreEn;
 
+    // Creator Tools — "Tráiler embebido". El youtubeKey se congela al publicar
+    // (revalidado server-side contra TMDb antes de guardar) — el tráiler de
+    // una película no cambia después, así que no hace falta resolverlo en vivo.
+    @Column(name = "trailer_enabled", nullable = false)
+    private boolean trailerEnabled = false;
+
+    @Column(name = "trailer_youtube_key", length = 20)
+    private String trailerYoutubeKey;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
