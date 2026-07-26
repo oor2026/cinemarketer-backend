@@ -19,6 +19,14 @@ public class PublicationStatsDto {
     private double porcentajeImagen;
     private double porcentajeVideo;
 
+    // Creator Tools — solo total del período, sin promedio.
+    private long publicacionesFichaTecnica;
+    private long publicacionesCountdown;
+    private long publicacionesVotacion;
+    private long publicacionesRanking;
+    private long publicacionesTrivia;
+    private long publicacionesTrailer;
+
     private double tasaAprobacionAutomatica;
     private long publicacionesEnRevision;
     private long publicacionesOcultasSancionadas;
