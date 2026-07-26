@@ -423,7 +423,11 @@ public class SubscriptionService {
 
     public SubscriptionDto toDto(UserSubscription sub) {
         SubscriptionPlan plan = sub.getPlan();
+        User user = sub.getUser();
         SubscriptionDto dto = new SubscriptionDto();
+        dto.setUserId(user.getId());
+        dto.setUserEmail(user.getEmail());
+        dto.setUserName(user.getName());
         dto.setPlanId(plan.getId());
         dto.setPlanName(plan.getName());
         dto.setPlanType(plan.getType());

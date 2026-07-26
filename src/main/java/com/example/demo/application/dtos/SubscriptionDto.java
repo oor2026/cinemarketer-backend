@@ -21,6 +21,11 @@ public class SubscriptionDto {
     private int pointsMultiplier;
     private List<String> benefits;
 
+    // Datos del usuario dueño de la suscripción
+    private Long userId;
+    private String userEmail;
+    private String userName;
+
     // Datos de la suscripción del usuario
     private Long subscriptionId;
     private SubscriptionStatus status;
