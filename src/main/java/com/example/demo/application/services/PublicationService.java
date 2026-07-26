@@ -40,6 +40,8 @@ public class PublicationService {
     private final com.example.demo.domain.publication.PublicationVotacionOpcionRepository votacionOpcionRepository;
     private final com.example.demo.domain.publication.PublicationVotacionVotoRepository votacionVotoRepository;
     private final com.example.demo.domain.publication.PublicationRankingItemRepository rankingItemRepository;
+    private final com.example.demo.domain.publication.PublicationTriviaOpcionRepository triviaOpcionRepository;
+    private final com.example.demo.domain.publication.PublicationTriviaRespuestaRepository triviaRespuestaRepository;
 
     public PublicationService(
             PublicationRepository publicationRepository,
@@ -57,7 +59,9 @@ public class PublicationService {
             com.example.demo.infrastructure.external.tmdb.TmdbService tmdbService,
             com.example.demo.domain.publication.PublicationVotacionOpcionRepository votacionOpcionRepository,
             com.example.demo.domain.publication.PublicationVotacionVotoRepository votacionVotoRepository,
-            com.example.demo.domain.publication.PublicationRankingItemRepository rankingItemRepository) {
+            com.example.demo.domain.publication.PublicationRankingItemRepository rankingItemRepository,
+            com.example.demo.domain.publication.PublicationTriviaOpcionRepository triviaOpcionRepository,
+            com.example.demo.domain.publication.PublicationTriviaRespuestaRepository triviaRespuestaRepository) {
         this.publicationRepository = publicationRepository;
         this.reactionRepository = reactionRepository;
         this.commentRepository = commentRepository;
@@ -77,6 +81,8 @@ public class PublicationService {
         this.votacionOpcionRepository = votacionOpcionRepository;
         this.votacionVotoRepository = votacionVotoRepository;
         this.rankingItemRepository = rankingItemRepository;
+        this.triviaOpcionRepository = triviaOpcionRepository;
+        this.triviaRespuestaRepository = triviaRespuestaRepository;
     }
 
     // Consulta las fechas de estreno de TMDb y confirma que la fecha para el
@@ -164,7 +170,7 @@ public class PublicationService {
         if (tieneImagen && tieneVideo) {
             throw new IllegalArgumentException("No podés combinar imagen y video en la misma publicación.");
         }
-        if ((req.isMovieFichaEnabled() || req.isCountdownEnabled() || req.isVotacionEnabled() || req.isRankingEnabled())
+        if ((req.isMovieFichaEnabled() || req.isCountdownEnabled() || req.isVotacionEnabled() || req.isRankingEnabled() || req.isTriviaEnabled())
                 && (tieneImagen || tieneVideo)) {
             throw new IllegalArgumentException("Esta herramienta no se puede combinar con imagen o video, solo texto.");
         }
@@ -253,6 +259,56 @@ public class PublicationService {
         pub.setRankingFormato(rankingSolicitado ? req.getRankingFormato() : null);
         pub.setRankingModoTexto(rankingSolicitado ? req.getRankingModoTexto() : null);
 
+        boolean triviaSolicitado = user.isActiveCreator() && req.isTriviaEnabled() && req.getMovieId() != null
+                && req.getTriviaOpciones() != null;
+        if (triviaSolicitado) {
+            long validas = req.getTriviaOpciones().stream()
+                    .filter(o -> o.getTexto() != null && !o.getTexto().isBlank())
+                    .count();
+            if (validas < 2 || validas > 5) {
+                throw new IllegalArgumentException("Una trivia necesita entre 2 y 5 opciones.");
+            }
+            long correctas = req.getTriviaOpciones().stream()
+                    .filter(o -> Boolean.TRUE.equals(o.getEsCorrecta()))
+                    .count();
+            if (correctas != 1) {
+                throw new IllegalArgumentException("Marcá exactamente una opción como correcta.");
+            }
+            // Única herramienta con texto 100% libre — pasa por el filtro de
+            // palabras prohibidas. A diferencia del contenido normal (que puede
+            // quedar en revisión pendiente), acá se bloquea la creación directo:
+            // no hay un flujo de revisión para opciones sueltas de una trivia.
+            for (var o : req.getTriviaOpciones()) {
+                if (o.getTexto() == null || o.getTexto().isBlank()) continue;
+                if (bannedWordService.shouldReject(o.getTexto()) || bannedWordService.shouldPendingReview(o.getTexto())) {
+                    throw new IllegalArgumentException("Una de las opciones de la trivia viola nuestras Normas de Convivencia.");
+                }
+            }
+            if (!"LIBRE".equals(req.getTriviaTipo()) && !"REFERENCIA".equals(req.getTriviaTipo())) {
+                throw new IllegalArgumentException("Elegí un tipo válido para la trivia.");
+            }
+            if ("REFERENCIA".equals(req.getTriviaTipo())) {
+                if (!"PELICULA".equals(req.getTriviaReferenciaTipo()) && !"PERSONA".equals(req.getTriviaReferenciaTipo())) {
+                    throw new IllegalArgumentException("Elegí si la referencia es una película o una persona.");
+                }
+                if (req.getTriviaReferenciaId() == null) {
+                    throw new IllegalArgumentException("Falta elegir la película o persona de referencia.");
+                }
+            }
+            Integer duracionMin = req.getTriviaDuracionMinutos();
+            int maxMinutosTrivia = 3 * 30 * 24 * 60;
+            if (duracionMin == null || duracionMin <= 0 || duracionMin > maxMinutosTrivia) {
+                throw new IllegalArgumentException("Elegí una duración válida para la trivia (entre 1 minuto y 3 meses).");
+            }
+        }
+        pub.setTriviaEnabled(triviaSolicitado);
+        pub.setTriviaTipo(triviaSolicitado ? req.getTriviaTipo() : null);
+        pub.setTriviaReferenciaTipo(triviaSolicitado && "REFERENCIA".equals(req.getTriviaTipo()) ? req.getTriviaReferenciaTipo() : null);
+        pub.setTriviaReferenciaId(triviaSolicitado && "REFERENCIA".equals(req.getTriviaTipo()) ? req.getTriviaReferenciaId() : null);
+        pub.setTriviaCierreEn(triviaSolicitado
+                ? java.time.LocalDateTime.now().plusMinutes(req.getTriviaDuracionMinutos())
+                : null);
+
         pub.setTitle(req.getTitle().trim());
         pub.setHashtags(hashtagsNormalizados);
         pub.setMovieId(req.getMovieId());
@@ -325,6 +381,19 @@ public class PublicationService {
                 item.setTexto(it.getTexto() != null ? it.getTexto().trim() : null);
                 item.setOrden(orden++);
                 rankingItemRepository.save(item);
+            }
+        }
+
+        if (triviaSolicitado) {
+            int orden = 1;
+            for (var o : req.getTriviaOpciones()) {
+                if (o.getTexto() == null || o.getTexto().isBlank()) continue;
+                PublicationTriviaOpcion opcion = new PublicationTriviaOpcion();
+                opcion.setPublication(saved);
+                opcion.setTexto(o.getTexto().trim());
+                opcion.setEsCorrecta(Boolean.TRUE.equals(o.getEsCorrecta()));
+                opcion.setOrden(orden++);
+                triviaOpcionRepository.save(opcion);
             }
         }
 
@@ -1411,6 +1480,76 @@ public class PublicationService {
             m.put("texto", it.getTexto());
             m.put("orden", it.getOrden());
             resultado.add(m);
+        }
+        return resultado;
+    }
+
+    @Transactional
+    public void responderTrivia(User user, Long publicationId, Long opcionId) {
+        Publication pub = getById(publicationId);
+        if (pub.getTriviaCierreEn() != null && pub.getTriviaCierreEn().isBefore(java.time.LocalDateTime.now())) {
+            throw new IllegalStateException("Esta trivia ya cerró.");
+        }
+        if (triviaRespuestaRepository.existsByPublicationIdAndUserId(publicationId, user.getId())) {
+            throw new IllegalStateException("Ya respondiste esta trivia.");
+        }
+        PublicationTriviaOpcion opcion = triviaOpcionRepository.findById(opcionId)
+                .orElseThrow(() -> new IllegalArgumentException("Opción no encontrada."));
+        if (!opcion.getPublication().getId().equals(publicationId)) {
+            throw new IllegalArgumentException("La opción no pertenece a esta publicación.");
+        }
+
+        PublicationTriviaRespuesta respuesta = new PublicationTriviaRespuesta();
+        respuesta.setPublicationId(publicationId);
+        respuesta.setOpcion(opcion);
+        respuesta.setUser(user);
+        triviaRespuestaRepository.save(respuesta);
+    }
+
+    public Map<String, Object> getTriviaResultado(Long publicationId, Long userId) {
+        Publication pub = getById(publicationId);
+        List<PublicationTriviaOpcion> opciones = triviaOpcionRepository.findByPublicationIdOrderByOrdenAsc(publicationId);
+
+        boolean cerrada = pub.getTriviaCierreEn() != null && pub.getTriviaCierreEn().isBefore(java.time.LocalDateTime.now());
+        boolean yaRespondio = userId != null && triviaRespuestaRepository.existsByPublicationIdAndUserId(publicationId, userId);
+        Long opcionElegidaId = userId != null
+                ? triviaRespuestaRepository.findByPublicationIdAndUserId(publicationId, userId)
+                .map(r -> r.getOpcion().getId()).orElse(null)
+                : null;
+
+        // Solo se revela cuál es la correcta (y las estadísticas) si ya
+        // respondiste o si la trivia ya cerró — antes de eso, no hay que
+        // filtrar la respuesta correcta por la propia API.
+        boolean revelar = yaRespondio || cerrada;
+
+        long totalRespuestas = 0;
+        long totalAciertos = 0;
+        List<Map<String, Object>> opcionesOut = new java.util.ArrayList<>();
+        for (PublicationTriviaOpcion o : opciones) {
+            long respuestas = triviaRespuestaRepository.countByOpcionId(o.getId());
+            totalRespuestas += respuestas;
+            if (o.isEsCorrecta()) totalAciertos = respuestas;
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", o.getId());
+            m.put("texto", o.getTexto());
+            if (revelar) m.put("esCorrecta", o.isEsCorrecta());
+            opcionesOut.add(m);
+        }
+
+        Map<String, Object> resultado = new java.util.LinkedHashMap<>();
+        resultado.put("opciones", opcionesOut);
+        resultado.put("yaRespondio", yaRespondio);
+        resultado.put("opcionElegidaId", opcionElegidaId);
+        resultado.put("cerrada", cerrada);
+        resultado.put("cierreEn", pub.getTriviaCierreEn() != null ? pub.getTriviaCierreEn().toString() : null);
+        resultado.put("tipo", pub.getTriviaTipo());
+        resultado.put("referenciaTipo", pub.getTriviaReferenciaTipo());
+        resultado.put("referenciaId", pub.getTriviaReferenciaId());
+        if (revelar) {
+            boolean acerto = opcionElegidaId != null && opciones.stream()
+                    .anyMatch(o -> o.getId().equals(opcionElegidaId) && o.isEsCorrecta());
+            resultado.put("acerto", opcionElegidaId != null ? acerto : null);
+            resultado.put("porcentajeAcierto", totalRespuestas > 0 ? Math.round(totalAciertos * 100.0 / totalRespuestas) : 0);
         }
         return resultado;
     }

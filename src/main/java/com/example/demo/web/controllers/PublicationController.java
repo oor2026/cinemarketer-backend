@@ -255,6 +255,34 @@ public class PublicationController {
         return ResponseEntity.noContent().build();
     }
 
+    // GET /api/publications/{id}/trivia
+    @GetMapping("/{id}/trivia")
+    public ResponseEntity<Map<String, Object>> getTrivia(
+            @AuthenticationPrincipal UserDetails ud,
+            @PathVariable Long id) {
+        Long userId = (ud != null) ? getUser(ud).getId() : null;
+        return ResponseEntity.ok(publicationService.getTriviaResultado(id, userId));
+    }
+
+    // POST /api/publications/{id}/responder-trivia
+    @PostMapping("/{id}/responder-trivia")
+    public ResponseEntity<Map<String, Object>> responderTrivia(
+            @AuthenticationPrincipal UserDetails ud,
+            @PathVariable Long id,
+            @RequestBody Map<String, Long> body) {
+        User user = getUser(ud);
+        Long opcionId = body.get("opcionId");
+        if (opcionId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Falta indicar la opción."));
+        }
+        try {
+            publicationService.responderTrivia(user, id, opcionId);
+            return ResponseEntity.ok(publicationService.getTriviaResultado(id, user.getId()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // GET /api/publications/{id}/ranking
     @GetMapping("/{id}/ranking")
     public ResponseEntity<List<Map<String, Object>>> getRanking(@PathVariable Long id) {

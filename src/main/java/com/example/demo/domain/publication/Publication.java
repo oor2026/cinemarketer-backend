@@ -145,6 +145,23 @@ public class Publication {
     @Column(name = "ranking_modo_texto", length = 15)
     private String rankingModoTexto; // ESTANDAR | SEGMENTADA
 
+    // Creator Tools — "Trivia". Única herramienta con texto 100% libre del
+    // Creator en cada opción, por eso pasa por BannedWordService al crear.
+    @Column(name = "trivia_enabled", nullable = false)
+    private boolean triviaEnabled = false;
+
+    @Column(name = "trivia_tipo", length = 15)
+    private String triviaTipo; // LIBRE | REFERENCIA
+
+    @Column(name = "trivia_referencia_tipo", length = 15)
+    private String triviaReferenciaTipo; // PELICULA | PERSONA — solo si triviaTipo = REFERENCIA
+
+    @Column(name = "trivia_referencia_id")
+    private Long triviaReferenciaId; // movieId o personId de TMDb, según triviaReferenciaTipo
+
+    @Column(name = "trivia_cierre_en")
+    private LocalDateTime triviaCierreEn;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

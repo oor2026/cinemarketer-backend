@@ -25,4 +25,10 @@ public class CreatePublicationRequest {
     private String rankingFormato;
     private String rankingModoTexto;
     private java.util.List<RankingItemRequest> rankingItems;
+    private boolean triviaEnabled = false;
+    private String triviaTipo;
+    private String triviaReferenciaTipo;
+    private Long triviaReferenciaId;
+    private java.util.List<TriviaOpcionRequest> triviaOpciones;
+    private Integer triviaDuracionMinutos;
 }
