@@ -164,6 +164,16 @@ public class SubscriptionService {
     public void processWebhookPayment(String paymentId) {
         log.info("📩 Procesando webhook pago: {}", paymentId);
 
+        // Idempotencia real: solo cortamos si este pago YA estaba aprobado
+        // antes — un mismo mp_payment_id puede pasar legítimamente de
+        // "pending" a "approved" en un webhook posterior, y eso hay que
+        // procesarlo (actualizando la fila existente), no ignorarlo.
+        Optional<SubscriptionPayment> pagoExistente = subscriptionPaymentRepository.findByMpPaymentId(paymentId);
+        if (pagoExistente.isPresent() && "approved".equals(pagoExistente.get().getStatus())) {
+            log.info("↩️ Pago {} ya estaba aprobado, ignorando notificación duplicada.", paymentId);
+            return;
+        }
+
         try {
             Map<String, Object> paymentData = mercadoPagoService.getPayment(paymentId);
             String status = (String) paymentData.get("status");
@@ -231,8 +241,9 @@ public class SubscriptionService {
                 sub = subOpt.get();
             }
 
-            // Registrar el pago
-            SubscriptionPayment payment = new SubscriptionPayment();
+            // Registrar el pago — reusa la fila existente si ya la había
+            // (ej. la que quedó en "pending"), en vez de crear una nueva.
+            SubscriptionPayment payment = pagoExistente.orElseGet(SubscriptionPayment::new);
             payment.setSubscription(sub);
             payment.setMpPaymentId(paymentId);
             payment.setStatus(status);
@@ -426,13 +437,26 @@ public class SubscriptionService {
 
     // Activa el flag correcto según el plan de la suscripción — Premium o
     // Creator son independientes, uno no pisa al otro.
+    //
+    // OJO: antes esto siempre pisaba con "ahora + 1 mes", sin importar cuánto
+    // le quedaba al usuario. Como este método lo llaman DOS webhooks distintos
+    // para el mismo ciclo (processWebhookSubscription y processWebhookPayment),
+    // el que llegaba último terminaba reseteando la fecha — por eso el
+    // vencimiento real dependía de cuál aviso tardaba más, no de los pagos
+    // reales. Ahora extiende desde el vencimiento actual si todavía es
+    // futuro, y solo usa "ahora" como base si ya venció.
     private void activatePlanOnUser(User user, SubscriptionPlan plan) {
+        LocalDateTime ahora = LocalDateTime.now();
         if ("Creator".equalsIgnoreCase(plan.getName())) {
+            LocalDateTime base = (user.getCreatorUntil() != null && user.getCreatorUntil().isAfter(ahora))
+                    ? user.getCreatorUntil() : ahora;
             user.setCreator(true);
-            user.setCreatorUntil(LocalDateTime.now().plusMonths(1));
+            user.setCreatorUntil(base.plusMonths(1));
         } else {
+            LocalDateTime base = (user.getPremiumUntil() != null && user.getPremiumUntil().isAfter(ahora))
+                    ? user.getPremiumUntil() : ahora;
             user.setPremium(true);
-            user.setPremiumUntil(LocalDateTime.now().plusMonths(1));
+            user.setPremiumUntil(base.plusMonths(1));
         }
         userRepository.save(user);
     }
