@@ -131,15 +131,24 @@ public class SubscriptionService {
 
             switch (mpStatus) {
                 case "authorized" -> {
-                    sub.setStatus(SubscriptionStatus.ACTIVE);
-                    sub.setStartDate(LocalDateTime.now());
-                    sub.setEndDate(LocalDateTime.now().plusMonths(1));
-                    String nextBilling = (String) mpData.get("nextPaymentDate");
-                    if (nextBilling != null) {
-                        sub.setNextBillingDate(LocalDateTime.parse(nextBilling.substring(0, 19)));
+                    // Idempotencia: si esta suscripción ya está ACTIVE, esta notificación
+                    // "authorized" es un reenvío del mismo evento de autorización (no una
+                    // renovación — eso lo maneja processWebhookPayment por separado con
+                    // su propio chequeo de mp_payment_id). Reprocesarla pisaría fechas y
+                    // volvería a extender premiumUntil de más.
+                    if (sub.getStatus() == SubscriptionStatus.ACTIVE) {
+                        log.info("↩️ Suscripción {} ya estaba activa, notificación 'authorized' duplicada ignorada.", preapprovalId);
+                    } else {
+                        sub.setStatus(SubscriptionStatus.ACTIVE);
+                        sub.setStartDate(LocalDateTime.now());
+                        sub.setEndDate(LocalDateTime.now().plusMonths(1));
+                        String nextBilling = (String) mpData.get("nextPaymentDate");
+                        if (nextBilling != null) {
+                            sub.setNextBillingDate(LocalDateTime.parse(nextBilling.substring(0, 19)));
+                        }
+                        activatePlanOnUser(sub.getUser(), sub.getPlan());
+                        log.info("✅ Suscripción a {} activada para usuario: {}", sub.getPlan().getName(), sub.getUser().getEmail());
                     }
-                    activatePlanOnUser(sub.getUser(), sub.getPlan());
-                    log.info("✅ Suscripción a {} activada para usuario: {}", sub.getPlan().getName(), sub.getUser().getEmail());
                 }
                 case "cancelled", "paused" -> {
                     sub.setStatus(SubscriptionStatus.CANCELLED);
@@ -290,6 +299,26 @@ public class SubscriptionService {
 
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        // Idempotencia real: el pago detrás de este token puede haber sido
+        // procesado igual por el webhook normal mientras el mail de confirmación
+        // seguía sin abrirse (ej. el email de MP no coincidía al momento del
+        // webhook pero se resolvió solo en un reintento posterior). Si ese
+        // mp_payment_id ya está aprobado en el sistema, este click es tardío
+        // y redundante — solo lo marcamos como usado, sin crear una segunda
+        // suscripción ni reactivar el plan.
+        if (pending.getMpPaymentId() != null) {
+            Optional<SubscriptionPayment> pagoYaProcesado =
+                    subscriptionPaymentRepository.findByMpPaymentId(pending.getMpPaymentId());
+            if (pagoYaProcesado.isPresent() && "approved".equals(pagoYaProcesado.get().getStatus())) {
+                pending.setConfirmedAt(LocalDateTime.now());
+                pending.setConfirmedUserId(user.getId());
+                pendingConfirmationRepository.save(pending);
+                log.info("↩️ Pago {} del token {} ya estaba aprobado por otra vía, confirmación tardía ignorada para: {}",
+                        pending.getMpPaymentId(), token, userEmail);
+                return;
+            }
+        }
 
         // Identificar el plan real por el dato guardado al crear la confirmación
         // pendiente — nunca asumir Premium por defecto, para no activarle a
