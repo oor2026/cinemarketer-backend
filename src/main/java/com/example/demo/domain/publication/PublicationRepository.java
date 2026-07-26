@@ -172,6 +172,25 @@ public interface PublicationRepository extends JpaRepository<Publication, Long> 
             nativeQuery = true)
     long countPublicacionesConAdjuntoByUserId(@Param("userId") Long userId);
 
+    // Creator Tools — conteo total por tipo en el período, sin promedio.
+    @Query("SELECT COUNT(p) FROM Publication p WHERE p.createdAt BETWEEN :start AND :end AND p.movieFichaEnabled = true")
+    long countFichaTecnicaInPeriod(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT COUNT(p) FROM Publication p WHERE p.createdAt BETWEEN :start AND :end AND p.countdownEnabled = true")
+    long countCountdownInPeriod(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT COUNT(p) FROM Publication p WHERE p.createdAt BETWEEN :start AND :end AND p.votacionEnabled = true")
+    long countVotacionInPeriod(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT COUNT(p) FROM Publication p WHERE p.createdAt BETWEEN :start AND :end AND p.rankingEnabled = true")
+    long countRankingInPeriod(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT COUNT(p) FROM Publication p WHERE p.createdAt BETWEEN :start AND :end AND p.triviaEnabled = true")
+    long countTriviaInPeriod(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT COUNT(p) FROM Publication p WHERE p.createdAt BETWEEN :start AND :end AND p.trailerEnabled = true")
+    long countTrailerInPeriod(@Param("start") java.time.LocalDateTime start, @Param("end") java.time.LocalDateTime end);
+
     // Feed con filtros opcionales combinables (territorio, tono, hashtag).
     // Nativa porque "hashtag = ANY(hashtags)" sobre un TEXT[] no es expresable en JPQL portable.
     @Query(value = "SELECT * FROM publications p WHERE p.hidden = false " +

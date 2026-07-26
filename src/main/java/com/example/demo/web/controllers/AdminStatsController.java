@@ -469,6 +469,13 @@ public class AdminStatsController {
         stats.setPorcentajeImagen(totalFormato > 0 ? Math.round((double) imagen / totalFormato * 1000) / 10.0 : 0);
         stats.setPorcentajeVideo(totalFormato > 0 ? Math.round((double) video / totalFormato * 1000) / 10.0 : 0);
 
+        stats.setPublicacionesFichaTecnica(publicationRepository.countFichaTecnicaInPeriod(start, end));
+        stats.setPublicacionesCountdown(publicationRepository.countCountdownInPeriod(start, end));
+        stats.setPublicacionesVotacion(publicationRepository.countVotacionInPeriod(start, end));
+        stats.setPublicacionesRanking(publicationRepository.countRankingInPeriod(start, end));
+        stats.setPublicacionesTrivia(publicationRepository.countTriviaInPeriod(start, end));
+        stats.setPublicacionesTrailer(publicationRepository.countTrailerInPeriod(start, end));
+
         long aprobadasAuto = publicationRepository.countAprobadasAutomaticamente(start, end);
         stats.setTasaAprobacionAutomatica(total > 0 ? Math.round((double) aprobadasAuto / total * 1000) / 10.0 : 0);
         stats.setPublicacionesEnRevision(publicationRepository.countPasaronPorRevision(start, end));
