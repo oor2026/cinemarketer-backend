@@ -18,8 +18,14 @@ public class FeedCarruselItem {
     @Column(nullable = false)
     private Integer orderIndex;
 
-    // Solo aplica para PREMIO_COMUN / PREMIO_ESPECIAL — null para PELICULA_DESTACADA
+    // Solo aplica para PREMIO_COMUN / PREMIO_ESPECIAL — null para el resto
     private Long rewardId;
+
+    // Solo aplica para PELICULA_CARRUSEL — null para el resto
+    private Long movieId;
+
+    public Long getMovieId() { return movieId; }
+    public void setMovieId(Long movieId) { this.movieId = movieId; }
 
     private Long updatedByAdminId;
     private String updatedByAdminEmail;

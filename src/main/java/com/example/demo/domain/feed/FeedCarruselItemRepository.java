@@ -7,4 +7,5 @@ public interface FeedCarruselItemRepository extends JpaRepository<FeedCarruselIt
     List<FeedCarruselItem> findAllByOrderByOrderIndexAsc();
     boolean existsByTipo(FeedCarruselTipo tipo);
     boolean existsByTipoAndRewardId(FeedCarruselTipo tipo, Long rewardId);
+    boolean existsByTipoAndMovieId(FeedCarruselTipo tipo, Long movieId);
 }
