@@ -131,24 +131,25 @@ public class SubscriptionService {
 
             switch (mpStatus) {
                 case "authorized" -> {
-                    // Idempotencia: si esta suscripción ya está ACTIVE, esta notificación
-                    // "authorized" es un reenvío del mismo evento de autorización (no una
-                    // renovación — eso lo maneja processWebhookPayment por separado con
-                    // su propio chequeo de mp_payment_id). Reprocesarla pisaría fechas y
-                    // volvería a extender premiumUntil de más.
-                    if (sub.getStatus() == SubscriptionStatus.ACTIVE) {
-                        log.info("↩️ Suscripción {} ya estaba activa, notificación 'authorized' duplicada ignorada.", preapprovalId);
-                    } else {
-                        sub.setStatus(SubscriptionStatus.ACTIVE);
-                        sub.setStartDate(LocalDateTime.now());
-                        sub.setEndDate(LocalDateTime.now().plusMonths(1));
-                        String nextBilling = (String) mpData.get("nextPaymentDate");
-                        if (nextBilling != null) {
-                            sub.setNextBillingDate(LocalDateTime.parse(nextBilling.substring(0, 19)));
-                        }
-                        activatePlanOnUser(sub.getUser(), sub.getPlan());
-                        log.info("✅ Suscripción a {} activada para usuario: {}", sub.getPlan().getName(), sub.getUser().getEmail());
+                    // "authorized" únicamente confirma que el medio de pago recurrente
+                    // quedó habilitado a nivel Mercado Pago — NO significa que se haya
+                    // cobrado exitosamente ninguna cuota, ni la primera ni una renovación.
+                    // Activar acceso con solo este evento permitía el escenario real que
+                    // encontramos: el usuario autoriza el pago recurrente, el primer
+                    // cobro queda pending y después rejected, y aun así ya tenía un mes
+                    // completo de Premium regalado porque esta rama lo activaba antes
+                    // de saber si el cobro iba a salir bien.
+                    //
+                    // Ahora esta rama NUNCA otorga acceso ni toca fechas — solo
+                    // actualiza metadata (fecha de próxima facturación) si la tenemos.
+                    // El único lugar que activa/extiende acceso real es
+                    // processWebhookPayment, cuando el pago llega efectivamente
+                    // "approved".
+                    String nextBilling = (String) mpData.get("nextPaymentDate");
+                    if (nextBilling != null) {
+                        sub.setNextBillingDate(LocalDateTime.parse(nextBilling.substring(0, 19)));
                     }
+                    log.info("ℹ️ Suscripción {} autorizada a nivel MP — esperando el pago aprobado real para otorgar acceso.", preapprovalId);
                 }
                 case "cancelled", "paused" -> {
                     sub.setStatus(SubscriptionStatus.CANCELLED);
@@ -261,6 +262,14 @@ public class SubscriptionService {
             }
             if ("approved".equals(status)) {
                 payment.setPaidAt(LocalDateTime.now());
+                // sub.status ahora se activa acá — es el único evento que
+                // representa un cobro real confirmado. El webhook de
+                // suscripción (processWebhookSubscription) ya no toca el
+                // status ni las fechas, solo actualiza metadata.
+                if (sub.getStatus() != SubscriptionStatus.ACTIVE) {
+                    sub.setStatus(SubscriptionStatus.ACTIVE);
+                    sub.setStartDate(LocalDateTime.now());
+                }
                 sub.setEndDate(LocalDateTime.now().plusMonths(1));
                 sub.setLastPaymentStatus("approved");
                 sub.setLastPaymentDate(LocalDateTime.now());
