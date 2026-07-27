@@ -85,6 +85,28 @@ public class PremiumRewardController {
         }
     }
 
+    /**
+     * Obtener un premio premium puntual por id — usado por el carrusel del feed.
+     * Reutiliza premiumRewardService.getCatalog() (sin filtro de tipo) y busca
+     * el id dentro, para no duplicar el cálculo de canRedeem/alreadyEntered
+     * que ya vive ahí.
+     * GET /api/premium/rewards/{id}
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getRewardById(@PathVariable Long id,
+                                           @AuthenticationPrincipal UserDetails userDetails) {
+        User user = getAuthenticatedUser(userDetails);
+        boolean isPremium = user.isActivePremium();
+        List<PremiumRewardDto> catalog = premiumRewardService.getCatalog(user, isPremium, null);
+
+        return catalog.stream()
+                .filter(r -> r.getId().equals(id))
+                .findFirst()
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Premio no encontrado")));
+    }
+
     @GetMapping("/draws/me")
     public ResponseEntity<List<Map<String, Object>>> getMyDrawEntries(
             @AuthenticationPrincipal UserDetails userDetails) {
