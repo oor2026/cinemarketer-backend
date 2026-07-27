@@ -70,6 +70,24 @@ public class RewardController {
         return ResponseEntity.ok(dtos);
     }
 
+    /**
+     * Obtener un premio puntual por id — usado por el carrusel del feed
+     * y por cualquier otra pantalla que necesite resolver un id suelto.
+     * GET /api/rewards/{id}
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getRewardById(@PathVariable Long id,
+                                           @AuthenticationPrincipal UserDetails userDetails) {
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        return rewardRepository.findById(id)
+                .map(r -> ResponseEntity.ok((Object) toDto(r, user.getAvailablePoints())))
+                .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                        .body(java.util.Map.of("error", "Premio no encontrado")));
+    }
+
     // =============================================
     // HELPER
     // =============================================
