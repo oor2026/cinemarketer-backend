@@ -83,6 +83,18 @@ public class AdminFeedController {
         }
     }
 
+    @PostMapping("/carrusel/pelicula-nueva")
+    public ResponseEntity<?> agregarPeliculaCarrusel(@RequestBody Map<String, Object> body,
+                                                     @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            Long movieId = Long.valueOf(body.get("movieId").toString());
+            feedService.agregarPeliculaCarruselAlCarrusel(movieId, userDetails.getUsername());
+            return ResponseEntity.ok(feedService.getCarruselAdmin());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/carrusel/premio")
     public ResponseEntity<?> agregarPremioAlCarrusel(@RequestBody Map<String, Object> body,
                                                      @AuthenticationPrincipal UserDetails userDetails) {

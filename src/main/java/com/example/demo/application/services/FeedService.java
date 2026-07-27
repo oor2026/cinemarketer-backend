@@ -116,6 +116,37 @@ public class FeedService {
     }
 
     @Transactional
+    public void agregarPeliculaCarruselAlCarrusel(Long movieId, String adminEmail) {
+        if (movieId == null) {
+            throw new IllegalArgumentException("movieId es requerido");
+        }
+        try {
+            movieService.getMovieDetails(movieId);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("La película no existe en TMDb (id " + movieId + ")");
+        }
+        if (feedCarruselItemRepository.existsByTipoAndMovieId(FeedCarruselTipo.PELICULA_CARRUSEL, movieId)) {
+            throw new IllegalArgumentException("Esa película ya está en el carrusel");
+        }
+
+        long actuales = feedCarruselItemRepository.count();
+        if (actuales >= CARRUSEL_MAX_ITEMS) {
+            throw new IllegalArgumentException("El carrusel ya tiene el máximo de " + CARRUSEL_MAX_ITEMS + " elementos");
+        }
+        User admin = userRepository.findByEmail(adminEmail)
+                .orElseThrow(() -> new RuntimeException("Admin no encontrado"));
+
+        FeedCarruselItem item = new FeedCarruselItem();
+        item.setTipo(FeedCarruselTipo.PELICULA_CARRUSEL);
+        item.setMovieId(movieId);
+        item.setOrderIndex((int) actuales);
+        item.setUpdatedByAdminId(admin.getId());
+        item.setUpdatedByAdminEmail(admin.getEmail());
+        item.setAddedAt(LocalDateTime.now());
+        feedCarruselItemRepository.save(item);
+    }
+
+    @Transactional
     public void agregarPremioAlCarrusel(FeedCarruselTipo tipo, Long rewardId, String adminEmail) {
         if (tipo != FeedCarruselTipo.PREMIO_COMUN && tipo != FeedCarruselTipo.PREMIO_ESPECIAL) {
             throw new IllegalArgumentException("Tipo inválido para un premio");
@@ -199,6 +230,8 @@ public class FeedService {
                 Long movieId = getDestacadaMovieId();
                 if (movieId == null) continue; // se sacó la destacada pero el item quedó huérfano
                 m.put("movieId", movieId);
+            } else if (item.getTipo() == FeedCarruselTipo.PELICULA_CARRUSEL) {
+                m.put("movieId", item.getMovieId());
             } else {
                 m.put("rewardId", item.getRewardId());
             }
@@ -212,6 +245,7 @@ public class FeedService {
         dto.setId(item.getId());
         dto.setTipo(item.getTipo().name());
         dto.setRewardId(item.getRewardId());
+        dto.setMovieId(item.getMovieId());
         dto.setOrderIndex(item.getOrderIndex());
         dto.setAddedAt(item.getAddedAt());
         dto.setUpdatedByAdminEmail(item.getUpdatedByAdminEmail());
