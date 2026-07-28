@@ -10,4 +10,5 @@ public class RewardPublicDto {
     private String imageUrl;
     private Integer pointsRequired;
     private String tipo; // "COMUN" o "ESPECIAL"
+    private boolean sorteo; // true solo para especiales de tipo SORTEO
 }
