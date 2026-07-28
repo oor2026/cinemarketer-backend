@@ -819,12 +819,21 @@ public class CommentController {
 
         comment.setContent(nuevoContenido.trim());
         comment.setEditedAt(LocalDateTime.now(java.time.ZoneId.of("America/Argentina/Buenos_Aires")));
+
+        // Por ahora la edición solo permite QUITAR un GIF existente, nunca
+        // agregar uno nuevo ni cambiarlo por otro.
+        if ("true".equals(body.get("removeGif"))) {
+            comment.setHasGif(false);
+            comment.setGifUrl(null);
+        }
+
         commentRepository.save(comment);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "content", comment.getContent(),
-                "editedAt", comment.getEditedAt().toString()
+                "editedAt", comment.getEditedAt().toString(),
+                "hasGif", comment.getHasGif() != null && comment.getHasGif()
         ));
     }
 
@@ -869,12 +878,19 @@ public class CommentController {
 
         reply.setContent(nuevoContenido.trim());
         reply.setEditedAt(LocalDateTime.now(java.time.ZoneId.of("America/Argentina/Buenos_Aires")));
+
+        if ("true".equals(body.get("removeGif"))) {
+            reply.setHasGif(false);
+            reply.setGifUrl(null);
+        }
+
         commentReplyRepository.save(reply);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "content", reply.getContent(),
-                "editedAt", reply.getEditedAt().toString()
+                "editedAt", reply.getEditedAt().toString(),
+                "hasGif", reply.getHasGif() != null && reply.getHasGif()
         ));
     }
 
