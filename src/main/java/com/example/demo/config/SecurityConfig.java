@@ -60,6 +60,7 @@ public class SecurityConfig {
                                 "/api/public/**",
                                 "/api/publications/public/**",
                                 "/api/movies/og/**",
+                                "/api/rewards/og/**",
                                 "/api/webhooks/mercadopago",
                                 "/api/subscriptions/confirm",
                                 "/h2-console/**",
