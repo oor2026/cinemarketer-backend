@@ -370,4 +370,8 @@ public class PremiumRewardService {
 
         return dto;
     }
+
+    public java.util.Optional<PremiumReward> getRewardEntityById(Long id) {
+        return premiumRewardRepository.findById(id);
+    }
 }

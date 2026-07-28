@@ -164,4 +164,27 @@ public class RewardController {
 
         return dto;
     }
+
+    /**
+     * Versión pública (sin auth) de un premio puntual — para el link
+     * compartido. No expone canRedeem ni nada personal del usuario.
+     * GET /api/public/rewards/{id}
+     */
+    @GetMapping("/public/{id}")
+    public ResponseEntity<?> getRewardPublic(@PathVariable Long id) {
+        return rewardRepository.findById(id)
+                .map(r -> {
+                    RewardDto full = toDto(r, 0);
+                    com.example.demo.application.dtos.RewardPublicDto dto = new com.example.demo.application.dtos.RewardPublicDto();
+                    dto.setId(full.getId());
+                    dto.setName(full.getName());
+                    dto.setDescription(full.getDescription());
+                    dto.setImageUrl(full.getImageUrl());
+                    dto.setPointsRequired(full.getPointsRequired());
+                    dto.setTipo("COMUN");
+                    return ResponseEntity.ok((Object) dto);
+                })
+                .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
+                        .body(java.util.Map.of("error", "Premio no encontrado")));
+    }
 }
