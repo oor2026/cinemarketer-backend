@@ -36,15 +36,15 @@ public class RewardShareController {
                     <meta property="og:image" content="%s">
                     <meta property="og:image:type" content="image/jpeg">
                     <meta property="og:description" content="Canjeá tus puntos por este premio en Cinemarketer 🎁">
-                    <meta property="og:url" content="https://cinemarketer.com.ar/mis-premios?id=%d">
+                    <meta property="og:url" content="https://cinemarketer.com.ar/premio-publico.html?id=%d">
                     <meta property="og:type" content="website">
                     <meta property="og:site_name" content="Cinemarketer">
                     <meta name="twitter:card" content="summary_large_image">
                     <meta name="twitter:title" content="%s — Cinemarketer">
                     <meta name="twitter:image" content="%s">
                     <meta name="twitter:description" content="Canjeá tus puntos por este premio en Cinemarketer 🎁">
-                    <meta http-equiv="refresh" content="0;url=https://cinemarketer.com.ar/mis-premios?id=%d">
-                    <script>window.location.href='https://cinemarketer.com.ar/mis-premios?id=%d';</script>
+                    <meta http-equiv="refresh" content="0;url=https://cinemarketer.com.ar/premio-publico.html?id=%d&tipo=comun">
+                    <script>window.location.href='https://cinemarketer.com.ar/premio-publico.html?id=%d&tipo=comun';</script>
                 </head>
                 <body></body>
                 </html>

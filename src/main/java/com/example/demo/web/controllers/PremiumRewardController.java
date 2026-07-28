@@ -131,6 +131,38 @@ public class PremiumRewardController {
         return ResponseEntity.ok(result);
     }
 
+    /**
+     * Versión pública (sin auth) de un premio especial puntual — para el
+     * link compartido. No expone canRedeem/alreadyEntered ni nada personal.
+     * GET /api/premium/rewards/public/{id}
+     */
+    /**
+     * Versión pública (sin auth) de un premio especial puntual — para el
+     * link compartido. No usa getCatalog/toDto porque esos internamente
+     * llaman a user.isActivePremium() sin chequeo de null (línea 351 de
+     * PremiumRewardService) — con un visitante sin sesión eso tira NPE.
+     * Acá resolvemos directo contra el repository, sin ningún dato
+     * personalizado (canRedeem, alreadyEntered, etc. no aplican para un
+     * visitante sin cuenta).
+     * GET /api/premium/rewards/public/{id}
+     */
+    @GetMapping("/public/{id}")
+    public ResponseEntity<?> getRewardPublic(@PathVariable Long id) {
+        return premiumRewardService.getRewardEntityById(id)
+                .<ResponseEntity<?>>map(r -> {
+                    com.example.demo.application.dtos.RewardPublicDto dto = new com.example.demo.application.dtos.RewardPublicDto();
+                    dto.setId(r.getId());
+                    dto.setName(r.getName());
+                    dto.setDescription(r.getDescription());
+                    dto.setImageUrl(r.getImageUrl());
+                    dto.setPointsRequired(r.getPointsRequired());
+                    dto.setTipo("ESPECIAL");
+                    return ResponseEntity.ok((Object) dto);
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Premio no encontrado")));
+    }
+
     private User getAuthenticatedUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
