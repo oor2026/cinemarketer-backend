@@ -157,6 +157,7 @@ public class PremiumRewardController {
                     dto.setImageUrl(r.getImageUrl());
                     dto.setPointsRequired(r.getPointsRequired());
                     dto.setTipo("ESPECIAL");
+                    dto.setSorteo(r.getType() == com.example.demo.domain.premium.PremiumRewardType.SORTEO);
                     return ResponseEntity.ok((Object) dto);
                 })
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
