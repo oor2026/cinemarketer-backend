@@ -54,6 +54,7 @@ public class UserController {
     private final com.example.demo.domain.recommendation.MovieRecommendationRepository recommendationRepository;
     private final com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository;
     private final com.example.demo.domain.publication.PublicationRepository publicationRepository;
+    private final com.example.demo.domain.comment.CommentReactionRepository commentReactionRepository;
 
     // ==============================================
     // DEPENDENCIAS
@@ -73,7 +74,7 @@ public class UserController {
             WinnerRepository winnerRepository,
             EmailService emailService,
             PasswordEncoder passwordEncoder,
-            UserDeletionService userDeletionService,
+            UserDeletionService userDeletionService, com.example.demo.domain.comment.CommentReactionRepository commentReactionRepository,
             UserService userService,
             LevelCalculatorService levelCalculatorService,
             AvatarService avatarService,
@@ -90,6 +91,7 @@ public class UserController {
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.userDeletionService = userDeletionService;
+        this.commentReactionRepository = commentReactionRepository;
         this.userService = userService;
         this.levelCalculatorService = levelCalculatorService;
         this.pointBatchRepository = pointBatchRepository;
@@ -114,6 +116,24 @@ public class UserController {
         long merecePuntosCount     = pointTransactionRepository.countByUserIdAndAction(
                 user.getId(), com.example.demo.domain.point.PointAction.RECEIVE_MERECE_PUNTO);
         long publicationsCount     = publicationRepository.countByUserIdAndHiddenFalse(user.getId());
+
+        // ==============================================
+        // Cálculos EXCLUSIVOS del sistema de insignias — mismos métodos que
+        // usa LevelCalculatorService para el ascenso real, para que el modal
+        // nunca pueda desincronizarse de la lógica real de promoción.
+        // ==============================================
+        long commentsUniqueMoviesCount = commentRepository.countDistinctMoviesCommentedByUser(user.getId());
+        long usuariosSeguidosCount     = userFollowRepository.countByFollowerId(user.getId());
+        long seguidoresGanadosCount    = userFollowRepository.countByFollowingId(user.getId());
+        long teBancoRecibidosCount     = commentReactionRepository.countDistinctBancoGiversForUser(user.getId());
+
+        int diasActivos = 0;
+        if (user.getCreatedAt() != null && user.getLastLoginAt() != null) {
+            diasActivos = (int) java.time.temporal.ChronoUnit.DAYS.between(
+                    user.getCreatedAt().toLocalDate(),
+                    user.getLastLoginAt().toLocalDate()
+            );
+        }
 
         // Puntos próximos a vencer (lotes FREE con expiry <= 30 días)
         int expiringPts = 0;
@@ -145,6 +165,14 @@ public class UserController {
         response.setRecommendationsCount((int) recommendacionesCount);
         response.setMerecePuntosCount((int) merecePuntosCount);
         response.setPublicationsCount((int) publicationsCount);
+
+        // Campos exclusivos del sistema de insignias
+        response.setCommentsUniqueMoviesCount((int) commentsUniqueMoviesCount);
+        response.setUsuariosSeguidosCount((int) usuariosSeguidosCount);
+        response.setSeguidoresGanadosCount((int) seguidoresGanadosCount);
+        response.setTeBancoRecibidosCount((int) teBancoRecibidosCount);
+        response.setDiasActivos(diasActivos);
+
         response.setDni(user.getDni());
         response.setPhone(user.getPhone());
         response.setBirthDate(user.getBirthDate());
