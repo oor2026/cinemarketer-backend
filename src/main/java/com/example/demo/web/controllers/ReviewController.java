@@ -177,6 +177,29 @@ public class ReviewController {
         return ResponseEntity.ok(stats);
     }
 
+    /**
+     * IDs de películas que el usuario ya votó (LIKE o DISLIKE).
+     * Usado por Voto Relámpago para filtrar candidatos sin pedir
+     * stats de a uno.
+     * GET /api/reviews/movies/voted-ids
+     */
+    @GetMapping("/movies/voted-ids")
+    public ResponseEntity<java.util.List<Long>> getVotedMovieIds(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) {
+            return ResponseEntity.ok(java.util.List.of());
+        }
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        java.util.List<Long> votadas = reviewRepository
+                .findTargetIdsByUserIdAndReviewType(user.getId(), ReviewType.MOVIE);
+
+        return ResponseEntity.ok(votadas);
+    }
+
     @GetMapping("/movies/{movieId}/stats")
     public ResponseEntity<MovieStatsDto> getMovieStats(
             @PathVariable Long movieId,
