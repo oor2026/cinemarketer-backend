@@ -134,4 +134,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("SELECT COUNT(DISTINCT r.targetId) FROM Review r WHERE r.user.id = :userId AND r.reviewType = 'MOVIE'")
     long countDistinctMoviesVotedByUser(@Param("userId") Long userId);
 
+    // IDs de películas ya votadas por el usuario (Voto Relámpago: filtrar candidatos sin ir uno por uno)
+    @Query("SELECT r.targetId FROM Review r WHERE r.user.id = :userId AND r.reviewType = :reviewType")
+    List<Long> findTargetIdsByUserIdAndReviewType(@Param("userId") Long userId, @Param("reviewType") ReviewType reviewType);
+
 }
