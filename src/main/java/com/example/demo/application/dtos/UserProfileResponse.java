@@ -136,4 +136,27 @@ public class UserProfileResponse {
 // + getter y setter
 
     private int publicationsCount;
+
+    // ==============================================
+    // CAMPOS EXCLUSIVOS DEL SISTEMA DE INSIGNIAS
+    // No reutilizar para otra pantalla sin evaluar antes si el criterio
+    // de conteo (deduplicado, histórico, etc.) sigue siendo correcto para
+    // ese otro uso. Ver SISTEMA_DE_INSIGNIAS_v2.docx para la definición
+    // exacta de cada uno.
+    // ==============================================
+
+    /** Comentarios en películas DISTINTAS (deduplicado) — no confundir con commentsCount, que es el total crudo */
+    private int commentsUniqueMoviesCount;
+
+    /** Total de usuarios que este usuario sigue activamente */
+    private int usuariosSeguidosCount;
+
+    /** Días distintos con inicio de sesión, desde el registro hasta el último login */
+    private int diasActivos;
+
+    /** "Te banco" recibidos de usuarios diferentes (cada usuario cuenta una sola vez) */
+    private int teBancoRecibidosCount;
+
+    /** Usuarios que siguen a este usuario (seguidores ganados) */
+    private int seguidoresGanadosCount;
 }
