@@ -454,6 +454,7 @@ public class PublicationService {
             );
         }
 
+        saved.setPointsAwarded(points); // 0 si no correspondió — no persiste, solo va en la respuesta
         return saved;
     }
 

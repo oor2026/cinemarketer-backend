@@ -13,4 +13,5 @@ public class MovieStatsDto {
     private long totalVotes;
     private boolean userVoted; // Indica si el usuario actual ya votó
     private String userVoteType; // "LIKE" o "DISLIKE" si ya votó
+    private Integer pointsAwarded; // Puntos ganados en ESTA llamada; null si no correspondió (ya había votado)
 }

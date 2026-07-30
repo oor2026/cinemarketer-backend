@@ -107,6 +107,7 @@ public class CommentController {
         r.setSpoiler(c.isSpoiler());
         r.setEditedAt(c.getEditedAt());
         r.setCanEdit(esPropio && c.getEditedAt() == null && c.getCreatedAt().plusMinutes(15).isAfter(LocalDateTime.now()));
+        r.setPointsAwarded(c.getPointsAwarded());
         return r;
     }
 
