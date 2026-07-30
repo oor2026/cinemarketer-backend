@@ -4,6 +4,9 @@ import com.example.demo.application.dtos.external.tmdb.TmdbMovieDto;
 import com.example.demo.application.dtos.external.tmdb.TmdbVideoDto;
 import com.example.demo.domain.comment.Comment;
 import com.example.demo.domain.comment.CommentRepository;
+import com.example.demo.domain.comment.CommentReactionRepository;
+import com.example.demo.domain.comment.CommentReplyRepository;
+import com.example.demo.domain.comment.ReactionType;
 import com.example.demo.domain.review.ReviewRepository;
 import com.example.demo.domain.review.ReviewType;
 import com.example.demo.domain.review.VoteType;
@@ -21,14 +24,20 @@ public class PublicMovieController {
     private final TmdbService tmdbService;
     private final ReviewRepository reviewRepository;
     private final CommentRepository commentRepository;
+    private final CommentReactionRepository commentReactionRepository;
+    private final CommentReplyRepository commentReplyRepository;
 
     public PublicMovieController(
             TmdbService tmdbService,
             ReviewRepository reviewRepository,
-            CommentRepository commentRepository) {
+            CommentRepository commentRepository,
+            CommentReactionRepository commentReactionRepository,
+            CommentReplyRepository commentReplyRepository) {
         this.tmdbService = tmdbService;
         this.reviewRepository = reviewRepository;
         this.commentRepository = commentRepository;
+        this.commentReactionRepository = commentReactionRepository;
+        this.commentReplyRepository = commentReplyRepository;
     }
 
     /**
@@ -113,9 +122,11 @@ public class PublicMovieController {
                 "userName", c.getUser() != null ? c.getUser().getName() : "Usuario",
                 "userAvatar", c.getUser() != null && c.getUser().getAvatarUrl() != null
                         ? c.getUser().getAvatarUrl() : "",
-                "bancoCount", 0,
-                "merecePuntoCount", 0,
-                "replyCount", 0,
+                "bancoCount", commentReactionRepository
+                        .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.BANCO),
+                "merecePuntoCount", commentReactionRepository
+                        .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.MERECE_PUNTO),
+                "replyCount", commentReplyRepository.countVisibleByCommentId(c.getId()),
                 "spoiler", c.isSpoiler(),
                 "createdAt", c.getCreatedAt() != null ? c.getCreatedAt().toString() : ""
         )).toList();
