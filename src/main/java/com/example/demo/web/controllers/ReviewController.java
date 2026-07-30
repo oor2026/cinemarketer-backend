@@ -171,7 +171,8 @@ public class ReviewController {
                 positivePercentage,
                 totalVotes,
                 updatedVote.isPresent(),
-                updatedVote.map(r -> r.getVote().name()).orElse(null)
+                updatedVote.map(r -> r.getVote().name()).orElse(null),
+                points
         );
 
         return ResponseEntity.ok(stats);
@@ -242,7 +243,8 @@ public class ReviewController {
                 positivePercentage,
                 totalVotes,
                 userVoted,
-                userVoteType
+                userVoteType,
+                null
         );
 
         return ResponseEntity.ok(stats);

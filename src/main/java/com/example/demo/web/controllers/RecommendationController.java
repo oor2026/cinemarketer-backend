@@ -104,9 +104,10 @@ public class RecommendationController {
             }
         }
 
+        int points = 0;
         if (otorgaPuntos) {
             int basePoints = pointConfigService.getPoints(PointAction.RECOMMEND_MOVIE);
-            int points = me.isActivePremium() ? basePoints * 2 : basePoints;
+            points = me.isActivePremium() ? basePoints * 2 : basePoints;
             me.addAccumulatedPoints(points);
             userRepository.save(me);
             pointTransactionService.registerEarned(
@@ -134,7 +135,7 @@ public class RecommendationController {
         // Inyectar NotificationRepository
         notificationRepository.save(notif);
 
-        return ResponseEntity.ok(Map.of("success", true, "sinPuntos", !otorgaPuntos));
+        return ResponseEntity.ok(Map.of("success", true, "sinPuntos", !otorgaPuntos, "pointsAwarded", points));
     }
 
     // GET /api/recommendations/received — recomendaciones recibidas

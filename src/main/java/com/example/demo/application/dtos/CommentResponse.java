@@ -28,6 +28,7 @@ public class CommentResponse {
     private boolean spoiler;
     private LocalDateTime editedAt;
     private boolean canEdit; // true si aún está dentro de los 15 min
+    private Integer pointsAwarded; // Puntos ganados por este comentario (0 si no correspondió)
 
     public CommentResponse(Long id, Long userId, String userName, String content,
                            LocalDateTime createdAt, String avatarUrl,
