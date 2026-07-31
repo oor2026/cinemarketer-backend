@@ -1,6 +1,7 @@
 package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.TriviaEstadoResponse;
+import com.example.demo.application.dtos.TriviaRankingDto;
 import com.example.demo.application.dtos.TriviaRespuestaRequest;
 import com.example.demo.application.dtos.TriviaRespuestaResponse;
 import com.example.demo.application.services.TriviaAttemptService;
@@ -12,6 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -56,12 +58,12 @@ public class TriviaController {
         try {
             if (userDetails != null) {
                 User user = getUser(userDetails);
-                return ResponseEntity.ok(triviaAttemptService.responder(user, request.getOpcionElegida()));
+                return ResponseEntity.ok(triviaAttemptService.responder(user, request.getOpcionElegida(), request.getTiempoSegundos()));
             }
             if (guestToken == null || guestToken.isBlank()) {
                 return ResponseEntity.badRequest().build();
             }
-            return ResponseEntity.ok(triviaAttemptService.responderInvitado(guestToken, request.getOpcionElegida()));
+            return ResponseEntity.ok(triviaAttemptService.responderInvitado(guestToken, request.getOpcionElegida(), request.getTiempoSegundos()));
         } catch (TriviaAttemptService.RespuestaDuplicadaException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
@@ -87,5 +89,14 @@ public class TriviaController {
     private User getUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    }
+
+    @GetMapping("/ranking")
+    public ResponseEntity<List<TriviaRankingDto>> ranking(@AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = null;
+        if (userDetails != null) {
+            userId = getUser(userDetails).getId();
+        }
+        return ResponseEntity.ok(triviaAttemptService.obtenerRanking(userId));
     }
 }

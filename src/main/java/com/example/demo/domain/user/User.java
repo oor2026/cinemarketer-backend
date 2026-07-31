@@ -149,6 +149,12 @@ public class User {
     @Column(name = "trivia_respondidas_total", nullable = false)
     private int triviaRespondidasTotal = 0;
 
+    @Column(name = "trivia_aciertos_total", nullable = false)
+    private int triviaAciertosTotal = 0;
+
+    @Column(name = "trivia_tiempo_total_segundos", nullable = false)
+    private long triviaTiempoTotalSegundos = 0;
+
     @Column(name = "banner_url")
     private String bannerUrl;
 
@@ -201,6 +207,11 @@ public class User {
 
     public void incrementarTriviaRespondidas() {
         this.triviaRespondidasTotal++;
+    }
+
+    public void registrarAciertoTrivia(int segundosRespuesta) {
+        this.triviaAciertosTotal++;
+        this.triviaTiempoTotalSegundos += Math.max(0, segundosRespuesta);
     }
 
     /**

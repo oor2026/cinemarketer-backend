@@ -116,6 +116,14 @@ public class FeedService {
     }
 
     @Transactional
+    public void agregarRankingAlCarrusel(String adminEmail) {
+        if (feedCarruselItemRepository.existsByTipo(FeedCarruselTipo.RANKING_TRIVIA)) {
+            throw new IllegalArgumentException("El ranking de trivia ya está en el carrusel");
+        }
+        crearItem(FeedCarruselTipo.RANKING_TRIVIA, null, adminEmail);
+    }
+
+    @Transactional
     public void agregarPeliculaCarruselAlCarrusel(Long movieId, String adminEmail) {
         if (movieId == null) {
             throw new IllegalArgumentException("movieId es requerido");
@@ -232,6 +240,9 @@ public class FeedService {
                 m.put("movieId", movieId);
             } else if (item.getTipo() == FeedCarruselTipo.PELICULA_CARRUSEL) {
                 m.put("movieId", item.getMovieId());
+            } else if (item.getTipo() == FeedCarruselTipo.RANKING_TRIVIA) {
+                // No lleva ningún id extra — el frontend no necesita resolver nada,
+                // el modal pide el ranking directo a /api/trivia/ranking al abrirse.
             } else {
                 m.put("rewardId", item.getRewardId());
             }

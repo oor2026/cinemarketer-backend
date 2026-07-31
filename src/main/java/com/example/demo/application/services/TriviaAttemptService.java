@@ -86,7 +86,7 @@ public class TriviaAttemptService {
     }
 
     @Transactional
-    public TriviaRespuestaResponse responderInvitado(String guestToken, int opcionElegida) {
+    public TriviaRespuestaResponse responderInvitado(String guestToken, int opcionElegida, int tiempoSegundos) {
         LocalDate hoy = LocalDate.now(ZONA_AR);
 
         TriviaAttempt attempt = attemptRepository.findByGuestTokenAndFecha(guestToken, hoy)
@@ -108,7 +108,7 @@ public class TriviaAttemptService {
             // No se otorgan puntos reales ni se escribe TriviaPreguntaVista
             // todavía — el invitado no tiene cuenta. Solo se guarda la
             // referencia en el propio intento, para poder reclamarla después.
-            agregarAciertoInvitado(attempt, preguntaActual);
+            agregarAciertoInvitado(attempt, preguntaActual, tiempoSegundos);
             attempt.setPuntosGanados(attempt.getPuntosGanados() + PUNTOS_POR_ACIERTO);
             response.setPuntosGanadosEstaRespuesta(PUNTOS_POR_ACIERTO);
 
@@ -138,11 +138,11 @@ public class TriviaAttemptService {
         return response;
     }
 
-    private void agregarAciertoInvitado(TriviaAttempt attempt, TriviaPreguntaDto pregunta) {
+    private void agregarAciertoInvitado(TriviaAttempt attempt, TriviaPreguntaDto pregunta, int tiempoSegundos) {
         try {
             Map[] arr = objectMapper.readValue(attempt.getAciertosJson(), Map[].class);
             List<Map> aciertos = new ArrayList<>(Arrays.asList(arr));
-            aciertos.add(Map.of("tipo", pregunta.getTipo().name(), "entidadId", pregunta.getEntidadId()));
+            aciertos.add(Map.of("tipo", pregunta.getTipo().name(), "entidadId", pregunta.getEntidadId(), "tiempoSegundos", tiempoSegundos));
             attempt.setAciertosJson(objectMapper.writeValueAsString(aciertos));
         } catch (Exception e) {
             throw new RuntimeException("Error guardando acierto de invitado", e);
@@ -188,7 +188,9 @@ public class TriviaAttemptService {
                 TriviaPreguntaDto dto = new TriviaPreguntaDto();
                 dto.setTipo(TriviaTipoPregunta.valueOf((String) acierto.get("tipo")));
                 dto.setEntidadId(((Number) acierto.get("entidadId")).longValue());
+                int tiempo = acierto.get("tiempoSegundos") != null ? ((Number) acierto.get("tiempoSegundos")).intValue() : 0;
                 user.incrementarTriviaRespondidas();
+                user.registrarAciertoTrivia(tiempo);
                 registrarPreguntaVista(user, dto);
             }
             userRepository.save(user);
@@ -217,7 +219,7 @@ public class TriviaAttemptService {
     }
 
     @Transactional
-    public TriviaRespuestaResponse responder(User user, int opcionElegida) {
+    public TriviaRespuestaResponse responder(User user, int opcionElegida, int tiempoSegundos) {
         LocalDate hoy = LocalDate.now(ZONA_AR);
 
         TriviaAttempt attempt = attemptRepository.findByUserIdAndFecha(user.getId(), hoy)
@@ -244,6 +246,8 @@ public class TriviaAttemptService {
 
         if (acerto) {
             registrarPreguntaVista(userFresco, preguntaActual);
+            userFresco.registrarAciertoTrivia(tiempoSegundos);
+            userRepository.save(userFresco);
 
             pointTransactionService.registerTriviaEarned(userFresco, PUNTOS_POR_ACIERTO);
             attempt.setPuntosGanados(attempt.getPuntosGanados() + PUNTOS_POR_ACIERTO);
@@ -310,6 +314,17 @@ public class TriviaAttemptService {
         dto.setSinopsis(p.getSinopsis());
         dto.setOpciones(p.getOpciones());
         return dto;
+    }
+
+    public List<TriviaRankingDto> obtenerRanking(Long userIdActual) {
+        List<Object[]> filas = userRepository.findRankingTrivia(userIdActual != null ? userIdActual : -1L);
+        return filas.stream().map(f -> new TriviaRankingDto(
+                ((Number) f[4]).intValue(),           // posicion
+                (String) f[1],                         // name
+                ((Number) f[2]).intValue(),            // aciertos
+                ((Number) f[3]).longValue(),           // tiempo
+                userIdActual != null && userIdActual.equals(((Number) f[0]).longValue())
+        )).toList();
     }
 
     private List<TriviaPreguntaDto> deserializar(String json) {
