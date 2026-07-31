@@ -83,6 +83,16 @@ public class AdminFeedController {
         }
     }
 
+    @PostMapping("/carrusel/ranking-trivia")
+    public ResponseEntity<?> agregarRankingAlCarrusel(@AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            feedService.agregarRankingAlCarrusel(userDetails.getUsername());
+            return ResponseEntity.ok(feedService.getCarruselAdmin());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/carrusel/pelicula-nueva")
     public ResponseEntity<?> agregarPeliculaCarrusel(@RequestBody Map<String, Object> body,
                                                      @AuthenticationPrincipal UserDetails userDetails) {

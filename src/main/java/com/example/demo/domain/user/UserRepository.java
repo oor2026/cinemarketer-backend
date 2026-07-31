@@ -267,4 +267,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Modifying
     @Query("UPDATE User u SET u.creator = false WHERE u.creator = true AND u.creatorUntil IS NOT NULL AND u.creatorUntil < :now")
     int expireCreatorFlags(@Param("now") LocalDateTime now);
+
+    @Query(value = "SELECT * FROM (" +
+            "  SELECT id, name, trivia_aciertos_total, trivia_tiempo_total_segundos, " +
+            "    ROW_NUMBER() OVER (ORDER BY trivia_aciertos_total DESC, trivia_tiempo_total_segundos ASC) as posicion " +
+            "  FROM users WHERE trivia_aciertos_total > 0" +
+            ") ranked WHERE posicion <= 25 OR id = :userId ORDER BY posicion",
+            nativeQuery = true)
+    List<Object[]> findRankingTrivia(@Param("userId") Long userId);
 }
