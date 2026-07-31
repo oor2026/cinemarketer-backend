@@ -49,18 +49,22 @@ public class TriviaController {
      * POST /api/trivia/responder
      */
     @PostMapping("/responder")
-    public ResponseEntity<TriviaRespuestaResponse> responder(
+    public ResponseEntity<?> responder(
             @RequestBody TriviaRespuestaRequest request,
             @RequestParam(required = false) String guestToken,
             @AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails != null) {
-            User user = getUser(userDetails);
-            return ResponseEntity.ok(triviaAttemptService.responder(user, request.getOpcionElegida()));
+        try {
+            if (userDetails != null) {
+                User user = getUser(userDetails);
+                return ResponseEntity.ok(triviaAttemptService.responder(user, request.getOpcionElegida()));
+            }
+            if (guestToken == null || guestToken.isBlank()) {
+                return ResponseEntity.badRequest().build();
+            }
+            return ResponseEntity.ok(triviaAttemptService.responderInvitado(guestToken, request.getOpcionElegida()));
+        } catch (TriviaAttemptService.RespuestaDuplicadaException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
-        if (guestToken == null || guestToken.isBlank()) {
-            return ResponseEntity.badRequest().build();
-        }
-        return ResponseEntity.ok(triviaAttemptService.responderInvitado(guestToken, request.getOpcionElegida()));
     }
 
     /**

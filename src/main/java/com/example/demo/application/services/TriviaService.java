@@ -48,11 +48,19 @@ public class TriviaService {
     private List<TriviaPreguntaDto> generar(List<Long> excluidasPersonas, List<Long> excluidasPeliculas) {
 
         // Pool base: un par de páginas de populares alcanza y sobra para 10 slots
+        // Mismo criterio que ya usa el feed de Películas: excluye títulos con
+        // caracteres fuera del alfabeto latino (cirílico, kanji, hangul, etc.)
+        // en vez de filtrar por original_language, para cubrir también casos
+        // como títulos ya traducidos al español de películas no occidentales.
+        java.util.regex.Pattern soloLatinos = java.util.regex.Pattern.compile(
+                "^[a-zA-ZÀ-ÿ0-9\\s\\-:,.!?'\"()\\u00C0-\\u024F\\u1E00-\\u1EFF]+$");
+
         List<TmdbMovieDto> pool = new ArrayList<>();
         for (int page = 1; page <= 3; page++) {
             var res = movieService.getPopularMovies(page);
             if (res != null && res.getResults() != null) pool.addAll(res.getResults());
         }
+        pool.removeIf(p -> p.getTitle() == null || !soloLatinos.matcher(p.getTitle().trim()).matches());
         Collections.shuffle(pool);
 
         List<String> tipos = new ArrayList<>();
@@ -131,6 +139,9 @@ public class TriviaService {
         }
     }
 
+    private static final java.util.regex.Pattern SOLO_LATINOS = java.util.regex.Pattern.compile(
+            "^[a-zA-ZÀ-ÿ0-9\\s\\-:,.!?'\"()\\u00C0-\\u024F\\u1E00-\\u1EFF]+$");
+
     private TriviaPreguntaDto armarPreguntaPelicula(TmdbMovieDto movie, List<TmdbMovieDto> poolGeneral, boolean mostrarPoster) {
         try {
             var similares = movieService.getSimilarMovies(movie.getId());
@@ -139,7 +150,7 @@ public class TriviaService {
                     : new ArrayList<>();
 
             distractoresPool.removeIf(p -> p.getId() == null || p.getId().equals(movie.getId())
-                    || p.getTitle() == null);
+                    || p.getTitle() == null || !SOLO_LATINOS.matcher(p.getTitle().trim()).matches());
 
             // Si similar no trajo suficientes, completamos con el pool general
             if (distractoresPool.size() < 3) {

@@ -48,6 +48,9 @@ public class TriviaAttempt {
     @Column(name = "puntos_ganados", nullable = false)
     private int puntosGanados = 0;
 
+    @Version
+    private Long version;
+
     // Lista de {tipo, entidadId} de las preguntas acertadas en este intento —
     // en un usuario logueado esto es redundante (ya se escribe en
     // TriviaPreguntaVista en tiempo real), pero en un invitado es la única
