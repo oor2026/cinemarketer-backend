@@ -142,6 +142,13 @@ public class User {
     @Column(name = "last_recommendation_date")
     private java.time.LocalDate lastRecommendationDate;
 
+    // Contador acumulado (nunca resetea) de preguntas de Adivina Adivinador
+    // respondidas, bien o mal. Usado para la ventana de exclusión de 300:
+    // una pregunta puntual ya acertada no vuelve a aparecer hasta que este
+    // contador avance 300 más desde el momento en que se acertó.
+    @Column(name = "trivia_respondidas_total", nullable = false)
+    private int triviaRespondidasTotal = 0;
+
     @Column(name = "banner_url")
     private String bannerUrl;
 
@@ -190,6 +197,10 @@ public class User {
      */
     public void addAccumulatedPoints(int points) {
         this.accumulatedPoints += points;
+    }
+
+    public void incrementarTriviaRespondidas() {
+        this.triviaRespondidasTotal++;
     }
 
     /**
