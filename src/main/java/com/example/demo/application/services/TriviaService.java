@@ -5,7 +5,7 @@ import com.example.demo.application.dtos.external.tmdb.TmdbMovieDto;
 import com.example.demo.domain.trivia.TriviaPreguntaVistaRepository;
 import com.example.demo.domain.trivia.TriviaTipoPregunta;
 import com.example.demo.domain.user.User;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.*;

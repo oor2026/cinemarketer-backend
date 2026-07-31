@@ -4,7 +4,7 @@ import com.example.demo.application.dtos.*;
 import com.example.demo.domain.trivia.*;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.Arrays;
