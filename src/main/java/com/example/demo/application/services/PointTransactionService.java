@@ -64,6 +64,42 @@ public class PointTransactionService {
     }
 
     /**
+     * Registra puntos de Trivia con upsert diario: el primer acierto del día
+     * crea la transacción, los siguientes aciertos del mismo día SUMAN a esa
+     * misma fila en vez de insertar una nueva — así "Mis Puntos" muestra un
+     * solo registro de trivia por día, no uno por cada pregunta acertada.
+     */
+    @Transactional
+    public void registerTriviaEarned(User user, int points) {
+        java.time.LocalDateTime inicioDia = java.time.LocalDate
+                .now(java.time.ZoneId.of("America/Argentina/Buenos_Aires"))
+                .atStartOfDay();
+        java.time.LocalDateTime finDia = inicioDia.plusDays(1);
+
+        java.util.Optional<PointTransaction> existente = transactionRepository
+                .findFirstByUserIdAndActionAndCreatedAtBetweenOrderByCreatedAtDesc(
+                        user.getId(), PointAction.TRIVIA_ANSWER, inicioDia, finDia);
+
+        if (existente.isPresent()) {
+            PointTransaction tx = existente.get();
+            tx.setPoints(tx.getPoints() + points);
+            transactionRepository.save(tx);
+        } else {
+            PointTransaction tx = new PointTransaction();
+            tx.setUser(user);
+            tx.setType(PointTransactionType.EARNED);
+            tx.setAction(PointAction.TRIVIA_ANSWER);
+            tx.setPoints(points);
+            tx.setReferenceTitle("Adivina Adivinador");
+            transactionRepository.save(tx);
+        }
+
+        User updatedUser = userService.getUserById(user.getId())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        checkAndUpdateLevel(updatedUser);
+    }
+
+    /**
      * Registra una transacción de puntos gastados
      */
     @Transactional

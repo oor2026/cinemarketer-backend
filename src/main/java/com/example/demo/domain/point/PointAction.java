@@ -12,6 +12,7 @@ public enum PointAction {
     PUBLISH_POST,           // Publicar en Comunidad → variable según plan
     RECEIVE_BANCO_POST,     // Recibir Te banco en publicación → 1 pt
     RECEIVE_MERECE_POST,     // Recibir Merecés un punto en publicación → 1 pt
-    PUBLICATION_SANCTION
+    PUBLICATION_SANCTION,
+    TRIVIA_ANSWER            // Acertar pregunta en Adivina Adivinador → 5 pts
 
 }

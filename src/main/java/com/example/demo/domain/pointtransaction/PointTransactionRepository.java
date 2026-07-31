@@ -88,6 +88,12 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
 
     long countByUserIdAndAction(Long userId, com.example.demo.domain.point.PointAction action);
 
+    // Última transacción de TRIVIA_ANSWER del usuario en el rango de hoy —
+    // para el upsert que agrega todos los aciertos del día en un solo registro.
+    java.util.Optional<PointTransaction> findFirstByUserIdAndActionAndCreatedAtBetweenOrderByCreatedAtDesc(
+            Long userId, com.example.demo.domain.point.PointAction action,
+            LocalDateTime start, LocalDateTime end);
+
     @Query("SELECT t.action as action, COUNT(t) as count, SUM(t.points) as totalPoints " +
             "FROM PointTransaction t WHERE t.type = 'EARNED' AND t.createdAt BETWEEN :start AND :end " +
             "GROUP BY t.action ORDER BY totalPoints DESC")
