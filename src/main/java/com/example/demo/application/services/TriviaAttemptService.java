@@ -127,7 +127,11 @@ public class TriviaAttemptService {
             response.setSiguientePregunta(null);
         }
 
-        attemptRepository.save(attempt);
+        try {
+            attemptRepository.save(attempt);
+        } catch (org.springframework.dao.OptimisticLockingFailureException e) {
+            throw new RespuestaDuplicadaException();
+        }
         response.setPuntosGanadosTotal(attempt.getPuntosGanados());
         response.setEstado(attempt.getEstado());
         response.setPreguntaActual(attempt.getPreguntaActual());
@@ -260,7 +264,11 @@ public class TriviaAttemptService {
             response.setSiguientePregunta(null);
         }
 
-        attemptRepository.save(attempt);
+        try {
+            attemptRepository.save(attempt);
+        } catch (org.springframework.dao.OptimisticLockingFailureException e) {
+            throw new RespuestaDuplicadaException();
+        }
 
         response.setPuntosGanadosTotal(attempt.getPuntosGanados());
         response.setEstado(attempt.getEstado());
@@ -312,4 +320,5 @@ public class TriviaAttemptService {
             throw new RuntimeException("Error leyendo la trivia guardada", e);
         }
     }
+    public static class RespuestaDuplicadaException extends RuntimeException {}
 }
