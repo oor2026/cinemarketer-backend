@@ -29,6 +29,12 @@ public class TriviaAttempt {
     @Column(name = "guest_token", length = 100)
     private String guestToken;
 
+    // Solo para invitados — permite detectar "recargó/borró localStorage y
+    // reintentó desde el mismo dispositivo/red" sin depender de un dato que
+    // el propio cliente controla y puede descartar a voluntad.
+    @Column(name = "ip_invitado", length = 45)
+    private String ipInvitado;
+
     @Column(nullable = false)
     private LocalDate fecha;
 

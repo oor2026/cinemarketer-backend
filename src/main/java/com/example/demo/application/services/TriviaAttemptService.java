@@ -58,20 +58,32 @@ public class TriviaAttemptService {
     }
 
     @Transactional
-    public TriviaEstadoResponse obtenerOCrearIntentoInvitado(String guestToken) {
+    public TriviaEstadoResponse obtenerOCrearIntentoInvitado(String guestToken, String ip) {
         LocalDate hoy = LocalDate.now(ZONA_AR);
 
         TriviaAttempt attempt = attemptRepository.findByGuestTokenAndFecha(guestToken, hoy)
-                .orElseGet(() -> crearIntentoInvitado(guestToken, hoy));
+                .orElseGet(() -> attemptRepository.findByIpInvitadoAndFecha(ip, hoy)
+                        .map(existente -> {
+                            // Misma IP ya generó un intento hoy con OTRO token
+                            // (por ejemplo, borró localStorage o abrió una
+                            // ventana de incógnito) — reasignamos el token
+                            // actual a ese intento existente en vez de crear
+                            // uno nuevo, así no puede reiniciar borrando el
+                            // navegador.
+                            existente.setGuestToken(guestToken);
+                            return attemptRepository.save(existente);
+                        })
+                        .orElseGet(() -> crearIntentoInvitado(guestToken, ip, hoy)));
 
         return construirEstadoResponse(attempt);
     }
 
-    private TriviaAttempt crearIntentoInvitado(String guestToken, LocalDate hoy) {
+    private TriviaAttempt crearIntentoInvitado(String guestToken, String ip, LocalDate hoy) {
         List<TriviaPreguntaDto> preguntas = triviaService.generarPreguntasDelDiaInvitado();
 
         TriviaAttempt attempt = new TriviaAttempt();
         attempt.setGuestToken(guestToken);
+        attempt.setIpInvitado(ip);
         attempt.setFecha(hoy);
         attempt.setPreguntaActual(0);
         attempt.setEstado(TriviaEstado.EN_CURSO);

@@ -36,7 +36,8 @@ public class TriviaController {
     @GetMapping("/estado")
     public ResponseEntity<TriviaEstadoResponse> obtenerEstado(
             @RequestParam(required = false) String guestToken,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal UserDetails userDetails,
+            jakarta.servlet.http.HttpServletRequest request) {
         if (userDetails != null) {
             User user = getUser(userDetails);
             return ResponseEntity.ok(triviaAttemptService.obtenerOCrearIntentoDeHoy(user));
@@ -44,7 +45,7 @@ public class TriviaController {
         if (guestToken == null || guestToken.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(triviaAttemptService.obtenerOCrearIntentoInvitado(guestToken));
+        return ResponseEntity.ok(triviaAttemptService.obtenerOCrearIntentoInvitado(guestToken, obtenerIp(request)));
     }
 
     /**
@@ -89,6 +90,14 @@ public class TriviaController {
     private User getUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    }
+
+    private String obtenerIp(jakarta.servlet.http.HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim(); // Railway está detrás de proxy — la IP real es la primera de la lista
+        }
+        return request.getRemoteAddr();
     }
 
     @GetMapping("/ranking")

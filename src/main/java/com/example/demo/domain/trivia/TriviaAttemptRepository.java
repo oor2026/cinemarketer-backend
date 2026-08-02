@@ -7,4 +7,5 @@ import java.util.Optional;
 public interface TriviaAttemptRepository extends JpaRepository<TriviaAttempt, Long> {
     Optional<TriviaAttempt> findByUserIdAndFecha(Long userId, LocalDate fecha);
     Optional<TriviaAttempt> findByGuestTokenAndFecha(String guestToken, LocalDate fecha);
+    Optional<TriviaAttempt> findByIpInvitadoAndFecha(String ipInvitado, LocalDate fecha);
 }
