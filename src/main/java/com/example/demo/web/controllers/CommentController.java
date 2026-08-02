@@ -136,6 +136,18 @@ public class CommentController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Cantidad de comentarios marcados como spoiler — independiente de si el
+     * usuario tiene el modo spoiler prendido o no, para mostrar el "(2)"
+     * junto al switch sin tener que activarlo primero.
+     * GET /comments/movies/{movieId}/spoiler-count
+     */
+    @GetMapping("/movies/{movieId}/spoiler-count")
+    public ResponseEntity<Map<String, Long>> getSpoilerCount(@PathVariable Long movieId) {
+        long count = commentRepository.findVisibleByMovieIdAndSpoiler(movieId, true).size();
+        return ResponseEntity.ok(Map.of("count", count));
+    }
+
     // ==========================================================================
     // POST comentario
     // ==========================================================================
