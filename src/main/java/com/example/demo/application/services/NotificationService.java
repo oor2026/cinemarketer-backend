@@ -28,11 +28,18 @@ public class NotificationService {
         n.setUser(receptor);
         n.setActorName(actorName);
         n.setType(NotificationType.BANCO);
-        n.setMessage(actorName + " bancó tu comentario en " + movieTitle);
+        String msg = actorName + " bancó tu comentario en " + movieTitle;
+        n.setMessage(msg);
         n.setMovieId(movieId);
         n.setMovieTitle(movieTitle);
         n.setCommentId(commentId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "👍 Cinemarketer", msg, ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
