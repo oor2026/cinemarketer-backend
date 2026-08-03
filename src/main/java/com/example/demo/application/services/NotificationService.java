@@ -28,8 +28,7 @@ public class NotificationService {
         n.setUser(receptor);
         n.setActorName(actorName);
         n.setType(NotificationType.BANCO);
-        String msg = actorName + " bancó tu comentario en " + movieTitle;
-        n.setMessage(msg);
+        n.setMessage(actorName + " bancó tu comentario en " + movieTitle);
         n.setMovieId(movieId);
         n.setMovieTitle(movieTitle);
         n.setCommentId(commentId);
@@ -38,7 +37,7 @@ public class NotificationService {
         // Web Push
         try {
             webPushService.sendToUser(receptor.getId(),
-                    "👍 Cinemarketer", msg, ICON);
+                    "👍 Cinemarketer", n.getMessage(), ICON);
         } catch (Exception e) {}
     }
 
@@ -52,6 +51,12 @@ public class NotificationService {
         n.setPublicationId(publicationId);
         n.setCommentId(comentarioId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "💬 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -64,6 +69,12 @@ public class NotificationService {
         n.setPublicationId(publicationId);
         n.setCommentId(comentarioId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "💬 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -76,6 +87,12 @@ public class NotificationService {
         n.setPublicationId(publicationId);
         n.setCommentId(comentarioId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "👍 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -87,6 +104,12 @@ public class NotificationService {
         n.setMessage(actorName + " bancó tu publicación en Comunidad");
         n.setPublicationId(publicationId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "👍 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -100,6 +123,12 @@ public class NotificationService {
         n.setMovieTitle(movieTitle);
         n.setCommentId(commentId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "⭐ Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -111,6 +140,12 @@ public class NotificationService {
         n.setMessage(actorName + " consideró que tu publicación en Comunidad merece un punto");
         n.setPublicationId(pubId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "⭐ Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -124,6 +159,12 @@ public class NotificationService {
         n.setMessage("Tu publicación " + tituloDisplay + " en Comunidad fue ocultada por moderación. Motivo: " + reason);
         n.setPublicationId(pubId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🚫 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -135,6 +176,12 @@ public class NotificationService {
         n.setMessage("Tu publicación fue aprobada, ya la podés ver en Comunidad.");
         n.setPublicationId(pubId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "✅ Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -147,6 +194,12 @@ public class NotificationService {
                 "la misma será publicada, en caso contrario no.");
         n.setPublicationId(pubId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "⏳ Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     // Video agregado por edición a una publicación que ya estaba viva —
@@ -162,6 +215,12 @@ public class NotificationService {
                 " segundos permitidos. Podés volver a intentarlo con un video de menor duración.");
         n.setPublicationId(pubId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🚫 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -174,6 +233,12 @@ public class NotificationService {
                 " segundos permitidos. El resto de tu publicación sigue visible con normalidad.");
         n.setPublicationId(pubId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🚫 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -185,6 +250,12 @@ public class NotificationService {
         n.setMessage("Tu video fue aprobado, ya lo podés ver en tu publicación.");
         n.setPublicationId(pubId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "✅ Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -197,6 +268,12 @@ public class NotificationService {
                 ". El resto de tu publicación sigue visible con normalidad.");
         n.setPublicationId(pubId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🚫 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -209,6 +286,12 @@ public class NotificationService {
                 "En caso de no violar nuestras normas de convivencia, el video será publicado; en caso contrario no.");
         n.setPublicationId(pubId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "⏳ Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -224,6 +307,12 @@ public class NotificationService {
         n.setMovieId(movieId);
         n.setMovieTitle(movieTitle);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🚫 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -235,6 +324,12 @@ public class NotificationService {
         n.setMessage("Tu comentario en una publicación de Comunidad fue reportado y eliminado por no cumplir con nuestras normas de convivencia.");
         n.setPublicationId(publicationId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🚫 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -251,6 +346,12 @@ public class NotificationService {
                 "con nuestras normas de convivencia.\n\n\"" + contenidoCorto + "\"");
         n.setPublicationId(publicationId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🚫 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -265,6 +366,12 @@ public class NotificationService {
         n.setCommentId(commentId);
         n.setReplyId(replyId);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "💬 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -299,6 +406,12 @@ public class NotificationService {
         n.setMovieId(movieId);
         n.setMovieTitle(movieTitle);
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "⭐ Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -333,6 +446,12 @@ public class NotificationService {
         n.setMessage("🎁 Por alcanzar el nivel " + nivelNuevo.getDisplayName()
                 + " te regalamos " + puntos + " puntos disponibles. ¡Seguí disfrutando Cinemarketer!");
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🎁 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     @Transactional
@@ -344,6 +463,12 @@ public class NotificationService {
         String tipoLabel = "acumulados".equals(tipo) ? "acumulados" : "disponibles";
         n.setMessage("¡Cinemarketer ha decidido otorgarte " + puntos + " puntos " + tipoLabel + "! ¡Disfrutálos!");
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🪙 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     // =============================================
@@ -470,6 +595,12 @@ public class NotificationService {
         n.setType(NotificationType.DRAW_WINNER);
         n.setMessage("Lamentablemente no pudimos coordinar la entrega de tu premio del sorteo \"" + nombreSorteo + "\". El premio fue reasignado a otro participante. ¡Seguí participando!");
         notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "😕 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
     }
 
     // =============================================
