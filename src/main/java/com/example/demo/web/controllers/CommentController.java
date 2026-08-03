@@ -85,7 +85,7 @@ public class CommentController {
                 reportedByMe, esPropio);
 
         r.setBancoCount(commentReactionRepository
-                .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.BANCO));
+                .countByCommentIdAndTypeAndActiveTrueAndReplyIsNull(c.getId(), ReactionType.BANCO));
         r.setMerecePuntoCount(commentReactionRepository
                 .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.MERECE_PUNTO));
         r.setReplyCount(commentReplyRepository.countVisibleByCommentId(c.getId()));
@@ -296,7 +296,7 @@ public class CommentController {
         }
 
         long count = commentReactionRepository
-                .countByCommentIdAndTypeAndActiveTrue(commentId, ReactionType.BANCO);
+                .countByCommentIdAndTypeAndActiveTrueAndReplyIsNull(commentId, ReactionType.BANCO);
 
         return ResponseEntity.ok(Map.of("active", nowActive, "count", count));
     }

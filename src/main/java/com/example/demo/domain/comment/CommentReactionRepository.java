@@ -70,4 +70,7 @@ public interface CommentReactionRepository extends JpaRepository<CommentReaction
             "JOIN r.comment c WHERE c.user.id = :userId " +
             "AND r.type = 'MERECE_PUNTO' AND r.active = true")
     long countMerecePuntosRecibidosByUser(@Param("userId") Long userId);
+
+    // Contar reacciones activas de un tipo para un comentario, EXCLUYENDO las de sus respuestas
+    long countByCommentIdAndTypeAndActiveTrueAndReplyIsNull(Long commentId, ReactionType type);
 }
