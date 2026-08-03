@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.demo.application.services.WebPushService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,13 +26,18 @@ public class FollowController {
     private final UserFollowRepository followRepository;
     private final UserRepository userRepository;
     private final NotificationRepository notificationRepository;
+    private final WebPushService webPushService;
+
+    private static final String ICON = "/assets/images/icon-192.png";
 
     public FollowController(UserFollowRepository followRepository,
                             UserRepository userRepository,
-                            NotificationRepository notificationRepository) {
+                            NotificationRepository notificationRepository,
+                            WebPushService webPushService) {
         this.followRepository = followRepository;
         this.userRepository = userRepository;
         this.notificationRepository = notificationRepository;
+        this.webPushService = webPushService;
     }
 
     // POST /api/follows/{userId} — seguir usuario o enviar invitación
@@ -68,6 +74,12 @@ public class FollowController {
             notif.setCreatedAt(java.time.LocalDateTime.now());
             notificationRepository.save(notif);
 
+            // Web Push
+            try {
+                webPushService.sendToUser(target.getId(),
+                        "👤 Cinemarketer", notif.getMessage(), ICON);
+            } catch (Exception e) {}
+
             return ResponseEntity.ok(Map.of(
                     "status", "PENDING",
                     "followersCount", followRepository.countByFollowingIdAndStatus(userId, "ACCEPTED")
@@ -85,6 +97,12 @@ public class FollowController {
             notif.setRead(false);
             notif.setCreatedAt(java.time.LocalDateTime.now());
             notificationRepository.save(notif);
+
+            // Web Push
+            try {
+                webPushService.sendToUser(target.getId(),
+                        "👤 Cinemarketer", notif.getMessage(), ICON);
+            } catch (Exception e) {}
 
             return ResponseEntity.ok(Map.of(
                     "status", "ACCEPTED",
@@ -186,6 +204,12 @@ public class FollowController {
         notif.setRead(false);
         notif.setCreatedAt(java.time.LocalDateTime.now());
         notificationRepository.save(notif);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(follow.getFollower().getId(),
+                    "👤 Cinemarketer", notif.getMessage(), ICON);
+        } catch (Exception e) {}
 
         return ResponseEntity.ok(Map.of("status", "ACCEPTED"));
     }
