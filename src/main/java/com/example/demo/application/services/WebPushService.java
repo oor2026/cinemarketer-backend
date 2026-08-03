@@ -133,34 +133,60 @@ public class WebPushService {
         // Obtener bytes de la clave pública efímera
         byte[] ephemeralPublicKeyBytes = getRawPublicKey((ECPublicKey) ephemeralKeyPair.getPublic());
 
-        // HKDF para derivar claves
         byte[] salt = new byte[16];
         new SecureRandom().nextBytes(salt);
 
-        byte[] prk = hkdfExtract(authSecret, sharedSecret);
-        byte[] keyInfo = buildInfo("aesgcm", clientPublicKeyBytes, ephemeralPublicKeyBytes);
-        byte[] contentEncryptionKey = hkdfExpand(prk, keyInfo, 16);
+        // Paso 1 (RFC 8291): derivar el IKM propio de Web Push a partir del
+        // secreto ECDH, usando auth_secret como salt del HKDF-Extract.
+        byte[] prkKey = hkdfExtract(authSecret, sharedSecret);
+        byte[] keyInfo = buildWebPushInfo(clientPublicKeyBytes, ephemeralPublicKeyBytes);
+        byte[] ikm = hkdfExpand(prkKey, keyInfo, 32);
 
-        byte[] nonceInfo = buildInfo("nonce", clientPublicKeyBytes, ephemeralPublicKeyBytes);
+        // Paso 2 (RFC 8188, content-encoding aes128gcm): derivar la clave de
+        // cifrado y el nonce a partir de ese IKM y el salt del registro —
+        // NO del secreto ECDH crudo, y sin mezclar las claves públicas acá.
+        byte[] prk = hkdfExtract(salt, ikm);
+        byte[] cekInfo = "Content-Encoding: aes128gcm\0".getBytes(StandardCharsets.UTF_8);
+        byte[] contentEncryptionKey = hkdfExpand(prk, cekInfo, 16);
+        byte[] nonceInfo = "Content-Encoding: nonce\0".getBytes(StandardCharsets.UTF_8);
         byte[] nonce = hkdfExpand(prk, nonceInfo, 12);
 
-        // Cifrar payload con AES-GCM
+        // Delimitador de fin de registro (RFC 8188, obligatorio): un byte
+        // 0x02 pegado al final del contenido, antes de cifrar.
+        byte[] payloadBytes = payload.getBytes(StandardCharsets.UTF_8);
+        byte[] paddedPayload = new byte[payloadBytes.length + 1];
+        System.arraycopy(payloadBytes, 0, paddedPayload, 0, payloadBytes.length);
+        paddedPayload[payloadBytes.length] = 0x02;
+
+        // Cifrar con AES-GCM
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(contentEncryptionKey, "AES"),
                 new GCMParameterSpec(128, nonce));
-        byte[] ciphertext = cipher.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+        byte[] ciphertext = cipher.doFinal(paddedPayload);
 
         // Construir mensaje aes128gcm
-        byte[] ephPubKeyBytes = ephemeralPublicKeyBytes;
         ByteBuffer result = ByteBuffer.allocate(
-                salt.length + 4 + 1 + ephPubKeyBytes.length + ciphertext.length
+                salt.length + 4 + 1 + ephemeralPublicKeyBytes.length + ciphertext.length
         );
         result.put(salt);
         result.putInt(4096); // record size
-        result.put((byte) ephPubKeyBytes.length);
-        result.put(ephPubKeyBytes);
+        result.put((byte) ephemeralPublicKeyBytes.length);
+        result.put(ephemeralPublicKeyBytes);
         result.put(ciphertext);
         return result.array();
+    }
+
+    // Info específico de Web Push (RFC 8291) para derivar el IKM: el
+    // prefijo "WebPush: info" seguido de la clave pública del cliente y
+    // la clave pública efímera del servidor, sin longitudes intercaladas
+    // (a diferencia del esquema viejo "aesgcm" que sí las llevaba).
+    private byte[] buildWebPushInfo(byte[] clientKey, byte[] serverKey) {
+        byte[] prefixBytes = "WebPush: info\0".getBytes(StandardCharsets.UTF_8);
+        ByteBuffer buf = ByteBuffer.allocate(prefixBytes.length + clientKey.length + serverKey.length);
+        buf.put(prefixBytes);
+        buf.put(clientKey);
+        buf.put(serverKey);
+        return buf.array();
     }
 
     private String buildVapidToken(String endpoint) throws Exception {
