@@ -72,7 +72,8 @@ public class AdminRewardController {
                         u,
                         reward.getName(),
                         reward.getPointsRequired(),
-                        rewardType
+                        rewardType,
+                        reward.getId()
                 );
             }
         } catch (Exception e) {

@@ -476,11 +476,12 @@ public class NotificationService {
     // =============================================
     @Transactional
     public void crearNuevoPremioComun(User receptor, String nombrePremio,
-                                      int puntos, String rewardType) {
+                                      int puntos, String rewardType, Long rewardId) {
         Notification n = new Notification();
         n.setUser(receptor);
         n.setActorName("Cinemarketer");
         n.setType(NotificationType.NEW_REWARD);
+        n.setRewardId(rewardId);
 
         String prefijo;
         switch (rewardType) {
@@ -509,11 +510,12 @@ public class NotificationService {
     // =============================================
     @Transactional
     public void crearNuevoPremiumReward(User receptor, String nombrePremio,
-                                        int puntos, String tipo, boolean esPremium) {
+                                        int puntos, String tipo, boolean esPremium, Long rewardId) {
         Notification n = new Notification();
         n.setUser(receptor);
         n.setActorName("Cinemarketer");
         n.setType(NotificationType.NEW_PREMIUM_REWARD);
+        n.setRewardId(rewardId);
 
         String mensaje;
         if ("SORTEO".equals(tipo)) {
