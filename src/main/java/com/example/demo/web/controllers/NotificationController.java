@@ -43,7 +43,7 @@ public class NotificationController {
                         n.getActorId(),
                         n.getMovieId(), n.getMovieTitle(), n.getCommentId(),
                         n.getReplyId(), n.getReferenceType(), n.isRead(), n.getCreatedAt(),
-                        n.getPublicationId()))
+                        n.getPublicationId(), n.getRewardId()))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(dtos);
