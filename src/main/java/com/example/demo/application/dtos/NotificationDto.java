@@ -20,4 +20,5 @@ public class NotificationDto {
     private boolean read;
     private LocalDateTime createdAt;
     private Long publicationId;
+    private Long rewardId;
 }

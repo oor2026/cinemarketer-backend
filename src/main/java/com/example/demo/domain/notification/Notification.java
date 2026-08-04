@@ -52,6 +52,9 @@ public class Notification {
     @Column(name = "publication_id")
     private Long publicationId;
 
+    @Column(name = "reward_id")
+    private Long rewardId;
+
     @Column(name = "reference_type", length = 50)
     private String referenceType;
 
