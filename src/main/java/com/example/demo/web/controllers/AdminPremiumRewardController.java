@@ -155,7 +155,7 @@ public class AdminPremiumRewardController {
                 List<com.example.demo.domain.user.User> usuarios =
                         userRepository.findByActiveTrueAndSuspendedFalse();
                 for (com.example.demo.domain.user.User u : usuarios) {
-                    notificationService.crearNuevoPremiumReward(u, nombre, puntos, tipo, u.isActivePremium());
+                    notificationService.crearNuevoPremiumReward(u, nombre, puntos, tipo, u.isActivePremium(), saved.getId());
                 }
             } catch (Exception ex) {
                 // No fallar la creación del premio si falla el envío de notificaciones
