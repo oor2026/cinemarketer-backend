@@ -59,13 +59,15 @@ public class PremiumExpiryScheduler {
         LocalDateTime in7Days = now.plusDays(7);
         LocalDateTime in1Day  = now.plusDays(1);
 
-        // Suscripciones canceladas con período de gracia que vencen en 7 días (+/- 12hs)
-        List<UserSubscription> expiring7 = userSubscriptionRepository
-                .findByStatusAndEndDateBetween(
-                        SubscriptionStatus.CANCELLED,
-                        in7Days.minusHours(12),
-                        in7Days.plusHours(12)
-                );
+        // Suscripciones que vencen en 7 días (+/- 12hs) — tanto las canceladas
+        // con período de gracia como las que siguen ACTIVE y van a vencer sin
+        // renovación detrás (por ejemplo, altas manuales, que nunca pasan por
+        // CANCELLED y por eso antes no entraban en este chequeo).
+        List<UserSubscription> expiring7 = new java.util.ArrayList<>();
+        expiring7.addAll(userSubscriptionRepository.findByStatusAndEndDateBetween(
+                SubscriptionStatus.CANCELLED, in7Days.minusHours(12), in7Days.plusHours(12)));
+        expiring7.addAll(userSubscriptionRepository.findByStatusAndEndDateBetween(
+                SubscriptionStatus.ACTIVE, in7Days.minusHours(12), in7Days.plusHours(12)));
 
         for (UserSubscription sub : expiring7) {
             boolean yaNotificado = notificationRepository
@@ -78,19 +80,19 @@ public class PremiumExpiryScheduler {
                 notif.setUser(sub.getUser());
                 notif.setActorName("Cinemarketer");
                 notif.setType(NotificationType.PREMIUM_EXPIRING_SOON);
-                notif.setMessage("Tu suscripción Premium vence en 7 días. ¡Renovála y mantené todos tus beneficios!");
+                notif.setMessage("Tu suscripción " + sub.getPlan().getName() + " vence en 7 días. ¡No pierdas tus beneficios!");
                 notificationRepository.save(notif);
                 log.info("📩 Notif 7 días enviada a: {}", sub.getUser().getEmail());
             }
         }
 
-        // Suscripciones canceladas que vencen mañana (+/- 12hs)
-        List<UserSubscription> expiring1 = userSubscriptionRepository
-                .findByStatusAndEndDateBetween(
-                        SubscriptionStatus.CANCELLED,
-                        in1Day.minusHours(12),
-                        in1Day.plusHours(12)
-                );
+        // Suscripciones que vencen mañana (+/- 12hs) — canceladas con gracia
+        // y ACTIVE sin renovación detrás (altas manuales incluidas).
+        List<UserSubscription> expiring1 = new java.util.ArrayList<>();
+        expiring1.addAll(userSubscriptionRepository.findByStatusAndEndDateBetween(
+                SubscriptionStatus.CANCELLED, in1Day.minusHours(12), in1Day.plusHours(12)));
+        expiring1.addAll(userSubscriptionRepository.findByStatusAndEndDateBetween(
+                SubscriptionStatus.ACTIVE, in1Day.minusHours(12), in1Day.plusHours(12)));
 
         for (UserSubscription sub : expiring1) {
             boolean yaNotificado = notificationRepository
@@ -103,7 +105,7 @@ public class PremiumExpiryScheduler {
                 notif.setUser(sub.getUser());
                 notif.setActorName("Cinemarketer");
                 notif.setType(NotificationType.PREMIUM_EXPIRING_TOMORROW);
-                notif.setMessage("Tu suscripción Premium vence mañana. ¡No pierdas tus beneficios Premium!");
+                notif.setMessage("Tu suscripción " + sub.getPlan().getName() + " vence mañana. ¡No pierdas tus beneficios!");
                 notificationRepository.save(notif);
                 log.info("📩 Notif 1 día enviada a: {}", sub.getUser().getEmail());
             }

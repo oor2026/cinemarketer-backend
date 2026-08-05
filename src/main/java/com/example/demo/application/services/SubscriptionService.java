@@ -396,8 +396,10 @@ public class SubscriptionService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        SubscriptionPlan plan = subscriptionPlanRepository.findByNameAndActiveTrue("Premium")
-                .orElseThrow(() -> new RuntimeException("No hay plan Premium activo"));
+        String planName = body.get("planName") != null ? body.get("planName").toString() : "Premium";
+
+        SubscriptionPlan plan = subscriptionPlanRepository.findByNameAndActiveTrue(planName)
+                .orElseThrow(() -> new RuntimeException("No hay plan " + planName + " activo"));
 
         UserSubscription sub = new UserSubscription();
         sub.setUser(user);
@@ -416,13 +418,13 @@ public class SubscriptionService {
         payment.setSubscription(sub);
         payment.setMpPaymentId("MANUAL-" + userId + "-" + System.currentTimeMillis());
         payment.setStatus("approved");
-        payment.setAmount(new BigDecimal("999.00"));
+        payment.setAmount(plan.getPrice());
         payment.setPaidAt(LocalDateTime.now());
         subscriptionPaymentRepository.save(payment);
 
         activatePlanOnUser(user, plan);
 
-        log.info("✅ Suscripción activada manualmente para usuario: {}", user.getEmail());
+        log.info("✅ Suscripción {} activada manualmente para usuario: {}", plan.getName(), user.getEmail());
         return sub;
     }
 
