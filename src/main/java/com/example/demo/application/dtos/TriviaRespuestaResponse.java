@@ -12,4 +12,5 @@ public class TriviaRespuestaResponse {
     private TriviaEstado estado;
     private int preguntaActual;
     private TriviaPreguntaPublicaDto siguientePregunta; // null si el intento terminó
+    private int aciertos; // total de respuestas correctas del intento, hasta ahora
 }

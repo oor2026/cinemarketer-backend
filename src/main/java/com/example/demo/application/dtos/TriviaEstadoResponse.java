@@ -10,4 +10,5 @@ public class TriviaEstadoResponse {
     private int totalPreguntas;
     private int puntosGanados;
     private TriviaPreguntaPublicaDto pregunta; // null si no está EN_CURSO
+    private int aciertos; // total de respuestas correctas del intento (si ya terminó)
 }

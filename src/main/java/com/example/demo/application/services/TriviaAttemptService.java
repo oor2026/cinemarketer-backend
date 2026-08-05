@@ -123,20 +123,19 @@ public class TriviaAttemptService {
             agregarAciertoInvitado(attempt, preguntaActual, tiempoSegundos);
             attempt.setPuntosGanados(attempt.getPuntosGanados() + PUNTOS_POR_ACIERTO);
             response.setPuntosGanadosEstaRespuesta(PUNTOS_POR_ACIERTO);
-
-            int siguienteIndice = attempt.getPreguntaActual() + 1;
-            attempt.setPreguntaActual(siguienteIndice);
-
-            if (siguienteIndice >= preguntas.size()) {
-                attempt.setEstado(TriviaEstado.GANADA);
-                response.setSiguientePregunta(null);
-            } else {
-                response.setSiguientePregunta(aPublica(preguntas.get(siguienteIndice)));
-            }
         } else {
-            attempt.setEstado(TriviaEstado.PERDIDA);
             response.setPuntosGanadosEstaRespuesta(0);
+        }
+
+        int siguienteIndice = attempt.getPreguntaActual() + 1;
+        attempt.setPreguntaActual(siguienteIndice);
+
+        if (siguienteIndice >= preguntas.size()) {
+            boolean las10Correctas = (attempt.getPuntosGanados() / PUNTOS_POR_ACIERTO) >= preguntas.size();
+            attempt.setEstado(las10Correctas ? TriviaEstado.GANADA : TriviaEstado.PERDIDA);
             response.setSiguientePregunta(null);
+        } else {
+            response.setSiguientePregunta(aPublica(preguntas.get(siguienteIndice)));
         }
 
         try {
@@ -145,6 +144,7 @@ public class TriviaAttemptService {
             throw new RespuestaDuplicadaException();
         }
         response.setPuntosGanadosTotal(attempt.getPuntosGanados());
+        response.setAciertos(attempt.getPuntosGanados() / PUNTOS_POR_ACIERTO);
         response.setEstado(attempt.getEstado());
         response.setPreguntaActual(attempt.getPreguntaActual());
         return response;
@@ -264,20 +264,22 @@ public class TriviaAttemptService {
             pointTransactionService.registerTriviaEarned(userFresco, PUNTOS_POR_ACIERTO);
             attempt.setPuntosGanados(attempt.getPuntosGanados() + PUNTOS_POR_ACIERTO);
             response.setPuntosGanadosEstaRespuesta(PUNTOS_POR_ACIERTO);
-
-            int siguienteIndice = attempt.getPreguntaActual() + 1;
-            attempt.setPreguntaActual(siguienteIndice);
-
-            if (siguienteIndice >= preguntas.size()) {
-                attempt.setEstado(TriviaEstado.GANADA);
-                response.setSiguientePregunta(null);
-            } else {
-                response.setSiguientePregunta(aPublica(preguntas.get(siguienteIndice)));
-            }
         } else {
-            attempt.setEstado(TriviaEstado.PERDIDA);
             response.setPuntosGanadosEstaRespuesta(0);
+        }
+
+        // Se avanza a la siguiente pregunta se acierte o no — ya no corta
+        // el intento en la primera falla. Solo se marca terminado al
+        // llegar a la última pregunta.
+        int siguienteIndice = attempt.getPreguntaActual() + 1;
+        attempt.setPreguntaActual(siguienteIndice);
+
+        if (siguienteIndice >= preguntas.size()) {
+            boolean las10Correctas = (attempt.getPuntosGanados() / PUNTOS_POR_ACIERTO) >= preguntas.size();
+            attempt.setEstado(las10Correctas ? TriviaEstado.GANADA : TriviaEstado.PERDIDA);
             response.setSiguientePregunta(null);
+        } else {
+            response.setSiguientePregunta(aPublica(preguntas.get(siguienteIndice)));
         }
 
         try {
@@ -287,6 +289,7 @@ public class TriviaAttemptService {
         }
 
         response.setPuntosGanadosTotal(attempt.getPuntosGanados());
+        response.setAciertos(attempt.getPuntosGanados() / PUNTOS_POR_ACIERTO);
         response.setEstado(attempt.getEstado());
         response.setPreguntaActual(attempt.getPreguntaActual());
         return response;
@@ -307,6 +310,7 @@ public class TriviaAttemptService {
         TriviaEstadoResponse response = new TriviaEstadoResponse();
         response.setEstado(attempt.getEstado());
         response.setPuntosGanados(attempt.getPuntosGanados());
+        response.setAciertos(attempt.getPuntosGanados() / PUNTOS_POR_ACIERTO);
 
         List<TriviaPreguntaDto> preguntas = deserializar(attempt.getPreguntasJson());
         response.setTotalPreguntas(preguntas.size());
