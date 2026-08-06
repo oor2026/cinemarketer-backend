@@ -4,6 +4,7 @@ import com.example.demo.application.dtos.NotificationDto;
 import com.example.demo.domain.notification.NotificationRepository;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -92,5 +93,25 @@ public class NotificationController {
         });
 
         return ResponseEntity.ok(Map.of("message", "Notificación marcada como leída"));
+    }
+
+    // DELETE /api/notifications/{id} — eliminar una notificación propia
+    @DeleteMapping("/{id}")
+    @Transactional
+    public ResponseEntity<?> eliminar(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        return notificationRepository.findById(id)
+                .filter(n -> n.getUser().getId().equals(user.getId()))
+                .map(n -> {
+                    notificationRepository.delete(n);
+                    return ResponseEntity.ok(Map.of("message", "Notificación eliminada"));
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Notificación no encontrada")));
     }
 }
