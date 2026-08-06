@@ -28,5 +28,6 @@ public enum NotificationType {
     PUB_PENDIENTE_REVISION,    // Publicación (imagen o video) quedó pendiente de revisión por moderación automática
     VIDEO_APROBADO,            // Video agregado por edición a una publicación ya viva, aprobado
     VIDEO_PENDIENTE_REVISION,  // Video agregado por edición a una publicación ya viva, pendiente de revisión
-    VIDEO_RECHAZADO            // Admin rechazó el video (Caso B) — la publicación en sí sigue viva
+    VIDEO_RECHAZADO,            // Admin rechazó el video (Caso B) — la publicación en sí sigue viva
+    ADMIN_BROADCAST
 }

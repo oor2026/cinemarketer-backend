@@ -623,4 +623,21 @@ public class NotificationService {
                     "🏆 ¡Ganaste el sorteo!", n.getMessage(), ICON);
         } catch (Exception e) {}
     }
+
+    // Mensaje libre de admin — a diferencia del resto de los métodos de esta
+    // clase, el título y el mensaje los define el admin en el momento, no
+    // están fijos por tipo de evento.
+    @Transactional
+    public void crearNotificacionAdmin(User receptor, String titulo, String mensaje) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.ADMIN_BROADCAST);
+        n.setMessage(mensaje);
+        notificationRepository.save(n);
+
+        try {
+            webPushService.sendToUser(receptor.getId(), titulo, mensaje, ICON);
+        } catch (Exception e) {}
+    }
 }
