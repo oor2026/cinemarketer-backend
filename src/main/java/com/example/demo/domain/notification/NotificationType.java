@@ -29,5 +29,6 @@ public enum NotificationType {
     VIDEO_APROBADO,            // Video agregado por edición a una publicación ya viva, aprobado
     VIDEO_PENDIENTE_REVISION,  // Video agregado por edición a una publicación ya viva, pendiente de revisión
     VIDEO_RECHAZADO,            // Admin rechazó el video (Caso B) — la publicación en sí sigue viva
-    ADMIN_BROADCAST
+    ADMIN_BROADCAST,
+    NEW_RECOMMENDATION_SERIES  // Alguien te recomendó una serie
 }

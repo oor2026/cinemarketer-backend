@@ -42,6 +42,24 @@ public class NotificationService {
     }
 
     @Transactional
+    public void crearBancoSerie(User receptor, String actorName, Long seriesId, String seriesTitle, Long commentId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName(actorName);
+        n.setType(NotificationType.BANCO);
+        n.setMessage(actorName + " bancó tu comentario en " + seriesTitle);
+        n.setSeriesId(seriesId);
+        n.setSeriesTitle(seriesTitle);
+        n.setCommentId(commentId);
+        notificationRepository.save(n);
+
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "👍 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
+    }
+
+    @Transactional
     public void crearComentarioEnPublicacion(User receptor, String actorName, Long publicationId, Long comentarioId) {
         Notification n = new Notification();
         n.setUser(receptor);
@@ -125,6 +143,24 @@ public class NotificationService {
         notificationRepository.save(n);
 
         // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "⭐ Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
+    }
+
+    @Transactional
+    public void crearMerecePuntoSerie(User receptor, String actorName, Long seriesId, String seriesTitle, Long commentId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName(actorName);
+        n.setType(NotificationType.MERECE_PUNTO);
+        n.setMessage(actorName + " consideró que tu comentario merece un punto en " + seriesTitle);
+        n.setSeriesId(seriesId);
+        n.setSeriesTitle(seriesTitle);
+        n.setCommentId(commentId);
+        notificationRepository.save(n);
+
         try {
             webPushService.sendToUser(receptor.getId(),
                     "⭐ Cinemarketer", n.getMessage(), ICON);
@@ -333,6 +369,27 @@ public class NotificationService {
     }
 
     @Transactional
+    public void crearComentarioEliminadoSerie(User receptor, Long seriesId, String seriesTitle, String contenido, String tipoLabel) {
+        String contenidoCorto = (contenido != null && contenido.length() > 150)
+                ? contenido.substring(0, 150) + "..." : contenido;
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName("Cinemarketer");
+        n.setType(NotificationType.COMMENT_REMOVED);
+        n.setMessage("Tu " + tipoLabel + " en la serie \"" + seriesTitle + "\" fue reportado y eliminado por no cumplir " +
+                "con nuestras normas de convivencia.\n\n\"" + contenidoCorto + "\"");
+        n.setSeriesId(seriesId);
+        n.setSeriesTitle(seriesTitle);
+        notificationRepository.save(n);
+
+        // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🚫 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
+    }
+
+    @Transactional
     public void crearComentarioPublicacionEliminado(User receptor, Long publicationId, String publicationTitle, String contenido) {
         String tituloDisplay = (publicationTitle != null && !publicationTitle.isBlank())
                 ? "\"" + publicationTitle + "\"" : "(sin título)";
@@ -375,6 +432,25 @@ public class NotificationService {
     }
 
     @Transactional
+    public void crearReplySerie(User receptor, String actorName, Long seriesId, String seriesTitle, Long commentId, Long replyId) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName(actorName);
+        n.setType(NotificationType.REPLY);
+        n.setMessage(actorName + " respondió tu comentario en " + seriesTitle);
+        n.setSeriesId(seriesId);
+        n.setSeriesTitle(seriesTitle);
+        n.setCommentId(commentId);
+        n.setReplyId(replyId);
+        notificationRepository.save(n);
+
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "💬 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
+    }
+
+    @Transactional
     public void crearPuntosLiberados(User receptor, int acumulados, int cobrados, boolean pasóTecho) {
         Notification n = new Notification();
         n.setUser(receptor);
@@ -408,6 +484,25 @@ public class NotificationService {
         notificationRepository.save(n);
 
         // Web Push
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "⭐ Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
+    }
+
+    @Transactional
+    public void crearRecomendacionCalificadaSerie(User receptor, String actorName, Long actorId,
+                                                  Long seriesId, String seriesTitle, int rating) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setActorName(actorName);
+        n.setActorId(actorId);
+        n.setType(NotificationType.RECOMMENDATION_RATED);
+        n.setMessage(actorName + " vio " + seriesTitle + " que recomendaste y la calificó con " + rating + " estrella" + (rating == 1 ? "" : "s"));
+        n.setSeriesId(seriesId);
+        n.setSeriesTitle(seriesTitle);
+        notificationRepository.save(n);
+
         try {
             webPushService.sendToUser(receptor.getId(),
                     "⭐ Cinemarketer", n.getMessage(), ICON);

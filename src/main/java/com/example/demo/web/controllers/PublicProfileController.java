@@ -17,6 +17,11 @@ import com.example.demo.domain.review.ReviewType;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
 import com.example.demo.domain.user.UserBlockRepository;
+import com.example.demo.domain.series.SeriesComment;
+import com.example.demo.domain.series.SeriesCommentRepository;
+import com.example.demo.domain.series.SeriesCommentReactionRepository;
+import com.example.demo.domain.series.SeriesCommentReplyRepository;
+import com.example.demo.domain.comment.ReactionType;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -40,6 +45,11 @@ public class PublicProfileController {
     private final CommentReactionRepository commentReactionRepository;
     private final CommentReplyRepository commentReplyRepository;
     private final UserBlockRepository userBlockRepository;
+    private final com.example.demo.domain.series.SeriesReviewRepository seriesReviewRepository;
+    private final com.example.demo.domain.series.SeriesRepository seriesRepository;
+    private final SeriesCommentRepository seriesCommentRepository;
+    private final SeriesCommentReactionRepository seriesCommentReactionRepository;
+    private final SeriesCommentReplyRepository seriesCommentReplyRepository;
 
     public PublicProfileController(UserRepository userRepository,
                                    UserFollowRepository followRepository,
@@ -48,7 +58,12 @@ public class PublicProfileController {
                                    MovieRepository movieRepository,
                                    CommentReactionRepository commentReactionRepository,
                                    CommentReplyRepository commentReplyRepository,
-                                   UserBlockRepository userBlockRepository) {
+                                   UserBlockRepository userBlockRepository,
+                                   com.example.demo.domain.series.SeriesReviewRepository seriesReviewRepository,
+                                   com.example.demo.domain.series.SeriesRepository seriesRepository,
+                                   SeriesCommentRepository seriesCommentRepository,
+                                   SeriesCommentReactionRepository seriesCommentReactionRepository,
+                                   SeriesCommentReplyRepository seriesCommentReplyRepository) {
         this.userRepository = userRepository;
         this.followRepository = followRepository;
         this.reviewRepository = reviewRepository;
@@ -57,6 +72,11 @@ public class PublicProfileController {
         this.commentReactionRepository = commentReactionRepository;
         this.commentReplyRepository = commentReplyRepository;
         this.userBlockRepository = userBlockRepository;
+        this.seriesReviewRepository = seriesReviewRepository;
+        this.seriesRepository = seriesRepository;
+        this.seriesCommentRepository = seriesCommentRepository;
+        this.seriesCommentReactionRepository = seriesCommentReactionRepository;
+        this.seriesCommentReplyRepository = seriesCommentReplyRepository;
     }
 
     @GetMapping("/{id}/profile")
@@ -132,6 +152,25 @@ public class PublicProfileController {
             return v;
         }).toList());
 
+        // ── Últimas votaciones de series (máx 6) ───────────────
+        List<com.example.demo.domain.series.SeriesReview> seriesReviews = seriesReviewRepository
+                .findByUserIdAndVoteIsNotNullOrderByCreatedAtDesc(target.getId())
+                .stream()
+                .limit(6)
+                .toList();
+
+        dto.setUltimasVotacionesSeries(seriesReviews.stream().map(r -> {
+            PublicProfileDto.VotacionSerieDto v = new PublicProfileDto.VotacionSerieDto();
+            v.setSeriesId(r.getSeriesId());
+            v.setVoto(r.getVote().name());
+            Optional<com.example.demo.domain.series.Series> serie = seriesRepository.findByTmdbId(r.getSeriesId());
+            serie.ifPresent(s -> {
+                v.setSeriesTitle(s.getTitle());
+                v.setPosterPath(s.getPosterPath());
+            });
+            return v;
+        }).toList());
+
         // Usamos el query correcto por userId
         List<Comment> userComments = commentRepository
                 .findPublicByUserId(target.getId(), PageRequest.of(0, 5));
@@ -157,6 +196,35 @@ public class PublicProfileController {
             cd.setMerecePuntoCount((int) commentReactionRepository
                     .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.MERECE_PUNTO));
             cd.setReplyCount((int) commentReplyRepository.countVisibleByCommentId(c.getId()));
+
+            return cd;
+        }).toList());
+
+        // ── Últimos comentarios de series (máx 5) ──────────────
+        List<SeriesComment> userSeriesComments = seriesCommentRepository
+                .findPublicByUserId(target.getId(), PageRequest.of(0, 5));
+
+        dto.setUltimosComentariosSeries(userSeriesComments.stream().map(c -> {
+            PublicProfileDto.ComentarioSerieDto cd = new PublicProfileDto.ComentarioSerieDto();
+            cd.setCommentId(c.getId());
+            cd.setSeriesId(c.getSeriesId());
+            cd.setSpoiler(c.isSpoiler());
+            cd.setFechaRelativa(formatRelativa(c.getCreatedAt()));
+
+            String contenido = c.isSpoiler() ? "— Comentario con spoiler —" : c.getContent();
+            cd.setContenido(contenido);
+
+            Optional<com.example.demo.domain.series.Series> serie = seriesRepository.findByTmdbId(c.getSeriesId());
+            serie.ifPresent(s -> {
+                cd.setSeriesTitle(s.getTitle());
+                cd.setPosterPath(s.getPosterPath());
+            });
+
+            cd.setBancoCount((int) seriesCommentReactionRepository
+                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.BANCO));
+            cd.setMerecePuntoCount((int) seriesCommentReactionRepository
+                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.MERECE_PUNTO));
+            cd.setReplyCount((int) seriesCommentReplyRepository.countVisibleByCommentId(c.getId()));
 
             return cd;
         }).toList());
@@ -240,6 +308,50 @@ public class PublicProfileController {
             cd.setMerecePuntoCount((int) commentReactionRepository
                     .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.MERECE_PUNTO));
             cd.setReplyCount((int) commentRepository.countByUserId(c.getId()));
+            return cd;
+        }).toList();
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "comentarios", dtos,
+                "hayMas", hayMas,
+                "page", page,
+                "total", total
+        ));
+    }
+
+    // GET /api/users/{id}/comentarios-series?page=0&size=5
+    @GetMapping("/{id}/comentarios-series")
+    public ResponseEntity<?> getComentariosSeries(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        long total = seriesCommentRepository.countByUserId(id);
+        List<SeriesComment> lote = seriesCommentRepository.findPublicByUserId(id, PageRequest.of(page, size));
+        boolean hayMas = (long)(page + 1) * size < total;
+
+        List<PublicProfileDto.ComentarioSerieDto> dtos = lote.stream().map(c -> {
+            PublicProfileDto.ComentarioSerieDto cd = new PublicProfileDto.ComentarioSerieDto();
+            cd.setCommentId(c.getId());
+            cd.setSeriesId(c.getSeriesId());
+            cd.setSpoiler(c.isSpoiler());
+            cd.setFechaRelativa(formatRelativa(c.getCreatedAt()));
+            String contenido = c.isSpoiler() ? "— Comentario con spoiler —" : c.getContent();
+            cd.setContenido(contenido.length() > 120 ? contenido.substring(0, 120) + "..." : contenido);
+            Optional<com.example.demo.domain.series.Series> serie = seriesRepository.findByTmdbId(c.getSeriesId());
+            serie.ifPresent(s -> {
+                cd.setSeriesTitle(s.getTitle());
+                cd.setPosterPath(s.getPosterPath());
+            });
+            cd.setBancoCount((int) seriesCommentReactionRepository
+                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.BANCO));
+            cd.setMerecePuntoCount((int) seriesCommentReactionRepository
+                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.MERECE_PUNTO));
+            cd.setReplyCount((int) seriesCommentReplyRepository.countVisibleByCommentId(c.getId()));
             return cd;
         }).toList();
 

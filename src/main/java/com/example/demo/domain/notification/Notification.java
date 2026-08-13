@@ -43,6 +43,12 @@ public class Notification {
     @Column(name = "movie_title")
     private String movieTitle;
 
+    @Column(name = "series_id")
+    private Long seriesId;
+
+    @Column(name = "series_title")
+    private String seriesTitle;
+
     @Column(name = "comment_id")
     private Long commentId;
 
