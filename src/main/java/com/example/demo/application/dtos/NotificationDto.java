@@ -14,6 +14,8 @@ public class NotificationDto {
     private Long actorId;
     private Long movieId;
     private String movieTitle;
+    private Long seriesId;
+    private String seriesTitle;
     private Long commentId;
     private Long replyId;
     private String referenceType;
