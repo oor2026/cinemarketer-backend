@@ -10,6 +10,7 @@ import com.example.demo.domain.movie.Movie;
 import com.example.demo.domain.movie.MovieRepository;
 import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.review.*;
+import java.util.List;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
 
@@ -21,6 +22,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -33,6 +36,7 @@ public class ReviewController {
     private final PointTransactionService pointTransactionService;
     private final MovieService movieService;
     private final MovieRepository movieRepository;
+    private final VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository;
 
     public ReviewController(
             ReviewRepository reviewRepository,
@@ -40,7 +44,8 @@ public class ReviewController {
             PointConfigService pointConfigService,
             PointTransactionService pointTransactionService,
             MovieService movieService,
-            MovieRepository movieRepository
+            MovieRepository movieRepository,
+            VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository
     ) {
         this.reviewRepository = reviewRepository;
         this.userRepository = userRepository;
@@ -48,6 +53,7 @@ public class ReviewController {
         this.pointTransactionService = pointTransactionService;
         this.movieService = movieService;
         this.movieRepository = movieRepository;
+        this.votoRelampagoOmitidaRepository = votoRelampagoOmitidaRepository;
     }
 
     @PostMapping("/movies/{movieId}")
@@ -139,6 +145,18 @@ public class ReviewController {
         user.addPoints(points);
         userRepository.save(user);
 
+        // Si en algún momento dijo "No la vi" en Voto Relámpago, este voto
+        // (venga de donde venga: modal, card, o el propio Voto Relámpago)
+        // lo marca como superado — deja de contar para el cooldown de 20
+        // días, pero el registro se conserva para analítica.
+        votoRelampagoOmitidaRepository.findByUserIdAndMovieId(user.getId(), movieId)
+                .filter(o -> !o.isSupersededByVote())
+                .ifPresent(o -> {
+                    o.setSupersededByVote(true);
+                    o.setSupersededAt(java.time.LocalDateTime.now());
+                    votoRelampagoOmitidaRepository.save(o);
+                });
+
         String movieTitle = movie != null ? movie.getTitle() : ("Película #" + movieId);
 
         pointTransactionService.registerEarned(
@@ -199,6 +217,63 @@ public class ReviewController {
                 .findTargetIdsByUserIdAndReviewType(user.getId(), ReviewType.MOVIE);
 
         return ResponseEntity.ok(votadas);
+    }
+
+    // POST /api/reviews/movies/{movieId}/omitir — "No la vi" en Voto Relámpago
+    @PostMapping("/movies/{movieId}/omitir")
+    @Transactional
+    public ResponseEntity<?> omitirMovie(
+            @PathVariable Long movieId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        VotoRelampagoOmitida omitida = votoRelampagoOmitidaRepository
+                .findByUserIdAndMovieId(user.getId(), movieId)
+                .orElseGet(() -> {
+                    VotoRelampagoOmitida nueva = new VotoRelampagoOmitida();
+                    nueva.setUser(user);
+                    nueva.setMovieId(movieId);
+                    return nueva;
+                });
+
+        // Si ya existía (por ejemplo, volvió a aparecer tras 20 días y la
+        // omitió de nuevo), refrescamos la fecha y reseteamos el estado.
+        omitida.setCreatedAt(java.time.LocalDateTime.now());
+        omitida.setSupersededByVote(false);
+        omitida.setSupersededAt(null);
+        votoRelampagoOmitidaRepository.save(omitida);
+
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    /**
+     * IDs de películas que hoy están bloqueadas para Voto Relámpago porque
+     * el usuario dijo "No la vi" y todavía no pasaron los 20 días (y no
+     * las votó después, lo cual las liberaría antes).
+     * GET /api/reviews/movies/omitidas-activas
+     */
+    @GetMapping("/movies/omitidas-activas")
+    public ResponseEntity<List<Long>> getOmitidasActivas(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().minusDays(20);
+        List<Long> activas = votoRelampagoOmitidaRepository
+                .findActivasMovieIds(user.getId(), cutoff);
+
+        return ResponseEntity.ok(activas);
     }
 
     @GetMapping("/movies/{movieId}/stats")
