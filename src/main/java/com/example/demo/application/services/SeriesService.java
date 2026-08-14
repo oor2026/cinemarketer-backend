@@ -183,11 +183,78 @@ public class SeriesService {
         return tvService.getSeriesVideos(seriesId, language);
     }
 
+    /**
+     * Series similares — mismo criterio que ya aplicamos en MovieService:
+     * primero otras entregas de la misma saga por nombre (cortando el
+     * título en ":" para sacar el nombre base), después se completa con
+     * mismo género. Reemplaza el passthrough crudo a /tv/{id}/similar de
+     * TMDb, que mezclaba género con señales mucho más débiles.
+     */
     public TmdbSeriesPageResponseDto getSimilarSeries(Long seriesId) {
         if (seriesId == null || seriesId <= 0) {
             throw new IllegalArgumentException("ID de serie inválido");
         }
-        return tvService.getSimilarSeries(seriesId);
+
+        TmdbSeriesDto serie = tvService.getSeriesDetails(seriesId);
+
+        if (serie == null) {
+            return tvService.getSimilarSeries(seriesId);
+        }
+
+        // 1) Prioridad: otras entregas de la misma saga, por nombre.
+        List<TmdbSeriesDto> porNombre = new java.util.ArrayList<>();
+        if (serie.getName() != null && !serie.getName().isBlank()) {
+            String nombreBase = serie.getName().split(":")[0].trim();
+            try {
+                TmdbSeriesPageResponseDto resNombre = tvService.searchSeries(Map.of("query", nombreBase));
+                if (resNombre != null && resNombre.getResults() != null) {
+                    porNombre = resNombre.getResults().stream()
+                            .filter(s -> !seriesId.equals(s.getId()))
+                            .collect(Collectors.toList());
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 2) Complemento: mismo género.
+        List<TmdbSeriesDto> porGenero = new java.util.ArrayList<>();
+        if (serie.getGenres() != null && !serie.getGenres().isEmpty()) {
+            String generoIds = serie.getGenres().stream()
+                    .map(g -> String.valueOf(g.getId()))
+                    .collect(Collectors.joining("|"));
+
+            Map<String, String> params = new HashMap<>();
+            params.put("with_genres", generoIds);
+            params.put("sort_by", "popularity.desc");
+            params.put("page", "1");
+
+            TmdbSeriesPageResponseDto resGenero = tvService.discoverSeries(params);
+            if (resGenero != null && resGenero.getResults() != null) {
+                porGenero = resGenero.getResults();
+            }
+        }
+
+        // 3) Combinar sin duplicar ids.
+        java.util.Set<Long> yaIncluidos = new java.util.HashSet<>();
+        yaIncluidos.add(seriesId);
+        List<TmdbSeriesDto> combinado = new java.util.ArrayList<>();
+
+        for (TmdbSeriesDto s : porNombre) {
+            if (s.getId() != null && yaIncluidos.add(s.getId())) combinado.add(s);
+        }
+        for (TmdbSeriesDto s : porGenero) {
+            if (s.getId() != null && yaIncluidos.add(s.getId())) combinado.add(s);
+        }
+
+        if (combinado.isEmpty()) {
+            return tvService.getSimilarSeries(seriesId);
+        }
+
+        TmdbSeriesPageResponseDto resultado = new TmdbSeriesPageResponseDto();
+        resultado.setPage(1);
+        resultado.setResults(combinado);
+        resultado.setTotalResults(combinado.size());
+        resultado.setTotalPages(1);
+        return resultado;
     }
 
     public Object getWatchProviders(Long seriesId) {
