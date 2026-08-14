@@ -1036,7 +1036,7 @@ public class AdminSupervisionController {
                 .collect(Collectors.toList());
 
         return new CommentModerationDto(
-                c.getId(), c.getContent(), c.getCreatedAt(),
+                c.getId(), c.getContent(), c.getHasGif(), c.getGifUrl(), c.getCreatedAt(),
                 c.getModerationStatus(), c.getToxicityScore(), c.getReportCount(),
                 c.getModerationReviewedAt(), c.getMovieId(),
                 c.getUser().getId(), c.getUser().getName(), c.getUser().getEmail(),
@@ -1052,7 +1052,7 @@ public class AdminSupervisionController {
                 .collect(Collectors.toList());
 
         return new CommentModerationDto(
-                r.getComment().getId(), r.getContent(), r.getCreatedAt(),
+                r.getComment().getId(), r.getContent(), r.getHasGif(), r.getGifUrl(), r.getCreatedAt(),
                 r.getModerationStatus(), null, r.getReportCount(), r.getModerationReviewedAt(),
                 r.getComment().getMovieId(),
                 r.getUser().getId(), r.getUser().getName(), r.getUser().getEmail(),
@@ -1115,7 +1115,7 @@ public class AdminSupervisionController {
                 .collect(Collectors.toList());
 
         return new SeriesCommentModerationDto(
-                c.getId(), c.getContent(), c.getCreatedAt(),
+                c.getId(), c.getContent(), c.getHasGif(), c.getGifUrl(), c.getCreatedAt(),
                 c.getModerationStatus(), c.getToxicityScore(), c.getReportCount(),
                 c.getModerationReviewedAt(), c.getSeriesId(),
                 c.getUser().getId(), c.getUser().getName(), c.getUser().getEmail(),
@@ -1131,7 +1131,7 @@ public class AdminSupervisionController {
                 .collect(Collectors.toList());
 
         return new SeriesCommentModerationDto(
-                r.getComment().getId(), r.getContent(), r.getCreatedAt(),
+                r.getComment().getId(), r.getContent(), r.getHasGif(), r.getGifUrl(), r.getCreatedAt(),
                 r.getModerationStatus(), null, r.getReportCount(), r.getModerationReviewedAt(),
                 r.getComment().getSeriesId(),
                 r.getUser().getId(), r.getUser().getName(), r.getUser().getEmail(),
