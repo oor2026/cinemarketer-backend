@@ -16,6 +16,8 @@ public class SeriesCommentModerationDto {
 
     private Long commentId;
     private String content;
+    private Boolean hasGif;
+    private String gifUrl;
     private LocalDateTime createdAt;
     private ModerationStatus moderationStatus;
     private Float toxicityScore;
