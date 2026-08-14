@@ -60,6 +60,7 @@ public class SecurityConfig {
                                 "/api/public/**",
                                 "/api/publications/public/**",
                                 "/api/movies/og/**",
+                                "/api/series/og/**",
                                 "/api/rewards/og/**",
                                 "/api/rewards/public/**",
                                 "/api/premium/rewards/public/**",
