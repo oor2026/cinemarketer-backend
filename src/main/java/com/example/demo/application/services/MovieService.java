@@ -272,13 +272,90 @@ public class MovieService {
     }
 
     /**
-     * Obtener películas similares por ID
+     * Obtener películas similares por ID.
+     *
+     * Antes le pegaba directo a /movie/{id}/similar de TMDb — un algoritmo
+     * propio de TMDb que mezcla género con señales bastante más débiles
+     * (keywords sueltos, actores, década), dando resultados poco
+     * consistentes (ej: Spider-Man devolvía "Con la muerte en los talones"
+     * de Hitchcock, sin ningún género en común).
+     *
+     * Ahora arma el criterio nosotros mismos: toma los géneros reales de
+     * la película y usa /discover/movie con with_genres en modo OR (pipe),
+     * ordenado por popularidad — mismo mecanismo que ya usa searchMovies.
      */
     public TmdbPageResponseDto getSimilarMovies(Long movieId) {
         if (movieId == null || movieId <= 0) {
             throw new IllegalArgumentException("ID de película inválido");
         }
-        return tmdbService.getSimilarMovies(movieId);
+
+        TmdbMovieDto movie = tmdbService.getMovieDetails(movieId);
+
+        if (movie == null) {
+            return tmdbService.getSimilarMovies(movieId);
+        }
+
+        // 1) Prioridad: otras entregas de la misma saga, buscadas por nombre.
+        // Se corta el título en los dos puntos ("El Señor de los Anillos:
+        // La Comunidad del Anillo" → "El Señor de los Anillos") porque es
+        // el patrón más común en subtítulos de franquicias. Si el título
+        // no tiene ":", se busca tal cual — TMDb igual suele encontrar
+        // secuelas por similitud de texto (ej: "Toy Story" → Toy Story 2, 3, 4).
+        List<TmdbMovieDto> porNombre = new java.util.ArrayList<>();
+        if (movie.getTitle() != null && !movie.getTitle().isBlank()) {
+            String nombreBase = movie.getTitle().split(":")[0].trim();
+            try {
+                TmdbPageResponseDto resNombre = tmdbService.searchMovies(Map.of("query", nombreBase));
+                if (resNombre != null && resNombre.getResults() != null) {
+                    porNombre = resNombre.getResults().stream()
+                            .filter(p -> !movieId.equals(p.getId()))
+                            .collect(Collectors.toList());
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 2) Complemento: mismo género, para rellenar el resto de la lista.
+        List<TmdbMovieDto> porGenero = new java.util.ArrayList<>();
+        if (movie.getGenres() != null && !movie.getGenres().isEmpty()) {
+            String generoIds = movie.getGenres().stream()
+                    .map(g -> String.valueOf(g.getId()))
+                    .collect(Collectors.joining("|"));
+
+            Map<String, String> params = new HashMap<>();
+            params.put("with_genres", generoIds);
+            params.put("sort_by", "popularity.desc");
+            params.put("page", "1");
+
+            TmdbPageResponseDto resGenero = tmdbService.discoverMovies(params);
+            if (resGenero != null && resGenero.getResults() != null) {
+                porGenero = resGenero.getResults();
+            }
+        }
+
+        // 3) Combinar: nombre primero, género después, sin duplicar ids
+        // (ni la propia película, que ya se excluyó de "porNombre" arriba
+        // pero no necesariamente de "porGenero").
+        java.util.Set<Long> yaIncluidos = new java.util.HashSet<>();
+        yaIncluidos.add(movieId);
+        List<TmdbMovieDto> combinado = new java.util.ArrayList<>();
+
+        for (TmdbMovieDto p : porNombre) {
+            if (p.getId() != null && yaIncluidos.add(p.getId())) combinado.add(p);
+        }
+        for (TmdbMovieDto p : porGenero) {
+            if (p.getId() != null && yaIncluidos.add(p.getId())) combinado.add(p);
+        }
+
+        if (combinado.isEmpty()) {
+            return tmdbService.getSimilarMovies(movieId);
+        }
+
+        TmdbPageResponseDto resultado = new TmdbPageResponseDto();
+        resultado.setPage(1);
+        resultado.setResults(combinado);
+        resultado.setTotalResults(combinado.size());
+        resultado.setTotalPages(1);
+        return resultado;
     }
 
     /**
