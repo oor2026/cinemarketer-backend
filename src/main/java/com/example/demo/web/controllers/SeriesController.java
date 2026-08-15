@@ -92,6 +92,8 @@ public class SeriesController {
             @RequestParam(required = false) String language,
             @RequestParam(required = false) Double voteAverageGte,
             @RequestParam(required = false) Double voteAverageLte,
+            @RequestParam(required = false) String withCrew,
+            @RequestParam(required = false) String temporadas,
             @RequestParam(required = false, defaultValue = "1") Integer page) {
 
         SeriesFilterDto filter = new SeriesFilterDto();
@@ -101,6 +103,8 @@ public class SeriesController {
         filter.setWithOriginalLanguage(language);
         filter.setVoteAverageGte(voteAverageGte);
         filter.setVoteAverageLte(voteAverageLte);
+        filter.setWithCrew(withCrew);
+        filter.setTemporadas(temporadas);
         filter.setPage(page);
         filter.setSortBy(null);
 

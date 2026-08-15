@@ -15,6 +15,13 @@ public class SeriesFilterDto {
     private Integer page = 1;
     private String sortBy;
     private String firstAirDateGte;
+    private String withCrew; // TMDb TV discover usa with_people (combina cast+crew), no with_crew como película
+
+    // No va en toParams() — TMDb no soporta filtrar /discover/tv por
+    // cantidad de temporadas de forma nativa. Se resuelve aparte, en
+    // SeriesService, pidiendo el detalle de cada resultado y filtrando
+    // en memoria. Valores esperados: "todos" | "1" | "2-4" | "5+"
+    private String temporadas;
 
     public Map<String, String> toParams() {
         Map<String, String> params = new HashMap<>();
@@ -51,6 +58,10 @@ public class SeriesFilterDto {
             params.put("first_air_date.gte", firstAirDateGte + "-01-01");
         }
 
+        if (withCrew != null && !withCrew.trim().isEmpty()) {
+            params.put("with_people", withCrew);
+        }
+
         params.put("page", page.toString());
 
         return params;
@@ -60,6 +71,8 @@ public class SeriesFilterDto {
         return query != null && !query.trim().isEmpty() &&
                 year == null && withGenres == null &&
                 withOriginalLanguage == null && voteAverageGte == null &&
-                voteAverageLte == null && (sortBy == null || sortBy.isBlank());
+                voteAverageLte == null && (sortBy == null || sortBy.isBlank()) &&
+                (withCrew == null || withCrew.isBlank()) &&
+                (temporadas == null || temporadas.isBlank() || "todos".equals(temporadas));
     }
 }
