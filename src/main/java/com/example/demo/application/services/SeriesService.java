@@ -61,7 +61,8 @@ public class SeriesService {
         Map<String, String> params = filter.toParams();
 
         if (filter.usarSearch()) {
-            return tvService.searchSeries(params);
+            TmdbSeriesPageResponseDto res = tvService.searchSeries(params);
+            return aplicarFiltroTemporadas(res, filter.getTemporadas());
         }
 
         if (filter.getSortBy() != null && !filter.getSortBy().isBlank()
@@ -124,7 +125,50 @@ public class SeriesService {
             return result;
         }
 
-        return tvService.discoverSeries(params);
+        TmdbSeriesPageResponseDto resultado = tvService.discoverSeries(params);
+        return aplicarFiltroTemporadas(resultado, filter.getTemporadas());
+    }
+
+    /**
+     * TMDb no soporta filtrar /discover/tv ni /search/tv por cantidad de
+     * temporadas — se resuelve pidiendo el detalle de cada resultado de
+     * la página actual y descartando los que no caen en el rango. Más
+     * lento que un filtro nativo (N+1 requests), aceptado a propósito.
+     *
+     * Nota: total_pages/total_results de TMDb quedan tal cual venían,
+     * SIN recalcular — pueden quedar un poco desalineados con la
+     * cantidad real de resultados que pasan el filtro dentro de esta
+     * página puntual. Aceptado como limitación conocida.
+     */
+    private TmdbSeriesPageResponseDto aplicarFiltroTemporadas(TmdbSeriesPageResponseDto resultado, String temporadas) {
+        if (temporadas == null || temporadas.isBlank() || "todos".equals(temporadas)) {
+            return resultado;
+        }
+        if (resultado == null || resultado.getResults() == null) {
+            return resultado;
+        }
+
+        List<TmdbSeriesDto> filtrados = resultado.getResults().stream()
+                .filter(s -> {
+                    try {
+                        TmdbSeriesDto detalle = tvService.getSeriesDetails(s.getId());
+                        Integer n = detalle != null ? detalle.getNumberOfSeasons() : null;
+                        if (n == null) return false;
+
+                        return switch (temporadas) {
+                            case "1" -> n == 1;
+                            case "2-4" -> n >= 2 && n <= 4;
+                            case "5+" -> n >= 5;
+                            default -> true;
+                        };
+                    } catch (Exception e) {
+                        return false;
+                    }
+                })
+                .collect(Collectors.toList());
+
+        resultado.setResults(filtrados);
+        return resultado;
     }
 
     public TmdbGenreListResponseDto getSeriesGenres() {
