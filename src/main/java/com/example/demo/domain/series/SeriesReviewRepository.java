@@ -15,4 +15,6 @@ public interface SeriesReviewRepository extends JpaRepository<SeriesReview, Long
     boolean existsByUserIdAndSeriesId(Long userId, Long seriesId);
 
     List<SeriesReview> findByUserIdAndVoteIsNotNullOrderByCreatedAtDesc(Long userId);
+
+    long countByUserId(Long userId);
 }
