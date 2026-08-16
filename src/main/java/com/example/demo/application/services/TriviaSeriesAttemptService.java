@@ -269,7 +269,7 @@ public class TriviaSeriesAttemptService {
         response.setPuntosGanadosTotal(attempt.getPuntosGanados());
         response.setAciertos(attempt.getPuntosGanados() / PUNTOS_POR_ACIERTO);
         response.setEstado(attempt.getEstado());
-        response.setPreguntaActual(attempt.getPreguntaActual());
+        response.setPreguntaActual(attempt.getPreguntaActual() + 1); // 1-indexed para mostrar, mismo criterio que construirEstadoResponse
         return response;
     }
 
