@@ -87,6 +87,24 @@ public class TriviaController {
         return ResponseEntity.ok(triviaAttemptService.reclamarIntentoInvitado(user, guestToken));
     }
 
+    /**
+     * POST /api/trivia/abandonar — cierra el intento de hoy tal cual está
+     * (conserva puntos ya ganados, pero ya no se puede seguir jugando hoy).
+     */
+    @PostMapping("/abandonar")
+    public ResponseEntity<TriviaEstadoResponse> abandonar(
+            @RequestParam(required = false) String guestToken,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails != null) {
+            User user = getUser(userDetails);
+            return ResponseEntity.ok(triviaAttemptService.abandonarIntento(user));
+        }
+        if (guestToken == null || guestToken.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(triviaAttemptService.abandonarIntentoInvitado(guestToken));
+    }
+
     private User getUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));

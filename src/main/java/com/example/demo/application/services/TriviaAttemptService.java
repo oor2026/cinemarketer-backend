@@ -146,7 +146,7 @@ public class TriviaAttemptService {
         response.setPuntosGanadosTotal(attempt.getPuntosGanados());
         response.setAciertos(attempt.getPuntosGanados() / PUNTOS_POR_ACIERTO);
         response.setEstado(attempt.getEstado());
-        response.setPreguntaActual(attempt.getPreguntaActual());
+        response.setPreguntaActual(attempt.getPreguntaActual() + 1); // 1-indexed para mostrar, mismo criterio que construirEstadoResponse
         return response;
     }
 
@@ -291,8 +291,41 @@ public class TriviaAttemptService {
         response.setPuntosGanadosTotal(attempt.getPuntosGanados());
         response.setAciertos(attempt.getPuntosGanados() / PUNTOS_POR_ACIERTO);
         response.setEstado(attempt.getEstado());
-        response.setPreguntaActual(attempt.getPreguntaActual());
+        response.setPreguntaActual(attempt.getPreguntaActual() + 1); // 1-indexed para mostrar, mismo criterio que construirEstadoResponse
         return response;
+    }
+
+    /**
+     * El usuario decide salir en medio del intento (o lo cierra sin
+     * confirmar) — el intento de hoy queda dado por terminado tal cual
+     * está: conserva los puntos ya ganados, pero no puede seguir
+     * respondiendo el resto de las preguntas hasta mañana. Idempotente:
+     * si ya estaba GANADA/PERDIDA no hace nada.
+     */
+    @Transactional
+    public TriviaEstadoResponse abandonarIntento(User user) {
+        LocalDate hoy = LocalDate.now(ZONA_AR);
+        TriviaAttempt attempt = attemptRepository.findByUserIdAndFecha(user.getId(), hoy)
+                .orElseThrow(() -> new IllegalStateException("No hay un intento de trivia iniciado hoy"));
+
+        if (attempt.getEstado() == TriviaEstado.EN_CURSO) {
+            attempt.setEstado(TriviaEstado.PERDIDA);
+            attemptRepository.save(attempt);
+        }
+        return construirEstadoResponse(attempt);
+    }
+
+    @Transactional
+    public TriviaEstadoResponse abandonarIntentoInvitado(String guestToken) {
+        LocalDate hoy = LocalDate.now(ZONA_AR);
+        TriviaAttempt attempt = attemptRepository.findByGuestTokenAndFecha(guestToken, hoy)
+                .orElseThrow(() -> new IllegalStateException("No hay un intento de trivia iniciado hoy"));
+
+        if (attempt.getEstado() == TriviaEstado.EN_CURSO) {
+            attempt.setEstado(TriviaEstado.PERDIDA);
+            attemptRepository.save(attempt);
+        }
+        return construirEstadoResponse(attempt);
     }
 
     private void registrarPreguntaVista(User user, TriviaPreguntaDto pregunta) {
