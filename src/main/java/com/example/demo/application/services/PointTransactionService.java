@@ -100,6 +100,39 @@ public class PointTransactionService {
     }
 
     /**
+     * Calco exacto de registerTriviaEarned, para Trivia de Series.
+     */
+    @Transactional
+    public void registerTriviaSeriesEarned(User user, int points) {
+        java.time.LocalDateTime inicioDia = java.time.LocalDate
+                .now(java.time.ZoneId.of("America/Argentina/Buenos_Aires"))
+                .atStartOfDay();
+        java.time.LocalDateTime finDia = inicioDia.plusDays(1);
+
+        java.util.Optional<PointTransaction> existente = transactionRepository
+                .findFirstByUserIdAndActionAndCreatedAtBetweenOrderByCreatedAtDesc(
+                        user.getId(), PointAction.TRIVIA_SERIES_ANSWER, inicioDia, finDia);
+
+        if (existente.isPresent()) {
+            PointTransaction tx = existente.get();
+            tx.setPoints(tx.getPoints() + points);
+            transactionRepository.save(tx);
+        } else {
+            PointTransaction tx = new PointTransaction();
+            tx.setUser(user);
+            tx.setType(PointTransactionType.EARNED);
+            tx.setAction(PointAction.TRIVIA_SERIES_ANSWER);
+            tx.setPoints(points);
+            tx.setReferenceTitle("Trivia de Series");
+            transactionRepository.save(tx);
+        }
+
+        User updatedUser = userService.getUserById(user.getId())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        checkAndUpdateLevel(updatedUser);
+    }
+
+    /**
      * Registra una transacción de puntos gastados
      */
     @Transactional
