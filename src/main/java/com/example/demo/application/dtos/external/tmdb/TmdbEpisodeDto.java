@@ -26,4 +26,9 @@ public class TmdbEpisodeDto {
 
     @JsonProperty("vote_average")
     private Double voteAverage;
+
+    // TMDb ya lo devuelve en el season endpoint sin necesidad de append_to_response,
+    // pero no estaba mapeado — se estaba descartando en silencio
+    @JsonProperty("guest_stars")
+    private java.util.List<TmdbGuestStarDto> guestStars;
 }

@@ -203,6 +203,19 @@ public class TvService {
         return response.getBody();
     }
 
+    // A diferencia de getSeriesCredits (solo trae el cast de la última
+    // temporada emitida), este trae el cast agregado de TODAS las
+    // temporadas — necesario para que "¿Quién es?" a nivel serie completa
+    // sea representativo y no dependa de qué temporada salió última.
+    public Object getSeriesAggregateCredits(Long seriesId) {
+        String path = "/tv/" + seriesId + "/aggregate_credits";
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
     public Object getContentRatings(Long seriesId) {
         String path = "/tv/" + seriesId + "/content_ratings";
         String url = buildUrl(path);

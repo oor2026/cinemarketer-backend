@@ -16,6 +16,7 @@ public enum PointAction {
     RECEIVE_BANCO_POST,     // Recibir Te banco en publicación → 1 pt
     RECEIVE_MERECE_POST,     // Recibir Merecés un punto en publicación → 1 pt
     PUBLICATION_SANCTION,
-    TRIVIA_ANSWER            // Acertar pregunta en Adivina Adivinador → 5 pts
+    TRIVIA_ANSWER,           // Acertar pregunta en Adivina Adivinador → 5 pts
+    TRIVIA_SERIES_ANSWER     // Acertar pregunta en Trivia de Series → 5 pts
 
 }

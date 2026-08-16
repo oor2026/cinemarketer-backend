@@ -155,6 +155,18 @@ public class User {
     @Column(name = "trivia_tiempo_total_segundos", nullable = false)
     private long triviaTiempoTotalSegundos = 0;
 
+    // Mismo propósito que los 3 campos de arriba, pero para Trivia de
+    // Series — contador propio porque son dos juegos separados, con su
+    // propia ventana de exclusión de 300 y su propio ranking histórico.
+    @Column(name = "trivia_series_respondidas_total", nullable = false)
+    private int triviaSeriesRespondidasTotal = 0;
+
+    @Column(name = "trivia_series_aciertos_total", nullable = false)
+    private int triviaSeriesAciertosTotal = 0;
+
+    @Column(name = "trivia_series_tiempo_total_segundos", nullable = false)
+    private long triviaSeriesTiempoTotalSegundos = 0;
+
     @Column(name = "banner_url")
     private String bannerUrl;
 
@@ -212,6 +224,15 @@ public class User {
     public void registrarAciertoTrivia(int segundosRespuesta) {
         this.triviaAciertosTotal++;
         this.triviaTiempoTotalSegundos += Math.max(0, segundosRespuesta);
+    }
+
+    public void incrementarTriviaSeriesRespondidas() {
+        this.triviaSeriesRespondidasTotal++;
+    }
+
+    public void registrarAciertoTriviaSeries(int segundosRespuesta) {
+        this.triviaSeriesAciertosTotal++;
+        this.triviaSeriesTiempoTotalSegundos += Math.max(0, segundosRespuesta);
     }
 
     /**
