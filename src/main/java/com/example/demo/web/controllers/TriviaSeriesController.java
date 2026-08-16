@@ -74,6 +74,20 @@ public class TriviaSeriesController {
         return ResponseEntity.ok(triviaSeriesAttemptService.reclamarIntentoInvitado(user, guestToken));
     }
 
+    @PostMapping("/abandonar")
+    public ResponseEntity<TriviaEstadoSeriesResponse> abandonar(
+            @RequestParam(required = false) String guestToken,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails != null) {
+            User user = getUser(userDetails);
+            return ResponseEntity.ok(triviaSeriesAttemptService.abandonarIntento(user));
+        }
+        if (guestToken == null || guestToken.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(triviaSeriesAttemptService.abandonarIntentoInvitado(guestToken));
+    }
+
     private User getUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
