@@ -78,7 +78,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             "COUNT(r) as votes, " +
             "SUM(CASE WHEN r.vote = 'LIKE' THEN 1 ELSE 0 END) as likes, " +
             "SUM(CASE WHEN r.vote = 'DISLIKE' THEN 1 ELSE 0 END) as dislikes " +
-            "FROM Review r LEFT JOIN Movie m ON r.targetId = m.id " +  // ← LEFT JOIN
+            "FROM Review r LEFT JOIN Movie m ON r.targetId = m.tmdbId " +  // targetId guarda el tmdb_id, no el id interno
             "WHERE r.reviewType = 'MOVIE' AND r.createdAt BETWEEN :start AND :end " +
             "GROUP BY r.targetId, m.title ORDER BY votes DESC")
     List<Map<String, Object>> findTopMoviesByVotes(@Param("start") LocalDateTime start,
