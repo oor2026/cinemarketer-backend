@@ -8,13 +8,9 @@ import java.util.Map;
 @Data
 @NoArgsConstructor
 public class RecommendationStatsDto {
-    private long totalEnviadas;
-    private long totalVistas;
-    private double tasaVisualizacion;
-    private long totalCalificadas;
-    private double tasaCalificacion;
-    private long totalConContexto;
-    private double tasaContexto;
-    private List<Map<String, Object>> topPeliculas;
-    private List<Map<String, Object>> topContextos;
+    private RecommendationStatsSectionDto total;
+    private RecommendationStatsSectionDto peliculas;
+    private RecommendationStatsSectionDto series;
+    private double pctPeliculas;
+    private double pctSeries;
 }
