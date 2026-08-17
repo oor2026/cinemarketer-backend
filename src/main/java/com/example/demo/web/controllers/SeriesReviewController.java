@@ -12,6 +12,8 @@ import com.example.demo.domain.series.Series;
 import com.example.demo.domain.series.SeriesRepository;
 import com.example.demo.domain.series.SeriesReview;
 import com.example.demo.domain.series.SeriesReviewRepository;
+import com.example.demo.domain.series.VotoRelampagoOmitidaSerie;
+import com.example.demo.domain.series.VotoRelampagoOmitidaSerieRepository;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
 
@@ -35,6 +37,7 @@ public class SeriesReviewController {
     private final PointTransactionService pointTransactionService;
     private final SeriesService seriesService;
     private final SeriesRepository seriesRepository;
+    private final VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository;
 
     public SeriesReviewController(
             SeriesReviewRepository seriesReviewRepository,
@@ -42,7 +45,8 @@ public class SeriesReviewController {
             PointConfigService pointConfigService,
             PointTransactionService pointTransactionService,
             SeriesService seriesService,
-            SeriesRepository seriesRepository
+            SeriesRepository seriesRepository,
+            VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository
     ) {
         this.seriesReviewRepository = seriesReviewRepository;
         this.userRepository = userRepository;
@@ -50,6 +54,7 @@ public class SeriesReviewController {
         this.pointTransactionService = pointTransactionService;
         this.seriesService = seriesService;
         this.seriesRepository = seriesRepository;
+        this.votoRelampagoOmitidaSerieRepository = votoRelampagoOmitidaSerieRepository;
     }
 
     @PostMapping("/series/{seriesId}")
@@ -137,6 +142,17 @@ public class SeriesReviewController {
         user.addPoints(points);
         userRepository.save(user);
 
+        // Si en algún momento dijo "No la vi" en Voto Relámpago, este voto
+        // la marca como superada — deja de contar para el cooldown de 20
+        // días, pero el registro se conserva para analítica.
+        votoRelampagoOmitidaSerieRepository.findByUserIdAndSeriesId(user.getId(), seriesId)
+                .filter(o -> !o.isSupersededByVote())
+                .ifPresent(o -> {
+                    o.setSupersededByVote(true);
+                    o.setSupersededAt(java.time.LocalDateTime.now());
+                    votoRelampagoOmitidaSerieRepository.save(o);
+                });
+
         String seriesTitle = serie != null ? serie.getTitle() : ("Serie #" + seriesId);
 
         pointTransactionService.registerEarned(
@@ -215,5 +231,78 @@ public class SeriesReviewController {
         );
 
         return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * GET /api/reviews/series/voted-ids
+     */
+    @GetMapping("/series/voted-ids")
+    public ResponseEntity<java.util.List<Long>> getVotedSeriesIds(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) {
+            return ResponseEntity.ok(java.util.List.of());
+        }
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        java.util.List<Long> votadas = seriesReviewRepository
+                .findByUserIdAndVoteIsNotNullOrderByCreatedAtDesc(user.getId())
+                .stream().map(SeriesReview::getSeriesId).distinct().toList();
+
+        return ResponseEntity.ok(votadas);
+    }
+
+    // POST /api/reviews/series/{seriesId}/omitir — "No la vi" en Voto Relámpago
+    @PostMapping("/series/{seriesId}/omitir")
+    @Transactional
+    public ResponseEntity<?> omitirSerie(
+            @PathVariable Long seriesId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        VotoRelampagoOmitidaSerie omitida = votoRelampagoOmitidaSerieRepository
+                .findByUserIdAndSeriesId(user.getId(), seriesId)
+                .orElseGet(() -> {
+                    VotoRelampagoOmitidaSerie nueva = new VotoRelampagoOmitidaSerie();
+                    nueva.setUser(user);
+                    nueva.setSeriesId(seriesId);
+                    return nueva;
+                });
+
+        omitida.setCreatedAt(java.time.LocalDateTime.now());
+        omitida.setSupersededByVote(false);
+        omitida.setSupersededAt(null);
+        votoRelampagoOmitidaSerieRepository.save(omitida);
+
+        return ResponseEntity.ok(java.util.Map.of("success", true));
+    }
+
+    /**
+     * GET /api/reviews/series/omitidas-activas
+     */
+    @GetMapping("/series/omitidas-activas")
+    public ResponseEntity<java.util.List<Long>> getOmitidasActivasSeries(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) {
+            return ResponseEntity.ok(java.util.List.of());
+        }
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().minusDays(20);
+        java.util.List<Long> activas = votoRelampagoOmitidaSerieRepository
+                .findActivasSeriesIds(user.getId(), cutoff);
+
+        return ResponseEntity.ok(activas);
     }
 }
