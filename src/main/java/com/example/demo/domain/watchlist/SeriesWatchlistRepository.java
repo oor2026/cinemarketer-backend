@@ -15,4 +15,15 @@ public interface SeriesWatchlistRepository extends JpaRepository<SeriesWatchlist
     Optional<SeriesWatchlist> findByIdAndUserId(Long id, Long userId);
 
     long countByUserId(Long userId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT COUNT(DISTINCT w.user.id) FROM SeriesWatchlist w")
+    long countDistinctUsers();
+
+    @org.springframework.data.jpa.repository.Query("SELECT w.seriesTitle, COUNT(w) as total FROM SeriesWatchlist w " +
+            "WHERE w.seriesTitle IS NOT NULL " +
+            "GROUP BY w.seriesId, w.seriesTitle ORDER BY total DESC")
+    java.util.List<Object[]> findTopSeries(org.springframework.data.domain.Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Query("SELECT w.seriesGenres FROM SeriesWatchlist w WHERE w.seriesGenres IS NOT NULL")
+    java.util.List<String> findAllSeriesGenres();
 }

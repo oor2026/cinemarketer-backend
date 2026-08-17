@@ -6,9 +6,9 @@ import java.util.Map;
 
 @Data
 public class WatchlistStatsDto {
-    private long totalGuardadas;
-    private long usuariosConLista;
-    private double promedioPorUsuario;
-    private List<Map<String, Object>> topPeliculas;
-    private List<Map<String, Object>> generos;
+    private WatchlistStatsSectionDto total;
+    private WatchlistStatsSectionDto peliculas;
+    private WatchlistStatsSectionDto series;
+    private double pctPeliculas;
+    private double pctSeries;
 }
