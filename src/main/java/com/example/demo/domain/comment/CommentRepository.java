@@ -27,7 +27,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
     @Query("SELECT c.movieId as id, m.title as title, COUNT(c) as comments " +
-            "FROM Comment c JOIN Movie m ON c.movieId = m.id " +
+            "FROM Comment c JOIN Movie m ON c.movieId = m.tmdbId " +  // movieId guarda el tmdb_id, no el id interno
             "WHERE c.createdAt BETWEEN :start AND :end " +
             "GROUP BY c.movieId, m.title ORDER BY comments DESC")
     List<Map<String, Object>> findTopMoviesByComments(@Param("start") LocalDateTime start,

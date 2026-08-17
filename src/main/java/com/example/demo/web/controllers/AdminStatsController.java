@@ -10,6 +10,7 @@ import com.example.demo.domain.redemption.RedemptionStatus;
 import com.example.demo.domain.review.ReviewRepository;
 import com.example.demo.domain.review.VoteType;
 import com.example.demo.domain.series.SeriesReviewRepository;
+import com.example.demo.domain.series.SeriesCommentRepository;
 import com.example.demo.domain.reward.RewardRepository;
 import com.example.demo.domain.subscription.SubscriptionPaymentRepository;
 import com.example.demo.domain.subscription.SubscriptionPlanRepository;
@@ -42,6 +43,7 @@ public class AdminStatsController {
     private final ReviewRepository reviewRepository;
     private final SeriesReviewRepository seriesReviewRepository;
     private final CommentRepository commentRepository;
+    private final SeriesCommentRepository seriesCommentRepository;
     private final RedemptionRepository redemptionRepository;
     private final RewardRepository rewardRepository;
     private final PointTransactionRepository pointTransactionRepository;
@@ -60,7 +62,7 @@ public class AdminStatsController {
     public AdminStatsController(
             UserRepository userRepository,
             ReviewRepository reviewRepository, SeriesReviewRepository seriesReviewRepository,
-            CommentRepository commentRepository,
+            CommentRepository commentRepository, SeriesCommentRepository seriesCommentRepository,
             RedemptionRepository redemptionRepository,
             RewardRepository rewardRepository,
             PointTransactionRepository pointTransactionRepository,
@@ -71,6 +73,7 @@ public class AdminStatsController {
         this.reviewRepository = reviewRepository;
         this.seriesReviewRepository = seriesReviewRepository;
         this.commentRepository = commentRepository;
+        this.seriesCommentRepository = seriesCommentRepository;
         this.redemptionRepository = redemptionRepository;
         this.rewardRepository = rewardRepository;
         this.pointTransactionRepository = pointTransactionRepository;
@@ -111,7 +114,7 @@ public class AdminStatsController {
         response.setSummary(calculateSummary(start, end, prevStart, prevEnd));
         response.setUsers(calculateUserStats(start, end, prevStart, prevEnd));
         response.setVotes(calculateVoteStats(start, end, prevStart, prevEnd));
-        response.setComments(calculateCommentStats(start, end));
+        response.setComments(calculateCommentStats(start, end, prevStart, prevEnd));
         response.setRedemptions(calculateRedemptionStats(start, end, prevStart, prevEnd));
         response.setPoints(calculatePointStats(start, end));
         response.setSupport(calculateSupportStats());
@@ -298,36 +301,75 @@ public class AdminStatsController {
         return stats;
     }
 
-    private CommentStatsDto calculateCommentStats(LocalDateTime start, LocalDateTime end) {
-        CommentStatsDto stats = new CommentStatsDto();
+    private CommentStatsDto calculateCommentStats(LocalDateTime start, LocalDateTime end,
+                                                  LocalDateTime prevStart, LocalDateTime prevEnd) {
+        CommentStatsSectionDto peliculas = calculateCommentStatsPeliculas(start, end);
+        CommentStatsSectionDto series = calculateCommentStatsSeries(start, end);
 
-        long totalComments = commentRepository.countByCreatedAtBetween(start, end);
-        stats.setTotalComments(totalComments);
-
+        long totalComments = peliculas.getTotalComments() + series.getTotalComments();
         long days = java.time.Duration.between(start, end).toDays();
-        stats.setCommentsPerDay(days > 0 ? (double) totalComments / days : totalComments);
 
-        stats.setTopMovies(sanitizeMapList(
-                commentRepository.findTopMoviesByComments(start, end, PageRequest.of(0, 5))
-        ));
+        CommentStatsSectionDto total = new CommentStatsSectionDto();
+        total.setTotalComments(totalComments);
+        total.setCommentsPerDay(days > 0 ? (double) totalComments / days : totalComments);
 
-        stats.setTopUsers(sanitizeMapList(
-                commentRepository.findTopUsersByComments(start, end, PageRequest.of(0, 5))
-        ));
+        long totalPrevPeriod = commentRepository.countByCreatedAtBetween(prevStart, prevEnd)
+                + seriesCommentRepository.countByCreatedAtBetween(prevStart, prevEnd);
+        total.setGrowth(calculateGrowth(totalComments, totalPrevPeriod));
 
-        long totalGifsComentarios = commentRepository.countByHasGifTrue();
+        CommentStatsDto stats = new CommentStatsDto();
+        stats.setTotal(total);
+        stats.setPeliculas(peliculas);
+        stats.setSeries(series);
+        stats.setPctPeliculas(totalComments > 0 ? (double) peliculas.getTotalComments() / totalComments * 100 : 0);
+        stats.setPctSeries(totalComments > 0 ? (double) series.getTotalComments() / totalComments * 100 : 0);
+
+        // Se mantienen globales — CommentReply no distingue Películas/Series
+        long totalGifsComentarios = commentRepository.countByHasGifTrue() + seriesCommentRepository.countByHasGifTrue();
         long totalGifsRespuestas  = commentReplyRepository.countByHasGifTrue();
         long totalRespuestas      = commentReplyRepository.count();
+        long totalComentariosHistorico = commentRepository.count() + seriesCommentRepository.count();
 
         stats.setTotalReplies(totalRespuestas);
-
         stats.setGifsEnComentarios(totalGifsComentarios);
         stats.setGifsEnRespuestas(totalGifsRespuestas);
-        stats.setTasaGifComentarios(totalComments > 0 ?
-                (double) totalGifsComentarios / commentRepository.count() * 100 : 0);
+        stats.setTasaGifComentarios(totalComentariosHistorico > 0 ?
+                (double) totalGifsComentarios / totalComentariosHistorico * 100 : 0);
         stats.setTasaGifRespuestas(totalRespuestas > 0 ?
                 (double) totalGifsRespuestas / totalRespuestas * 100 : 0);
 
+        return stats;
+    }
+
+    private CommentStatsSectionDto calculateCommentStatsPeliculas(LocalDateTime start, LocalDateTime end) {
+        CommentStatsSectionDto stats = new CommentStatsSectionDto();
+        long totalComments = commentRepository.countByCreatedAtBetween(start, end);
+        long days = java.time.Duration.between(start, end).toDays();
+
+        stats.setTotalComments(totalComments);
+        stats.setCommentsPerDay(days > 0 ? (double) totalComments / days : totalComments);
+        stats.setTopContent(sanitizeMapList(
+                commentRepository.findTopMoviesByComments(start, end, PageRequest.of(0, 5))
+        ));
+        stats.setTopUsers(sanitizeMapList(
+                commentRepository.findTopUsersByComments(start, end, PageRequest.of(0, 5))
+        ));
+        return stats;
+    }
+
+    private CommentStatsSectionDto calculateCommentStatsSeries(LocalDateTime start, LocalDateTime end) {
+        CommentStatsSectionDto stats = new CommentStatsSectionDto();
+        long totalComments = seriesCommentRepository.countByCreatedAtBetween(start, end);
+        long days = java.time.Duration.between(start, end).toDays();
+
+        stats.setTotalComments(totalComments);
+        stats.setCommentsPerDay(days > 0 ? (double) totalComments / days : totalComments);
+        stats.setTopContent(sanitizeMapList(
+                seriesCommentRepository.findTopSeriesByComments(start, end, PageRequest.of(0, 5))
+        ));
+        stats.setTopUsers(sanitizeMapList(
+                seriesCommentRepository.findTopUsersByComments(start, end, PageRequest.of(0, 5))
+        ));
         return stats;
     }
 
