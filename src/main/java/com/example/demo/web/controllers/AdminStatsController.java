@@ -12,6 +12,7 @@ import com.example.demo.domain.review.VoteType;
 import com.example.demo.domain.series.SeriesReviewRepository;
 import com.example.demo.domain.series.SeriesCommentRepository;
 import com.example.demo.domain.recommendation.SeriesRecommendationRepository;
+import com.example.demo.domain.watchlist.SeriesWatchlistRepository;
 import com.example.demo.domain.reward.RewardRepository;
 import com.example.demo.domain.subscription.SubscriptionPaymentRepository;
 import com.example.demo.domain.subscription.SubscriptionPlanRepository;
@@ -58,6 +59,7 @@ public class AdminStatsController {
     private final SeriesRecommendationRepository seriesRecommendationRepository;
     private final CommentReplyRepository commentReplyRepository;
     private final WatchlistRepository watchlistRepository;
+    private final SeriesWatchlistRepository seriesWatchlistRepository;
     private final SubscriptionPaymentRepository subscriptionPaymentRepository;
     private final com.example.demo.domain.publication.PublicationRepository publicationRepository;
 
@@ -70,7 +72,7 @@ public class AdminStatsController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository supportTicketRepository,
             PremiumRewardRepository premiumRewardRepository,
-            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, SeriesRecommendationRepository seriesRecommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository) {
+            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, SeriesRecommendationRepository seriesRecommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SeriesWatchlistRepository seriesWatchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.seriesReviewRepository = seriesReviewRepository;
@@ -89,6 +91,7 @@ public class AdminStatsController {
         this.seriesRecommendationRepository = seriesRecommendationRepository;
         this.commentReplyRepository = commentReplyRepository;
         this.watchlistRepository = watchlistRepository;
+        this.seriesWatchlistRepository = seriesWatchlistRepository;
         this.subscriptionPaymentRepository = subscriptionPaymentRepository;
         this.publicationRepository = publicationRepository;
     }
@@ -718,7 +721,28 @@ public class AdminStatsController {
     }
 
     private WatchlistStatsDto calculateWatchlistStats() {
+        WatchlistStatsSectionDto peliculas = calculateWatchlistStatsPeliculas();
+        WatchlistStatsSectionDto series = calculateWatchlistStatsSeries();
+
+        WatchlistStatsSectionDto total = new WatchlistStatsSectionDto();
+        long totalGuardadas = peliculas.getTotalGuardadas() + series.getTotalGuardadas();
+        long usuariosConLista = peliculas.getUsuariosConLista() + series.getUsuariosConLista(); // aproximado: puede sobrecontar usuarios que tienen ambas listas
+        total.setTotalGuardadas(totalGuardadas);
+        total.setUsuariosConLista(usuariosConLista);
+        total.setPromedioPorUsuario(usuariosConLista > 0 ?
+                Math.round((double) totalGuardadas / usuariosConLista * 10) / 10.0 : 0);
+
         WatchlistStatsDto stats = new WatchlistStatsDto();
+        stats.setTotal(total);
+        stats.setPeliculas(peliculas);
+        stats.setSeries(series);
+        stats.setPctPeliculas(totalGuardadas > 0 ? (double) peliculas.getTotalGuardadas() / totalGuardadas * 100 : 0);
+        stats.setPctSeries(totalGuardadas > 0 ? (double) series.getTotalGuardadas() / totalGuardadas * 100 : 0);
+        return stats;
+    }
+
+    private WatchlistStatsSectionDto calculateWatchlistStatsPeliculas() {
+        WatchlistStatsSectionDto stats = new WatchlistStatsSectionDto();
 
         long total = watchlistRepository.count();
         long usuariosConLista = watchlistRepository.countDistinctUsers();
@@ -728,17 +752,46 @@ public class AdminStatsController {
         stats.setPromedioPorUsuario(usuariosConLista > 0 ?
                 Math.round((double) total / usuariosConLista * 10) / 10.0 : 0);
 
-        // Top 10 películas más guardadas
-        List<Object[]> topMovies = watchlistRepository.findTopMovies(PageRequest.of(0, 10));
-        stats.setTopPeliculas(topMovies.stream().map(row -> {
-            Map<String, Object> m = new HashMap<>();
-            m.put("titulo", row[0]);
-            m.put("total", row[1]);
-            return m;
-        }).toList());
+        stats.setTopContent(watchlistRepository.findTopMovies(PageRequest.of(0, 10))
+                .stream().map(row -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("titulo", row[0]);
+                    m.put("total", row[1]);
+                    return m;
+                }).toList());
 
-        // Géneros: parsear JSON y acumular conteos
-        List<String> genresRaw = watchlistRepository.findAllMovieGenres();
+        stats.setGeneros(calcularGenerosConPorcentaje(watchlistRepository.findAllMovieGenres()));
+        return stats;
+    }
+
+    private WatchlistStatsSectionDto calculateWatchlistStatsSeries() {
+        WatchlistStatsSectionDto stats = new WatchlistStatsSectionDto();
+
+        long total = seriesWatchlistRepository.count();
+        long usuariosConLista = seriesWatchlistRepository.countDistinctUsers();
+
+        stats.setTotalGuardadas(total);
+        stats.setUsuariosConLista(usuariosConLista);
+        stats.setPromedioPorUsuario(usuariosConLista > 0 ?
+                Math.round((double) total / usuariosConLista * 10) / 10.0 : 0);
+
+        stats.setTopContent(seriesWatchlistRepository.findTopSeries(PageRequest.of(0, 10))
+                .stream().map(row -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("titulo", row[0]);
+                    m.put("total", row[1]);
+                    return m;
+                }).toList());
+
+        stats.setGeneros(calcularGenerosConPorcentaje(seriesWatchlistRepository.findAllSeriesGenres()));
+        return stats;
+    }
+
+    // Compartido entre Películas y Series — parsea el JSON de géneros
+    // guardado como texto plano (["Drama","Fantasía"]) y arma el conteo
+    // con porcentaje sobre el total de entradas de género (no de items,
+    // porque cada item puede tener varios géneros).
+    private List<Map<String, Object>> calcularGenerosConPorcentaje(List<String> genresRaw) {
         Map<String, Long> genreCount = new LinkedHashMap<>();
         long totalGenreEntries = 0;
 
@@ -758,7 +811,7 @@ public class AdminStatsController {
         }
 
         final long totalEntries = totalGenreEntries;
-        List<Map<String, Object>> generosConPorcentaje = genreCount.entrySet().stream()
+        return genreCount.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
                 .map(e -> {
                     Map<String, Object> m = new HashMap<>();
@@ -768,9 +821,6 @@ public class AdminStatsController {
                             Math.round((double) e.getValue() / totalEntries * 1000) / 10.0 : 0);
                     return m;
                 }).toList();
-
-        stats.setGeneros(generosConPorcentaje);
-        return stats;
     }
 
     private long calculateInactiveUsers() {
