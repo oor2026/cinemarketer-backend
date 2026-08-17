@@ -9,6 +9,7 @@ import com.example.demo.domain.redemption.RedemptionRepository;
 import com.example.demo.domain.redemption.RedemptionStatus;
 import com.example.demo.domain.review.ReviewRepository;
 import com.example.demo.domain.review.VoteType;
+import com.example.demo.domain.series.SeriesReviewRepository;
 import com.example.demo.domain.reward.RewardRepository;
 import com.example.demo.domain.subscription.SubscriptionPaymentRepository;
 import com.example.demo.domain.subscription.SubscriptionPlanRepository;
@@ -39,6 +40,7 @@ public class AdminStatsController {
 
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
+    private final SeriesReviewRepository seriesReviewRepository;
     private final CommentRepository commentRepository;
     private final RedemptionRepository redemptionRepository;
     private final RewardRepository rewardRepository;
@@ -57,7 +59,7 @@ public class AdminStatsController {
 
     public AdminStatsController(
             UserRepository userRepository,
-            ReviewRepository reviewRepository,
+            ReviewRepository reviewRepository, SeriesReviewRepository seriesReviewRepository,
             CommentRepository commentRepository,
             RedemptionRepository redemptionRepository,
             RewardRepository rewardRepository,
@@ -67,6 +69,7 @@ public class AdminStatsController {
             UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
+        this.seriesReviewRepository = seriesReviewRepository;
         this.commentRepository = commentRepository;
         this.redemptionRepository = redemptionRepository;
         this.rewardRepository = rewardRepository;
@@ -107,7 +110,7 @@ public class AdminStatsController {
         // Calcular todas las métricas
         response.setSummary(calculateSummary(start, end, prevStart, prevEnd));
         response.setUsers(calculateUserStats(start, end, prevStart, prevEnd));
-        response.setVotes(calculateVoteStats(start, end));
+        response.setVotes(calculateVoteStats(start, end, prevStart, prevEnd));
         response.setComments(calculateCommentStats(start, end));
         response.setRedemptions(calculateRedemptionStats(start, end, prevStart, prevEnd));
         response.setPoints(calculatePointStats(start, end));
@@ -146,9 +149,11 @@ public class AdminStatsController {
         // Usuarios totales
         long totalUsers = userRepository.count();
 
-        // Ratio de aprobación
-        long totalLikes = reviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, start, end);
-        long totalDislikes = reviewRepository.countByVoteTypeInPeriod(VoteType.DISLIKE, start, end);
+        // Ratio de aprobación — combina Películas + Series
+        long totalLikes = reviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, start, end)
+                + seriesReviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, start, end);
+        long totalDislikes = reviewRepository.countByVoteTypeInPeriod(VoteType.DISLIKE, start, end)
+                + seriesReviewRepository.countByVoteTypeInPeriod(VoteType.DISLIKE, start, end);
         double approvalRate = totalLikes + totalDislikes > 0 ?
                 (double) totalLikes / (totalLikes + totalDislikes) * 100 : 0;
 
@@ -168,8 +173,10 @@ public class AdminStatsController {
         long newUsersPrevPeriod = userRepository.countByCreatedAtBetween(prevStart, prevEnd);
         summary.setUserGrowth(calculateGrowth(newUsersThisPeriod, newUsersPrevPeriod));
 
-        long likesThisPeriod = reviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, start, end);
-        long likesPrevPeriod = reviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, prevStart, prevEnd);
+        long likesThisPeriod = reviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, start, end)
+                + seriesReviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, start, end);
+        long likesPrevPeriod = reviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, prevStart, prevEnd)
+                + seriesReviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, prevStart, prevEnd);
         summary.setApprovalGrowth(calculateGrowth(likesThisPeriod, likesPrevPeriod));
 
         long redemptionsThisPeriod = redemptionRepository.countByRedemptionDateBetween(start, end);
@@ -200,8 +207,39 @@ public class AdminStatsController {
         return stats;
     }
 
-    private VoteStatsDto calculateVoteStats(LocalDateTime start, LocalDateTime end) {
+    private VoteStatsDto calculateVoteStats(LocalDateTime start, LocalDateTime end,
+                                            LocalDateTime prevStart, LocalDateTime prevEnd) {
+        VoteStatsSectionDto peliculas = calculateVoteStatsPeliculas(start, end);
+        VoteStatsSectionDto series = calculateVoteStatsSeries(start, end);
+
+        VoteStatsSectionDto total = new VoteStatsSectionDto();
+        long totalLikes = peliculas.getTotalLikes() + series.getTotalLikes();
+        long totalDislikes = peliculas.getTotalDislikes() + series.getTotalDislikes();
+        long totalVotes = peliculas.getTotalVotes() + series.getTotalVotes();
+        total.setTotalLikes(totalLikes);
+        total.setTotalDislikes(totalDislikes);
+        total.setTotalVotes(totalVotes);
+        total.setApprovalRate(totalVotes > 0 ? (double) totalLikes / totalVotes * 100 : 0);
+
+        // Crecimiento real: votos totales (Películas + Series) de este período vs. el anterior
+        long votesPrevPeriod =
+                reviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, prevStart, prevEnd)
+                        + reviewRepository.countByVoteTypeInPeriod(VoteType.DISLIKE, prevStart, prevEnd)
+                        + seriesReviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, prevStart, prevEnd)
+                        + seriesReviewRepository.countByVoteTypeInPeriod(VoteType.DISLIKE, prevStart, prevEnd);
+        total.setGrowth(calculateGrowth(totalVotes, votesPrevPeriod));
+
         VoteStatsDto stats = new VoteStatsDto();
+        stats.setTotal(total);
+        stats.setPeliculas(peliculas);
+        stats.setSeries(series);
+        stats.setPctPeliculas(totalVotes > 0 ? (double) peliculas.getTotalVotes() / totalVotes * 100 : 0);
+        stats.setPctSeries(totalVotes > 0 ? (double) series.getTotalVotes() / totalVotes * 100 : 0);
+        return stats;
+    }
+
+    private VoteStatsSectionDto calculateVoteStatsPeliculas(LocalDateTime start, LocalDateTime end) {
+        VoteStatsSectionDto stats = new VoteStatsSectionDto();
 
         long likes = reviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, start, end);
         long dislikes = reviewRepository.countByVoteTypeInPeriod(VoteType.DISLIKE, start, end);
@@ -212,24 +250,47 @@ public class AdminStatsController {
         stats.setTotalVotes(total);
         stats.setApprovalRate(total > 0 ? (double) likes / total * 100 : 0);
 
-        // Top películas más votadas - SANITIZADO
-        stats.setTopMovies(sanitizeMapList(
+        stats.setTopContent(sanitizeMapList(
                 reviewRepository.findTopMoviesByVotes(start, end, PageRequest.of(0, 5))
         ));
-
-        // Top usuarios que más votan - SANITIZADO
         stats.setTopUsers(sanitizeMapList(
                 reviewRepository.findTopUsersByVotes(start, end, PageRequest.of(0, 5))
         ));
 
-        // Tendencia diaria - CORREGIDO con validación null
         Map<String, Long> dailyTrend = new LinkedHashMap<>();
-        List<Object[]> dailyVotes = reviewRepository.getDailyVoteCount(start, end);
-        for (Object[] row : dailyVotes) {
+        for (Object[] row : reviewRepository.getDailyVoteCount(start, end)) {
             if (row[0] != null) {
                 dailyTrend.put(row[0].toString(), ((Number) row[1]).longValue());
-            } else {
+            }
+        }
+        stats.setDailyTrend(dailyTrend);
 
+        return stats;
+    }
+
+    private VoteStatsSectionDto calculateVoteStatsSeries(LocalDateTime start, LocalDateTime end) {
+        VoteStatsSectionDto stats = new VoteStatsSectionDto();
+
+        long likes = seriesReviewRepository.countByVoteTypeInPeriod(VoteType.LIKE, start, end);
+        long dislikes = seriesReviewRepository.countByVoteTypeInPeriod(VoteType.DISLIKE, start, end);
+        long total = likes + dislikes;
+
+        stats.setTotalLikes(likes);
+        stats.setTotalDislikes(dislikes);
+        stats.setTotalVotes(total);
+        stats.setApprovalRate(total > 0 ? (double) likes / total * 100 : 0);
+
+        stats.setTopContent(sanitizeMapList(
+                seriesReviewRepository.findTopSeriesByVotes(start, end, PageRequest.of(0, 5))
+        ));
+        stats.setTopUsers(sanitizeMapList(
+                seriesReviewRepository.findTopUsersByVotes(start, end, PageRequest.of(0, 5))
+        ));
+
+        Map<String, Long> dailyTrend = new LinkedHashMap<>();
+        for (Object[] row : seriesReviewRepository.getDailyVoteCount(start, end)) {
+            if (row[0] != null) {
+                dailyTrend.put(row[0].toString(), ((Number) row[1]).longValue());
             }
         }
         stats.setDailyTrend(dailyTrend);
