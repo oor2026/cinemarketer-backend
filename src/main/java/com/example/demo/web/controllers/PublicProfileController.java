@@ -115,8 +115,10 @@ public class PublicProfileController {
         // ── Stats ──────────────────────────────────────────────
         dto.setSeguidores(followRepository.countByFollowingIdAndStatus(target.getId(), "ACCEPTED"));
         dto.setSiguiendo(followRepository.countByFollowerIdAndStatus(target.getId(), "ACCEPTED"));
-        dto.setTotalVotaciones(reviewRepository.countByUserId(target.getId()));
-        dto.setTotalComentarios(commentRepository.countByUserId(target.getId()));
+        dto.setTotalVotaciones(reviewRepository.countByUserId(target.getId())
+                + seriesReviewRepository.countByUserId(target.getId()));
+        dto.setTotalComentarios(commentRepository.countByUserId(target.getId())
+                + seriesCommentRepository.countByUserId(target.getId()));
         dto.setEsSeguido(me != null &&
                 followRepository.existsByFollowerIdAndFollowingId(me.getId(), target.getId()));
 

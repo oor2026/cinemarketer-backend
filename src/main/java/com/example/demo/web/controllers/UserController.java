@@ -14,6 +14,9 @@ import com.example.demo.application.services.LevelCalculatorService;
 import com.example.demo.domain.comment.CommentRepository;
 import com.example.demo.domain.redemption.RedemptionRepository;
 import com.example.demo.domain.review.ReviewRepository;
+import com.example.demo.domain.series.SeriesReviewRepository;
+import com.example.demo.domain.series.SeriesCommentRepository;
+import com.example.demo.domain.recommendation.SeriesRecommendationRepository;
 import com.example.demo.domain.sweepstake.SweepstakeEntryRepository;
 import com.example.demo.domain.sweepstake.WinnerRepository;
 import com.example.demo.domain.user.*;
@@ -55,6 +58,9 @@ public class UserController {
     private final com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository;
     private final com.example.demo.domain.publication.PublicationRepository publicationRepository;
     private final com.example.demo.domain.comment.CommentReactionRepository commentReactionRepository;
+    private final SeriesReviewRepository seriesReviewRepository;
+    private final SeriesCommentRepository seriesCommentRepository;
+    private final SeriesRecommendationRepository seriesRecommendationRepository;
 
     // ==============================================
     // DEPENDENCIAS
@@ -74,14 +80,14 @@ public class UserController {
             WinnerRepository winnerRepository,
             EmailService emailService,
             PasswordEncoder passwordEncoder,
-            UserDeletionService userDeletionService, com.example.demo.domain.comment.CommentReactionRepository commentReactionRepository,
+            UserDeletionService userDeletionService, com.example.demo.domain.comment.CommentReactionRepository commentReactionRepository, SeriesReviewRepository seriesReviewRepository, SeriesCommentRepository seriesCommentRepository,
             UserService userService,
             LevelCalculatorService levelCalculatorService,
             AvatarService avatarService,
             PointBatchRepository pointBatchRepository,
             UserBlockRepository userBlockRepository,
             UserReportRepository userReportRepository,
-            UserFollowRepository userFollowRepository, com.example.demo.domain.recommendation.MovieRecommendationRepository recommendationRepository, com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, com.example.demo.application.services.NombreReservadoService nombreReservadoService) {
+            UserFollowRepository userFollowRepository, com.example.demo.domain.recommendation.MovieRecommendationRepository recommendationRepository, com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, SeriesRecommendationRepository seriesRecommendationRepository, com.example.demo.application.services.NombreReservadoService nombreReservadoService) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.redemptionRepository = redemptionRepository;
@@ -92,6 +98,8 @@ public class UserController {
         this.passwordEncoder = passwordEncoder;
         this.userDeletionService = userDeletionService;
         this.commentReactionRepository = commentReactionRepository;
+        this.seriesReviewRepository = seriesReviewRepository;
+        this.seriesCommentRepository = seriesCommentRepository;
         this.userService = userService;
         this.levelCalculatorService = levelCalculatorService;
         this.pointBatchRepository = pointBatchRepository;
@@ -102,6 +110,7 @@ public class UserController {
         this.recommendationRepository = recommendationRepository;
         this.pointTransactionRepository = pointTransactionRepository;
         this.publicationRepository = publicationRepository;
+        this.seriesRecommendationRepository = seriesRecommendationRepository;
         this.nombreReservadoService = nombreReservadoService;
     }
 
@@ -109,10 +118,16 @@ public class UserController {
     public ResponseEntity<UserProfileResponse> getCurrentUser() {
         User user = getAuthenticatedUser();
 
-        long reviewsCount          = reviewRepository.countByUserId(user.getId());
+        // Cada métrica suma Películas + Series — son entidades separadas
+        // (SeriesReview/SeriesComment/SeriesRecommendation no reutilizan las
+        // tablas de Películas), así que hay que consultar las dos y sumar.
+        long reviewsCount          = reviewRepository.countByUserId(user.getId())
+                + seriesReviewRepository.countByUserId(user.getId());
         long redemptionsCount      = redemptionRepository.countByUserId(user.getId());
-        long commentsCount         = commentRepository.countCommentsByUserId(user.getId());
-        long recommendacionesCount = recommendationRepository.countBySenderId(user.getId());
+        long commentsCount         = commentRepository.countCommentsByUserId(user.getId())
+                + seriesCommentRepository.countCommentsByUserId(user.getId());
+        long recommendacionesCount = recommendationRepository.countBySenderId(user.getId())
+                + seriesRecommendationRepository.countBySenderId(user.getId());
         long merecePuntosCount     = pointTransactionRepository.countByUserIdAndAction(
                 user.getId(), com.example.demo.domain.point.PointAction.RECEIVE_MERECE_PUNTO);
         long publicationsCount     = publicationRepository.countByUserIdAndHiddenFalse(user.getId());
