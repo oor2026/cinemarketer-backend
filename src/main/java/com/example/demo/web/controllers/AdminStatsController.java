@@ -11,6 +11,7 @@ import com.example.demo.domain.review.ReviewRepository;
 import com.example.demo.domain.review.VoteType;
 import com.example.demo.domain.series.SeriesReviewRepository;
 import com.example.demo.domain.series.SeriesCommentRepository;
+import com.example.demo.domain.recommendation.SeriesRecommendationRepository;
 import com.example.demo.domain.reward.RewardRepository;
 import com.example.demo.domain.subscription.SubscriptionPaymentRepository;
 import com.example.demo.domain.subscription.SubscriptionPlanRepository;
@@ -54,6 +55,7 @@ public class AdminStatsController {
     private final UserBlockRepository userBlockRepository;
     private final UserReportRepository userReportRepository;
     private final MovieRecommendationRepository recommendationRepository;
+    private final SeriesRecommendationRepository seriesRecommendationRepository;
     private final CommentReplyRepository commentReplyRepository;
     private final WatchlistRepository watchlistRepository;
     private final SubscriptionPaymentRepository subscriptionPaymentRepository;
@@ -68,7 +70,7 @@ public class AdminStatsController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository supportTicketRepository,
             PremiumRewardRepository premiumRewardRepository,
-            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository) {
+            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, SeriesRecommendationRepository seriesRecommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.seriesReviewRepository = seriesReviewRepository;
@@ -84,6 +86,7 @@ public class AdminStatsController {
         this.userBlockRepository = userBlockRepository;
         this.userReportRepository = userReportRepository;
         this.recommendationRepository = recommendationRepository;
+        this.seriesRecommendationRepository = seriesRecommendationRepository;
         this.commentReplyRepository = commentReplyRepository;
         this.watchlistRepository = watchlistRepository;
         this.subscriptionPaymentRepository = subscriptionPaymentRepository;
@@ -511,7 +514,33 @@ public class AdminStatsController {
     }
 
     private RecommendationStatsDto calculateRecommendationStats() {
+        RecommendationStatsSectionDto peliculas = calculateRecommendationStatsPeliculas();
+        RecommendationStatsSectionDto series = calculateRecommendationStatsSeries();
+
+        RecommendationStatsSectionDto total = new RecommendationStatsSectionDto();
+        long totalEnviadas = peliculas.getTotalEnviadas() + series.getTotalEnviadas();
+        long totalVistas = peliculas.getTotalVistas() + series.getTotalVistas();
+        long totalCalificadas = peliculas.getTotalCalificadas() + series.getTotalCalificadas();
+        long totalConContexto = peliculas.getTotalConContexto() + series.getTotalConContexto();
+        total.setTotalEnviadas(totalEnviadas);
+        total.setTotalVistas(totalVistas);
+        total.setTasaVisualizacion(totalEnviadas > 0 ? (double) totalVistas / totalEnviadas * 100 : 0);
+        total.setTotalCalificadas(totalCalificadas);
+        total.setTasaCalificacion(totalVistas > 0 ? (double) totalCalificadas / totalVistas * 100 : 0);
+        total.setTotalConContexto(totalConContexto);
+        total.setTasaContexto(totalEnviadas > 0 ? (double) totalConContexto / totalEnviadas * 100 : 0);
+
         RecommendationStatsDto stats = new RecommendationStatsDto();
+        stats.setTotal(total);
+        stats.setPeliculas(peliculas);
+        stats.setSeries(series);
+        stats.setPctPeliculas(totalEnviadas > 0 ? (double) peliculas.getTotalEnviadas() / totalEnviadas * 100 : 0);
+        stats.setPctSeries(totalEnviadas > 0 ? (double) series.getTotalEnviadas() / totalEnviadas * 100 : 0);
+        return stats;
+    }
+
+    private RecommendationStatsSectionDto calculateRecommendationStatsPeliculas() {
+        RecommendationStatsSectionDto stats = new RecommendationStatsSectionDto();
 
         long total = recommendationRepository.count();
         long vistas = recommendationRepository.countBySeenAtIsNotNull();
@@ -526,25 +555,56 @@ public class AdminStatsController {
         stats.setTotalConContexto(conContexto);
         stats.setTasaContexto(total > 0 ? (double) conContexto / total * 100 : 0);
 
-        // Top 5 películas
-        List<Object[]> topPeliculas = recommendationRepository
-                .findTopMoviesByRecommendations(PageRequest.of(0, 5));
-        stats.setTopPeliculas(topPeliculas.stream().map(row -> {
-            Map<String, Object> m = new HashMap<>();
-            m.put("titulo", row[0]);
-            m.put("total", row[1]);
-            return m;
-        }).toList());
+        stats.setTopContent(recommendationRepository.findTopMoviesByRecommendations(PageRequest.of(0, 5))
+                .stream().map(row -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("titulo", row[0]);
+                    m.put("total", row[1]);
+                    return m;
+                }).toList());
 
-        // Top 5 contextos
-        List<Object[]> topContextos = recommendationRepository
-                .findTopContextTypes(PageRequest.of(0, 5));
-        stats.setTopContextos(topContextos.stream().map(row -> {
-            Map<String, Object> m = new HashMap<>();
-            m.put("contexto", row[0]);
-            m.put("total", row[1]);
-            return m;
-        }).toList());
+        stats.setTopContextos(recommendationRepository.findTopContextTypes(PageRequest.of(0, 5))
+                .stream().map(row -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("contexto", row[0]);
+                    m.put("total", row[1]);
+                    return m;
+                }).toList());
+
+        return stats;
+    }
+
+    private RecommendationStatsSectionDto calculateRecommendationStatsSeries() {
+        RecommendationStatsSectionDto stats = new RecommendationStatsSectionDto();
+
+        long total = seriesRecommendationRepository.count();
+        long vistas = seriesRecommendationRepository.countBySeenAtIsNotNull();
+        long calificadas = seriesRecommendationRepository.countByRatingIsNotNull();
+        long conContexto = seriesRecommendationRepository.countByContextTypeIsNotNull();
+
+        stats.setTotalEnviadas(total);
+        stats.setTotalVistas(vistas);
+        stats.setTasaVisualizacion(total > 0 ? (double) vistas / total * 100 : 0);
+        stats.setTotalCalificadas(calificadas);
+        stats.setTasaCalificacion(vistas > 0 ? (double) calificadas / vistas * 100 : 0);
+        stats.setTotalConContexto(conContexto);
+        stats.setTasaContexto(total > 0 ? (double) conContexto / total * 100 : 0);
+
+        stats.setTopContent(seriesRecommendationRepository.findTopSeriesByRecommendations(PageRequest.of(0, 5))
+                .stream().map(row -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("titulo", row[0]);
+                    m.put("total", row[1]);
+                    return m;
+                }).toList());
+
+        stats.setTopContextos(seriesRecommendationRepository.findTopContextTypes(PageRequest.of(0, 5))
+                .stream().map(row -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("contexto", row[0]);
+                    m.put("total", row[1]);
+                    return m;
+                }).toList());
 
         return stats;
     }
