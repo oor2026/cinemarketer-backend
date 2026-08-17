@@ -13,4 +13,6 @@ public interface SeriesWatchlistRepository extends JpaRepository<SeriesWatchlist
     boolean existsByUserIdAndSeriesId(Long userId, Long seriesId);
 
     Optional<SeriesWatchlist> findByIdAndUserId(Long id, Long userId);
+
+    long countByUserId(Long userId);
 }

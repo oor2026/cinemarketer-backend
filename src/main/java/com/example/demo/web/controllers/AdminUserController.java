@@ -19,13 +19,16 @@ import com.example.demo.domain.subscription.UserSubscriptionRepository;
 import com.example.demo.domain.user.*;
 import com.example.demo.application.services.EmailService;
 import com.example.demo.application.dtos.AdminUserDetailDto;
-import com.example.demo.domain.review.ReviewRepository;
 import java.util.stream.Collectors;
 
 import java.util.List;
 import java.util.UUID;
 
 import com.example.demo.domain.watchlist.WatchlistRepository;
+import com.example.demo.domain.watchlist.SeriesWatchlistRepository;
+import com.example.demo.domain.series.SeriesReviewRepository;
+import com.example.demo.domain.series.SeriesCommentRepository;
+import com.example.demo.domain.recommendation.SeriesRecommendationRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -62,6 +65,10 @@ public class AdminUserController {
     private final NotificationService notificationService;
     private final WatchlistRepository watchlistRepository;
     private final MovieRecommendationRepository movieRecommendationRepository;
+    private final SeriesReviewRepository seriesReviewRepository;
+    private final SeriesCommentRepository seriesCommentRepository;
+    private final SeriesRecommendationRepository seriesRecommendationRepository;
+    private final SeriesWatchlistRepository seriesWatchlistRepository;
 
     public AdminUserController(
             UserRepository userRepository,
@@ -73,7 +80,7 @@ public class AdminUserController {
             SupportTicketRepository ticketRepository,
             SupportMessageRepository messageRepository,
             UserSubscriptionRepository subscriptionRepository,
-            EmailService emailService, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, NotificationService notificationService, WatchlistRepository watchlistRepository, MovieRecommendationRepository movieRecommendationRepository) {
+            EmailService emailService, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, NotificationService notificationService, WatchlistRepository watchlistRepository, MovieRecommendationRepository movieRecommendationRepository, SeriesReviewRepository seriesReviewRepository, SeriesCommentRepository seriesCommentRepository, SeriesRecommendationRepository seriesRecommendationRepository, SeriesWatchlistRepository seriesWatchlistRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.redemptionRepository = redemptionRepository;
@@ -89,6 +96,10 @@ public class AdminUserController {
         this.notificationService = notificationService;
         this.watchlistRepository = watchlistRepository;
         this.movieRecommendationRepository = movieRecommendationRepository;
+        this.seriesReviewRepository = seriesReviewRepository;
+        this.seriesCommentRepository = seriesCommentRepository;
+        this.seriesRecommendationRepository = seriesRecommendationRepository;
+        this.seriesWatchlistRepository = seriesWatchlistRepository;
     }
 
     @GetMapping
@@ -345,11 +356,15 @@ public class AdminUserController {
         dto.setPuntosCanjeadosHistorico(user.getTotalRedeemedPoints());
 
         // Actividad
-        dto.setTotalVotaciones(reviewRepository.countByUserId(user.getId()));
-        dto.setTotalComentarios(commentRepository.countByUserId(user.getId()));
-        dto.setTotalRecomendaciones(movieRecommendationRepository.countBySenderId(user.getId()));
+        dto.setTotalVotaciones(reviewRepository.countByUserId(user.getId())
+                + seriesReviewRepository.countByUserId(user.getId()));
+        dto.setTotalComentarios(commentRepository.countByUserId(user.getId())
+                + seriesCommentRepository.countByUserId(user.getId()));
+        dto.setTotalRecomendaciones(movieRecommendationRepository.countBySenderId(user.getId())
+                + seriesRecommendationRepository.countBySenderId(user.getId()));
         dto.setTotalMereceUnPunto(pointTransactionRepository.countByUserIdAndAction(user.getId(), com.example.demo.domain.point.PointAction.RECEIVE_MERECE_PUNTO));
-        dto.setTotalGuardadas(watchlistRepository.countByUserId(user.getId()));
+        dto.setTotalGuardadas(watchlistRepository.countByUserId(user.getId())
+                + seriesWatchlistRepository.countByUserId(user.getId()));
 
         // Premios canjeados
         List<Redemption> canjes = redemptionRepository.findByUserIdOrderByRedemptionDateDesc(user.getId());
