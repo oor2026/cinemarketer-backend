@@ -10,11 +10,12 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CommentStatsDto {
-    private long totalComments;
-    private double commentsPerDay;
-    private double growth;
-    private List<Map<String, Object>> topMovies;
-    private List<Map<String, Object>> topUsers;
+    private CommentStatsSectionDto total;
+    private CommentStatsSectionDto peliculas;
+    private CommentStatsSectionDto series;
+    private double pctPeliculas;
+    private double pctSeries;
+    // Se mantienen a nivel global — CommentReply no distingue Películas/Series
     private long totalReplies;
     private long gifsEnComentarios;
     private long gifsEnRespuestas;
