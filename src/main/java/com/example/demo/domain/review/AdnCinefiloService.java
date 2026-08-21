@@ -3,8 +3,6 @@ package com.example.demo.domain.review;
 import com.example.demo.application.dtos.GenreScoreDto;
 import com.example.demo.domain.watchlist.Watchlist;
 import com.example.demo.domain.watchlist.WatchlistRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +14,6 @@ public class AdnCinefiloService {
 
     private final AdnCinefiloRepository adnCinefiloRepository;
     private final WatchlistRepository watchlistRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<GenreScoreDto> calcular(Long userId) {
         Map<String, Integer> puntos = new HashMap<>();
@@ -30,9 +27,7 @@ public class AdnCinefiloService {
         for (Watchlist w : watchlistRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
             if (w.getMovieGenres() == null) continue;
             try {
-                List<String> generos = objectMapper.readValue(
-                        w.getMovieGenres(), new TypeReference<List<String>>() {});
-                for (String genero : generos) {
+                for (String genero : parsearGenerosJson(w.getMovieGenres())) {
                     puntos.merge(genero, 4, Integer::sum);
                 }
             } catch (Exception e) {
@@ -51,5 +46,24 @@ public class AdnCinefiloService {
                         e.getValue(),
                         Math.round(e.getValue() * 1000.0 / total) / 10.0))
                 .toList();
+    }
+
+    /**
+     * Parsea a mano un array JSON simple de strings, ej: ["Acción","Drama"]
+     * Evita depender de Jackson clásico, que no está disponible en este proyecto (usa Jackson 3).
+     */
+    private List<String> parsearGenerosJson(String json) {
+        List<String> resultado = new ArrayList<>();
+        if (json == null || json.isBlank()) return resultado;
+        String limpio = json.trim();
+        if (limpio.startsWith("[")) limpio = limpio.substring(1);
+        if (limpio.endsWith("]")) limpio = limpio.substring(0, limpio.length() - 1);
+        for (String parte : limpio.split(",")) {
+            String genero = parte.trim();
+            if (genero.startsWith("\"")) genero = genero.substring(1);
+            if (genero.endsWith("\"")) genero = genero.substring(0, genero.length() - 1);
+            if (!genero.isBlank()) resultado.add(genero);
+        }
+        return resultado;
     }
 }
