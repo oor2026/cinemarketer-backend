@@ -283,4 +283,30 @@ public interface UserRepository extends JpaRepository<User, Long> {
             ") ranked WHERE posicion <= 25 OR id = :userId ORDER BY posicion",
             nativeQuery = true)
     List<Object[]> findRankingTriviaSeries(@Param("userId") Long userId);
+
+    // ==============================================
+    // POSICIÓN INDIVIDUAL EN RANKING (perfil "Saber")
+    // A diferencia de findRankingTrivia/findRankingTriviaSeries (que traen
+    // Top 25 + un usuario extra, pensado para la pantalla de ranking del
+    // usuario logueado), estos devuelven SOLO la posición de un userId
+    // puntual — para mostrarla en el perfil público de cualquier usuario
+    // que se esté viendo. Optional vacío = nunca jugó (mismo filtro
+    // trivia_aciertos_total > 0 / trivia_series_aciertos_total > 0 que ya
+    // usa el ranking) — así el frontend no muestra "Ranking #0" ni nada
+    // raro, simplemente no renderiza el bloque.
+    // ==============================================
+
+    @Query(value = "SELECT posicion FROM (" +
+            "  SELECT id, ROW_NUMBER() OVER (ORDER BY trivia_aciertos_total DESC, trivia_tiempo_total_segundos ASC) as posicion " +
+            "  FROM users WHERE trivia_aciertos_total > 0" +
+            ") ranked WHERE id = :userId",
+            nativeQuery = true)
+    Optional<Long> findPosicionRankingTrivia(@Param("userId") Long userId);
+
+    @Query(value = "SELECT posicion FROM (" +
+            "  SELECT id, ROW_NUMBER() OVER (ORDER BY trivia_series_aciertos_total DESC, trivia_series_tiempo_total_segundos ASC) as posicion " +
+            "  FROM users WHERE trivia_series_aciertos_total > 0" +
+            ") ranked WHERE id = :userId",
+            nativeQuery = true)
+    Optional<Long> findPosicionRankingTriviaSeries(@Param("userId") Long userId);
 }

@@ -11,9 +11,18 @@ import java.util.Optional;
 public interface SeriesRecommendationRepository extends JpaRepository<SeriesRecommendation, Long> {
 
     List<SeriesRecommendation> findByReceiverIdOrderByCreatedAtDesc(Long receiverId);
+    List<SeriesRecommendation> findBySenderIdOrderByCreatedAtDesc(Long senderId);
     boolean existsBySenderIdAndReceiverIdAndSeriesId(Long senderId, Long receiverId, Long seriesId);
     Optional<SeriesRecommendation> findByIdAndReceiverId(Long id, Long receiverId);
     long countBySenderId(Long senderId);
+
+    // Mismo criterio que MovieRecommendationRepository — agrupado por
+    // serie, con el conteo real de veces recomendada.
+    @Query("SELECT sr.seriesId, sr.seriesTitle, sr.seriesPosterPath, COUNT(sr) as veces, MAX(sr.createdAt) as ultima " +
+            "FROM SeriesRecommendation sr WHERE sr.sender.id = :senderId " +
+            "GROUP BY sr.seriesId, sr.seriesTitle, sr.seriesPosterPath " +
+            "ORDER BY ultima DESC")
+    List<Object[]> findRecomendadasAgrupadasBySenderId(@Param("senderId") Long senderId);
     long countBySeenAtIsNotNull();
     long countByRatingIsNotNull();
     long countByContextTypeIsNotNull();

@@ -5,6 +5,7 @@ import com.example.demo.domain.comment.Comment;
 import com.example.demo.domain.comment.CommentRepository;
 import com.example.demo.domain.comment.CommentReactionRepository;
 import com.example.demo.domain.comment.CommentReply;
+import com.example.demo.domain.review.AdnCinefiloService;
 import com.example.demo.domain.comment.CommentReplyRepository;
 import com.example.demo.domain.comment.ReactionType;
 import com.example.demo.domain.follow.UserFollow;
@@ -50,6 +51,12 @@ public class PublicProfileController {
     private final SeriesCommentRepository seriesCommentRepository;
     private final SeriesCommentReactionRepository seriesCommentReactionRepository;
     private final SeriesCommentReplyRepository seriesCommentReplyRepository;
+    private final AdnCinefiloService adnCinefiloService;
+    private final com.example.demo.domain.series.AdnCinefiloSeriesService adnCinefiloSeriesService;
+    private final com.example.demo.domain.recommendation.MovieRecommendationRepository movieRecommendationRepository;
+    private final com.example.demo.domain.watchlist.WatchlistRepository watchlistRepository;
+    private final com.example.demo.domain.recommendation.SeriesRecommendationRepository seriesRecommendationRepository;
+    private final com.example.demo.domain.watchlist.SeriesWatchlistRepository seriesWatchlistRepository;
 
     public PublicProfileController(UserRepository userRepository,
                                    UserFollowRepository followRepository,
@@ -63,7 +70,7 @@ public class PublicProfileController {
                                    com.example.demo.domain.series.SeriesRepository seriesRepository,
                                    SeriesCommentRepository seriesCommentRepository,
                                    SeriesCommentReactionRepository seriesCommentReactionRepository,
-                                   SeriesCommentReplyRepository seriesCommentReplyRepository) {
+                                   SeriesCommentReplyRepository seriesCommentReplyRepository, AdnCinefiloService adnCinefiloService, com.example.demo.domain.series.AdnCinefiloSeriesService adnCinefiloSeriesService, com.example.demo.domain.recommendation.MovieRecommendationRepository movieRecommendationRepository, com.example.demo.domain.watchlist.WatchlistRepository watchlistRepository, com.example.demo.domain.recommendation.SeriesRecommendationRepository seriesRecommendationRepository, com.example.demo.domain.watchlist.SeriesWatchlistRepository seriesWatchlistRepository, com.example.demo.domain.recommendation.SeriesRecommendationRepository seriesRecommendationRepository1, com.example.demo.domain.watchlist.SeriesWatchlistRepository seriesWatchlistRepository1) {
         this.userRepository = userRepository;
         this.followRepository = followRepository;
         this.reviewRepository = reviewRepository;
@@ -77,6 +84,12 @@ public class PublicProfileController {
         this.seriesCommentRepository = seriesCommentRepository;
         this.seriesCommentReactionRepository = seriesCommentReactionRepository;
         this.seriesCommentReplyRepository = seriesCommentReplyRepository;
+        this.adnCinefiloService = adnCinefiloService;
+        this.adnCinefiloSeriesService = adnCinefiloSeriesService;
+        this.movieRecommendationRepository = movieRecommendationRepository;
+        this.watchlistRepository = watchlistRepository;
+        this.seriesRecommendationRepository = seriesRecommendationRepository1;
+        this.seriesWatchlistRepository = seriesWatchlistRepository1;
     }
 
     @GetMapping("/{id}/profile")
@@ -111,6 +124,24 @@ public class PublicProfileController {
         dto.setMiembroDesde(formatMiembroDesde(target.getCreatedAt()));
         dto.setBioTitulo(target.getBioTitulo());
         dto.setBioTexto(target.getBioTexto());
+        dto.setPeliculaFavoritaId(target.getPeliculaFavoritaId());
+        dto.setUltimaVistaCineId(target.getUltimaVistaCineId());
+        dto.setNoMeCansoDeVerId(target.getNoMeCansoDeVerId());
+        dto.setNoLaBancoId(target.getNoLaBancoId());
+        dto.setSerieFavoritaId(target.getSerieFavoritaId());
+        dto.setUltimaMaratonId(target.getUltimaMaratonId());
+        dto.setNoMeCansoDeVerSerieId(target.getNoMeCansoDeVerSerieId());
+        dto.setNoLaBancoSerieId(target.getNoLaBancoSerieId());
+        dto.setAdnCinefilo(adnCinefiloService.calcular(target.getId()));
+        dto.setAdnCinefiloSeries(adnCinefiloSeriesService.calcular(target.getId()));
+
+        // Pilar "Saber" — posición en el ranking de Trivia (null = nunca jugó, no se muestra nada)
+        dto.setRankingTriviaPeliculas(
+                userRepository.findPosicionRankingTrivia(target.getId()).map(Long::intValue).orElse(null)
+        );
+        dto.setRankingTriviaSeries(
+                userRepository.findPosicionRankingTriviaSeries(target.getId()).map(Long::intValue).orElse(null)
+        );
 
         // ── Stats ──────────────────────────────────────────────
         dto.setSeguidores(followRepository.countByFollowingIdAndStatus(target.getId(), "ACCEPTED"));
@@ -119,6 +150,20 @@ public class PublicProfileController {
                 + seriesReviewRepository.countByUserId(target.getId()));
         dto.setTotalComentarios(commentRepository.countByUserId(target.getId())
                 + seriesCommentRepository.countByUserId(target.getId()));
+        dto.setTotalRecomendadas(movieRecommendationRepository.countBySenderId(target.getId())
+                + seriesRecommendationRepository.countBySenderId(target.getId()));
+        dto.setTotalGuardadas(watchlistRepository.countByUserId(target.getId())
+                + seriesWatchlistRepository.countByUserId(target.getId()));
+
+        // Conteos individuales por tipo — para los títulos "(N)" de cada mazo
+        dto.setTotalVotacionesPeliculas(reviewRepository.countByUserId(target.getId()));
+        dto.setTotalVotacionesSeries(seriesReviewRepository.countByUserId(target.getId()));
+        dto.setTotalComentariosPeliculas(commentRepository.countByUserId(target.getId()));
+        dto.setTotalComentariosSeries(seriesCommentRepository.countByUserId(target.getId()));
+        dto.setTotalRecomendadasPeliculas(movieRecommendationRepository.countBySenderId(target.getId()));
+        dto.setTotalRecomendadasSeries(seriesRecommendationRepository.countBySenderId(target.getId()));
+        dto.setTotalGuardadasPeliculas(watchlistRepository.countByUserId(target.getId()));
+        dto.setTotalGuardadasSeries(seriesWatchlistRepository.countByUserId(target.getId()));
         dto.setEsSeguido(me != null &&
                 followRepository.existsByFollowerIdAndFollowingId(me.getId(), target.getId()));
 
@@ -230,6 +275,54 @@ public class PublicProfileController {
 
             return cd;
         }).toList());
+
+        // ── Últimas recomendadas, agrupadas por película (máx 8 pósters
+        // distintos) — cada póster aparece una sola vez con la cantidad
+        // real de veces que se recomendó, no un póster por destinatario.
+        dto.setUltimasRecomendadas(movieRecommendationRepository
+                .findRecomendadasAgrupadasBySenderId(target.getId())
+                .stream().limit(8).map(row -> {
+                    PublicProfileDto.RecomendadaDto rd = new PublicProfileDto.RecomendadaDto();
+                    rd.setMovieId((Long) row[0]);
+                    rd.setMovieTitle((String) row[1]);
+                    rd.setPosterPath((String) row[2]);
+                    rd.setVeces((Long) row[3]);
+                    return rd;
+                }).toList());
+
+        // ── Últimas recomendadas de series, mismo criterio agrupado ──
+        dto.setUltimasRecomendadasSeries(seriesRecommendationRepository
+                .findRecomendadasAgrupadasBySenderId(target.getId())
+                .stream().limit(8).map(row -> {
+                    PublicProfileDto.RecomendadaSerieDto rd = new PublicProfileDto.RecomendadaSerieDto();
+                    rd.setSeriesId((Long) row[0]);
+                    rd.setSeriesTitle((String) row[1]);
+                    rd.setPosterPath((String) row[2]);
+                    rd.setVeces((Long) row[3]);
+                    return rd;
+                }).toList());
+
+        // ── Últimas guardadas (máx 8) ───────────────────────────
+        dto.setUltimasGuardadas(watchlistRepository
+                .findByUserIdOrderByCreatedAtDesc(target.getId())
+                .stream().limit(8).map(w -> {
+                    PublicProfileDto.GuardadaDto gd = new PublicProfileDto.GuardadaDto();
+                    gd.setMovieId(w.getMovieId());
+                    gd.setMovieTitle(w.getMovieTitle());
+                    gd.setPosterPath(w.getMoviePosterPath());
+                    return gd;
+                }).toList());
+
+        // ── Últimas guardadas de series (máx 8) ─────────────────
+        dto.setUltimasGuardadasSeries(seriesWatchlistRepository
+                .findByUserIdOrderByCreatedAtDesc(target.getId())
+                .stream().limit(8).map(w -> {
+                    PublicProfileDto.GuardadaSerieDto gd = new PublicProfileDto.GuardadaSerieDto();
+                    gd.setSeriesId(w.getSeriesId());
+                    gd.setSeriesTitle(w.getSeriesTitle());
+                    gd.setPosterPath(w.getSeriesPosterPath());
+                    return gd;
+                }).toList());
 
         return ResponseEntity.ok(dto);
     }

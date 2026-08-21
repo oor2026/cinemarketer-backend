@@ -10,6 +10,8 @@ import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.review.VoteType;
 import com.example.demo.domain.series.Series;
 import com.example.demo.domain.series.SeriesRepository;
+import com.example.demo.domain.genre.Genre;
+import com.example.demo.domain.genre.GenreRepository;
 import com.example.demo.domain.series.SeriesReview;
 import com.example.demo.domain.series.SeriesReviewRepository;
 import com.example.demo.domain.series.VotoRelampagoOmitidaSerie;
@@ -25,6 +27,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -38,6 +41,7 @@ public class SeriesReviewController {
     private final SeriesService seriesService;
     private final SeriesRepository seriesRepository;
     private final VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository;
+    private final GenreRepository genreRepository;
 
     public SeriesReviewController(
             SeriesReviewRepository seriesReviewRepository,
@@ -46,7 +50,8 @@ public class SeriesReviewController {
             PointTransactionService pointTransactionService,
             SeriesService seriesService,
             SeriesRepository seriesRepository,
-            VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository
+            VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository,
+            GenreRepository genreRepository
     ) {
         this.seriesReviewRepository = seriesReviewRepository;
         this.userRepository = userRepository;
@@ -55,6 +60,7 @@ public class SeriesReviewController {
         this.seriesService = seriesService;
         this.seriesRepository = seriesRepository;
         this.votoRelampagoOmitidaSerieRepository = votoRelampagoOmitidaSerieRepository;
+        this.genreRepository = genreRepository;
     }
 
     @PostMapping("/series/{seriesId}")
@@ -119,6 +125,22 @@ public class SeriesReviewController {
                 newSeries.setVoteCount(tmdbSeries.getVoteCount());
                 newSeries.setPopularity(tmdbSeries.getPopularity());
                 newSeries.setActive(true);
+
+                if (tmdbSeries.getGenres() != null) {
+                    List<Genre> generos = new java.util.ArrayList<>();
+                    for (com.example.demo.application.dtos.external.tmdb.TmdbGenreDto g : tmdbSeries.getGenres()) {
+                        Genre genero = genreRepository.findByTmdbGenreId(g.getId().intValue())
+                                .orElseGet(() -> {
+                                    Genre nuevo = new Genre();
+                                    nuevo.setName(g.getName());
+                                    nuevo.setTmdbGenreId(g.getId().intValue());
+                                    nuevo.setActive(true);
+                                    return genreRepository.save(nuevo);
+                                });
+                        generos.add(genero);
+                    }
+                    newSeries.setGenres(generos);
+                }
 
                 try {
                     serie = seriesRepository.save(newSeries);
