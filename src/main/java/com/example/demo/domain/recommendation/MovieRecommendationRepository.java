@@ -11,9 +11,20 @@ import java.util.Optional;
 public interface MovieRecommendationRepository extends JpaRepository<MovieRecommendation, Long> {
 
     List<MovieRecommendation> findByReceiverIdOrderByCreatedAtDesc(Long receiverId);
+    List<MovieRecommendation> findBySenderIdOrderByCreatedAtDesc(Long senderId);
     boolean existsBySenderIdAndReceiverIdAndMovieId(Long senderId, Long receiverId, Long movieId);
     Optional<MovieRecommendation> findByIdAndReceiverId(Long id, Long receiverId);
     long countBySenderId(Long senderId);
+
+    // Recomendadas agrupadas por película — para no repetir el mismo
+    // póster una vez por cada destinatario. "veces" cuenta TODAS las
+    // recomendaciones de esa película (no solo las últimas N), así que
+    // el número es siempre real aunque después se recorte a un top-N.
+    @Query("SELECT mr.movieId, mr.movieTitle, mr.moviePosterPath, COUNT(mr) as veces, MAX(mr.createdAt) as ultima " +
+            "FROM MovieRecommendation mr WHERE mr.sender.id = :senderId " +
+            "GROUP BY mr.movieId, mr.movieTitle, mr.moviePosterPath " +
+            "ORDER BY ultima DESC")
+    List<Object[]> findRecomendadasAgrupadasBySenderId(@Param("senderId") Long senderId);
     long countBySeenAtIsNotNull();
     long countByRatingIsNotNull();
     long countByContextTypeIsNotNull();

@@ -129,6 +129,13 @@ public class UserProfileResponse {
      */
     private String profileVisibility;
 
+    /**
+     * ID de TMDb de la película favorita elegida a mano por el usuario.
+     * Null si todavía no eligió ninguna. El frontend resuelve poster/título
+     * contra GET /movies/{id}, igual que la Ficha técnica de Creator Tools.
+     */
+    private Integer peliculaFavoritaId;
+
     private int recommendationsCount;
 // + getter y setter
 

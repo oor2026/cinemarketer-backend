@@ -531,9 +531,9 @@ public class UserController {
                 return ResponseEntity.badRequest()
                         .body(Map.of("message", "El título no puede superar los 50 caracteres"));
             }
-            if (bioTexto.length() > 180) {
+            if (bioTexto.length() > 255) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("message", "La descripción no puede superar los 180 caracteres"));
+                        .body(Map.of("message", "La descripción no puede superar los 255 caracteres"));
             }
 
             user.setBioTitulo(bioTitulo.isEmpty() ? null : bioTitulo);
@@ -550,6 +550,138 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("message", "Error al actualizar la biografía", "success", false));
+        }
+    }
+
+    /**
+     * Actualiza la película favorita del perfil público
+     * PATCH /api/users/me/pelicula-favorita
+     */
+    @PatchMapping("/me/pelicula-favorita")
+    public ResponseEntity<?> updatePeliculaFavorita(@RequestBody Map<String, Integer> body) {
+        try {
+            User user = getAuthenticatedUser();
+
+            Integer movieId = body.get("movieId");
+            if (movieId == null) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "Falta el ID de la película"));
+            }
+
+            user.setPeliculaFavoritaId(movieId);
+            userRepository.save(user);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Película favorita actualizada correctamente",
+                    "peliculaFavoritaId", movieId,
+                    "success", true
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Error al actualizar la película favorita", "success", false));
+        }
+    }
+
+    @PatchMapping("/me/ultima-vista-cine")
+    public ResponseEntity<?> updateUltimaVistaCine(@RequestBody Map<String, Integer> body) {
+        try {
+            User user = getAuthenticatedUser();
+            Integer movieId = body.get("movieId");
+            if (movieId == null) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la película"));
+            }
+            user.setUltimaVistaCineId(movieId);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "ultimaVistaCineId", movieId, "success", true));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));
+        }
+    }
+
+    @PatchMapping("/me/no-me-canso-de-ver")
+    public ResponseEntity<?> updateNoMeCansoDeVer(@RequestBody Map<String, Integer> body) {
+        try {
+            User user = getAuthenticatedUser();
+            Integer movieId = body.get("movieId");
+            if (movieId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la película"));
+            user.setNoMeCansoDeVerId(movieId);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noMeCansoDeVerId", movieId, "success", true));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));
+        }
+    }
+
+    @PatchMapping("/me/no-la-banco")
+    public ResponseEntity<?> updateNoLaBanco(@RequestBody Map<String, Integer> body) {
+        try {
+            User user = getAuthenticatedUser();
+            Integer movieId = body.get("movieId");
+            if (movieId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la película"));
+            user.setNoLaBancoId(movieId);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noLaBancoId", movieId, "success", true));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));
+        }
+    }
+
+    // ── Equivalentes de Series de los 4 endpoints de arriba ──────────────
+
+    @PatchMapping("/me/serie-favorita")
+    public ResponseEntity<?> updateSerieFavorita(@RequestBody Map<String, Integer> body) {
+        try {
+            User user = getAuthenticatedUser();
+            Integer seriesId = body.get("seriesId");
+            if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
+            user.setSerieFavoritaId(seriesId);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("message", "Serie favorita actualizada correctamente", "serieFavoritaId", seriesId, "success", true));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar la serie favorita", "success", false));
+        }
+    }
+
+    @PatchMapping("/me/ultima-maraton")
+    public ResponseEntity<?> updateUltimaMaraton(@RequestBody Map<String, Integer> body) {
+        try {
+            User user = getAuthenticatedUser();
+            Integer seriesId = body.get("seriesId");
+            if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
+            user.setUltimaMaratonId(seriesId);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "ultimaMaratonId", seriesId, "success", true));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));
+        }
+    }
+
+    @PatchMapping("/me/no-me-canso-de-ver-serie")
+    public ResponseEntity<?> updateNoMeCansoDeVerSerie(@RequestBody Map<String, Integer> body) {
+        try {
+            User user = getAuthenticatedUser();
+            Integer seriesId = body.get("seriesId");
+            if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
+            user.setNoMeCansoDeVerSerieId(seriesId);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noMeCansoDeVerSerieId", seriesId, "success", true));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));
+        }
+    }
+
+    @PatchMapping("/me/no-la-banco-serie")
+    public ResponseEntity<?> updateNoLaBancoSerie(@RequestBody Map<String, Integer> body) {
+        try {
+            User user = getAuthenticatedUser();
+            Integer seriesId = body.get("seriesId");
+            if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
+            user.setNoLaBancoSerieId(seriesId);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noLaBancoSerieId", seriesId, "success", true));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));
         }
     }
 

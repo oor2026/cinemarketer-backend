@@ -8,6 +8,8 @@ import com.example.demo.application.services.PointConfigService;
 import com.example.demo.application.services.PointTransactionService;
 import com.example.demo.domain.movie.Movie;
 import com.example.demo.domain.movie.MovieRepository;
+import com.example.demo.domain.genre.Genre;
+import com.example.demo.domain.genre.GenreRepository;
 import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.review.*;
 import java.util.List;
@@ -37,6 +39,7 @@ public class ReviewController {
     private final MovieService movieService;
     private final MovieRepository movieRepository;
     private final VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository;
+    private final GenreRepository genreRepository;
 
     public ReviewController(
             ReviewRepository reviewRepository,
@@ -45,7 +48,8 @@ public class ReviewController {
             PointTransactionService pointTransactionService,
             MovieService movieService,
             MovieRepository movieRepository,
-            VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository
+            VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository,
+            GenreRepository genreRepository
     ) {
         this.reviewRepository = reviewRepository;
         this.userRepository = userRepository;
@@ -54,6 +58,7 @@ public class ReviewController {
         this.movieService = movieService;
         this.movieRepository = movieRepository;
         this.votoRelampagoOmitidaRepository = votoRelampagoOmitidaRepository;
+        this.genreRepository = genreRepository;
     }
 
     @PostMapping("/movies/{movieId}")
@@ -120,6 +125,22 @@ public class ReviewController {
                 newMovie.setVoteCount(tmdbMovie.getVoteCount());
                 newMovie.setPopularity(tmdbMovie.getPopularity());
                 newMovie.setActive(true);
+
+                if (tmdbMovie.getGenres() != null) {
+                    List<Genre> generos = new java.util.ArrayList<>();
+                    for (TmdbMovieDto.TmdbGenreDto g : tmdbMovie.getGenres()) {
+                        Genre genero = genreRepository.findByTmdbGenreId(g.getId())
+                                .orElseGet(() -> {
+                                    Genre nuevo = new Genre();
+                                    nuevo.setName(g.getName());
+                                    nuevo.setTmdbGenreId(g.getId());
+                                    nuevo.setActive(true);
+                                    return genreRepository.save(nuevo);
+                                });
+                        generos.add(genero);
+                    }
+                    newMovie.setGenres(generos);
+                }
 
                 try {
                     movie = movieRepository.save(newMovie);

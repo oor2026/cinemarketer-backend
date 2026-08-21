@@ -173,8 +173,34 @@ public class User {
     @Column(name = "bio_titulo", length = 50)
     private String bioTitulo;
 
-    @Column(name = "bio_texto", length = 200)
+    @Column(name = "bio_texto", length = 255)
     private String bioTexto;
+
+    @Column(name = "pelicula_favorita_id")
+    private Integer peliculaFavoritaId;
+
+    @Column(name = "ultima_vista_cine_id")
+    private Integer ultimaVistaCineId;
+
+    @Column(name = "no_me_canso_de_ver_id")
+    private Integer noMeCansoDeVerId;
+
+    @Column(name = "no_la_banco_id")
+    private Integer noLaBancoId;
+
+    // Equivalentes de Series de los 4 campos de arriba — misma lógica,
+    // solo que guardan el tmdb_id de una serie en vez de una película.
+    @Column(name = "serie_favorita_id")
+    private Integer serieFavoritaId;
+
+    @Column(name = "ultima_maraton_id")
+    private Integer ultimaMaratonId;
+
+    @Column(name = "no_me_canso_de_ver_serie_id")
+    private Integer noMeCansoDeVerSerieId;
+
+    @Column(name = "no_la_banco_serie_id")
+    private Integer noLaBancoSerieId;
 
     @Column(name = "profile_visibility", length = 20, nullable = false)
     private String profileVisibility = "PUBLIC";
