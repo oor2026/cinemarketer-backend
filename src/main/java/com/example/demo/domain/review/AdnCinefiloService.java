@@ -24,16 +24,12 @@ public class AdnCinefiloService {
             puntos.merge(genero, peso, Integer::sum);
         }
 
-        for (Watchlist w : watchlistRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
-            if (w.getMovieGenres() == null) continue;
-            try {
-                for (String genero : parsearGenerosJson(w.getMovieGenres())) {
-                    puntos.merge(genero, 4, Integer::sum);
-                }
-            } catch (Exception e) {
-                // JSON corrupto o vacío en esa fila puntual — se ignora, no rompe el resto del cálculo
-            }
-        }
+        // "Guardadas" queda fuera del ADN Cinéfilo — es señal de
+        // engagement (quiero que esto persista), no de sentimiento
+        // hacia el género: no sabemos si guardó para verla, para
+        // armar una colección, o para recordar que NO la quiere
+        // volver a ver. Ponderarla sería inventar una señal que no
+        // tenemos.
 
         int total = puntos.values().stream().filter(v -> v > 0).mapToInt(Integer::intValue).sum();
         if (total <= 0) return List.of();
