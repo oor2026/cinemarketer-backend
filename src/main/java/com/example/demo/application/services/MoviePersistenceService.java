@@ -61,6 +61,12 @@ public class MoviePersistenceService {
                 generos.add(genero);
             }
             newMovie.setGenres(generos);
+            // El primero del array de TMDb — orden que movie_genre no
+            // preserva, por eso se guarda aparte acá, en el momento en
+            // que sí lo tenemos fresco desde la API.
+            if (!generos.isEmpty()) {
+                newMovie.setGeneroPrincipal(generos.get(0));
+            }
         }
 
         try {

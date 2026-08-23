@@ -48,10 +48,6 @@ public class SeriesPersistenceService {
         if (tmdbSeries.getGenres() != null) {
             List<Genre> generos = new ArrayList<>();
             for (var g : tmdbSeries.getGenres()) {
-                // TmdbSeriesDto usa el TmdbGenreDto "top-level" (id: Long),
-                // distinto del anidado TmdbMovieDto.TmdbGenreDto (id: Integer)
-                // que usa Películas — GenreRepository espera Integer en los
-                // dos casos, así que acá hace falta la conversión explícita.
                 Integer generoTmdbId = g.getId() != null ? g.getId().intValue() : null;
                 Genre genero = genreRepository.findByTmdbGenreId(generoTmdbId)
                         .orElseGet(() -> {
@@ -64,6 +60,9 @@ public class SeriesPersistenceService {
                 generos.add(genero);
             }
             nuevaSerie.setGenres(generos);
+            if (!generos.isEmpty()) {
+                nuevaSerie.setGeneroPrincipal(generos.get(0));
+            }
         }
 
         try {

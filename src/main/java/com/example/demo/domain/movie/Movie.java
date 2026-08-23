@@ -59,6 +59,14 @@ public class Movie {
     )
     private List<Genre> genres;  // Ahora es una lista de objetos Genre
 
+    // Género principal según TMDb: el primero del array genres[] que
+    // devuelve la API — no es una garantía oficial de TMDb, es la
+    // convención que usamos para el ADN Cinéfilo. movie_genre (arriba)
+    // no preserva ese orden, por eso hace falta esta columna aparte.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "genero_principal_id")
+    private Genre generoPrincipal;
+
     @Column(name = "original_language", length = 10)
     private String originalLanguage;
 
