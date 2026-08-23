@@ -23,4 +23,5 @@ public class StatsResponseDto {
     private WatchlistStatsDto watchlist;
     private RevenueStatsDto revenue;
     private PublicationStatsDto publications;
+    private NoVistasStatsDto noVistas;
 }
