@@ -575,7 +575,12 @@ public class UserController {
             // Persiste la película localmente si todavía no existe (por ej.
             // si el usuario nunca la votó/comentó) — así el perfil no
             // depende de pegarle a TMDb en vivo cada vez que alguien lo mira.
-            moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
+            // Envuelto aparte: si TMDb está caída, la elección se guarda
+            // igual — la persistencia del catálogo queda pendiente para
+            // la próxima interacción con esta misma película.
+            try {
+                moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
+            } catch (Exception ignored) {}
 
             user.setPeliculaFavoritaId(movieId);
             userRepository.save(user);
@@ -600,7 +605,9 @@ public class UserController {
             if (movieId == null) {
                 return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la película"));
             }
-            moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
+            try {
+                moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
+            } catch (Exception ignored) {}
             user.setUltimaVistaCineId(movieId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "ultimaVistaCineId", movieId, "success", true));
@@ -615,7 +622,9 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer movieId = body.get("movieId");
             if (movieId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la película"));
-            moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
+            try {
+                moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
+            } catch (Exception ignored) {}
             user.setNoMeCansoDeVerId(movieId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noMeCansoDeVerId", movieId, "success", true));
@@ -630,7 +639,9 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer movieId = body.get("movieId");
             if (movieId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la película"));
-            moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
+            try {
+                moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
+            } catch (Exception ignored) {}
             user.setNoLaBancoId(movieId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noLaBancoId", movieId, "success", true));
@@ -647,7 +658,9 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer seriesId = body.get("seriesId");
             if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
-            seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
+            try {
+                seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
+            } catch (Exception ignored) {}
             user.setSerieFavoritaId(seriesId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Serie favorita actualizada correctamente", "serieFavoritaId", seriesId, "success", true));
@@ -662,7 +675,9 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer seriesId = body.get("seriesId");
             if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
-            seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
+            try {
+                seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
+            } catch (Exception ignored) {}
             user.setUltimaMaratonId(seriesId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "ultimaMaratonId", seriesId, "success", true));
@@ -677,7 +692,9 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer seriesId = body.get("seriesId");
             if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
-            seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
+            try {
+                seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
+            } catch (Exception ignored) {}
             user.setNoMeCansoDeVerSerieId(seriesId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noMeCansoDeVerSerieId", seriesId, "success", true));
@@ -692,7 +709,9 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer seriesId = body.get("seriesId");
             if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
-            seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
+            try {
+                seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
+            } catch (Exception ignored) {}
             user.setNoLaBancoSerieId(seriesId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noLaBancoSerieId", seriesId, "success", true));

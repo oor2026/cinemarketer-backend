@@ -208,8 +208,12 @@ public class CommentController {
         // Persiste la película localmente si todavía no existe — así queda
         // resuelta de una sola vez, sea o no que este comentario otorgue
         // puntos. Mismo criterio que ya aplicamos en votos, gustos y
-        // recomendaciones.
-        Movie movie = moviePersistenceService.obtenerOCrearPelicula(movieId);
+        // recomendaciones. Si TMDb falla, el comentario se crea igual —
+        // el fallback de abajo (movie == null) ya cubre ese caso.
+        Movie movie = null;
+        try {
+            movie = moviePersistenceService.obtenerOCrearPelicula(movieId);
+        } catch (Exception ignored) {}
 
         Comment comment = new Comment();
         comment.setUser(user);
