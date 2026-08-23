@@ -62,6 +62,8 @@ public class AdminStatsController {
     private final SeriesWatchlistRepository seriesWatchlistRepository;
     private final SubscriptionPaymentRepository subscriptionPaymentRepository;
     private final com.example.demo.domain.publication.PublicationRepository publicationRepository;
+    private final com.example.demo.domain.review.VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository;
+    private final com.example.demo.domain.series.VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository;
 
     public AdminStatsController(
             UserRepository userRepository,
@@ -72,7 +74,7 @@ public class AdminStatsController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository supportTicketRepository,
             PremiumRewardRepository premiumRewardRepository,
-            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, SeriesRecommendationRepository seriesRecommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SeriesWatchlistRepository seriesWatchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository) {
+            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, SeriesRecommendationRepository seriesRecommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SeriesWatchlistRepository seriesWatchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, com.example.demo.domain.review.VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository, com.example.demo.domain.series.VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.seriesReviewRepository = seriesReviewRepository;
@@ -94,6 +96,8 @@ public class AdminStatsController {
         this.seriesWatchlistRepository = seriesWatchlistRepository;
         this.subscriptionPaymentRepository = subscriptionPaymentRepository;
         this.publicationRepository = publicationRepository;
+        this.votoRelampagoOmitidaRepository = votoRelampagoOmitidaRepository;
+        this.votoRelampagoOmitidaSerieRepository = votoRelampagoOmitidaSerieRepository;
     }
 
     @GetMapping
@@ -125,6 +129,7 @@ public class AdminStatsController {
         response.setPoints(calculatePointStats(start, end));
         response.setSupport(calculateSupportStats());
         response.setGrowth(calculateGrowthStats(start, end, prevStart, prevEnd));
+        response.setNoVistas(calculateNoVistasStats(start, end, prevStart, prevEnd));
 // Premium stats
         PremiumStatsDto premiumStats = new PremiumStatsDto();
         premiumStats.setTotalPremiumRewards(premiumRewardRepository.count());
@@ -298,6 +303,67 @@ public class AdminStatsController {
 
         Map<String, Long> dailyTrend = new LinkedHashMap<>();
         for (Object[] row : seriesReviewRepository.getDailyVoteCount(start, end)) {
+            if (row[0] != null) {
+                dailyTrend.put(row[0].toString(), ((Number) row[1]).longValue());
+            }
+        }
+        stats.setDailyTrend(dailyTrend);
+
+        return stats;
+    }
+
+    private NoVistasStatsDto calculateNoVistasStats(LocalDateTime start, LocalDateTime end,
+                                                    LocalDateTime prevStart, LocalDateTime prevEnd) {
+        NoVistasStatsSectionDto peliculas = calculateNoVistasPeliculas(start, end);
+        NoVistasStatsSectionDto series = calculateNoVistasSeries(start, end);
+
+        long totalOmitidas = peliculas.getTotalOmitidas() + series.getTotalOmitidas();
+
+        NoVistasStatsSectionDto total = new NoVistasStatsSectionDto();
+        total.setTotalOmitidas(totalOmitidas);
+
+        long omitidasPrevPeriod = votoRelampagoOmitidaRepository.countVigentesInPeriod(prevStart, prevEnd)
+                + votoRelampagoOmitidaSerieRepository.countVigentesInPeriod(prevStart, prevEnd);
+        total.setGrowth(calculateGrowth(totalOmitidas, omitidasPrevPeriod));
+
+        NoVistasStatsDto stats = new NoVistasStatsDto();
+        stats.setTotal(total);
+        stats.setPeliculas(peliculas);
+        stats.setSeries(series);
+        stats.setPctPeliculas(totalOmitidas > 0 ? (double) peliculas.getTotalOmitidas() / totalOmitidas * 100 : 0);
+        stats.setPctSeries(totalOmitidas > 0 ? (double) series.getTotalOmitidas() / totalOmitidas * 100 : 0);
+        return stats;
+    }
+
+    private NoVistasStatsSectionDto calculateNoVistasPeliculas(LocalDateTime start, LocalDateTime end) {
+        NoVistasStatsSectionDto stats = new NoVistasStatsSectionDto();
+        stats.setTotalOmitidas(votoRelampagoOmitidaRepository.countVigentesInPeriod(start, end));
+
+        stats.setTopOmitidas(sanitizeMapList(
+                votoRelampagoOmitidaRepository.findTopOmitidasVigentes(PageRequest.of(0, 10))
+        ));
+
+        Map<String, Long> dailyTrend = new LinkedHashMap<>();
+        for (Object[] row : votoRelampagoOmitidaRepository.getDailyOmitidasCount(start, end)) {
+            if (row[0] != null) {
+                dailyTrend.put(row[0].toString(), ((Number) row[1]).longValue());
+            }
+        }
+        stats.setDailyTrend(dailyTrend);
+
+        return stats;
+    }
+
+    private NoVistasStatsSectionDto calculateNoVistasSeries(LocalDateTime start, LocalDateTime end) {
+        NoVistasStatsSectionDto stats = new NoVistasStatsSectionDto();
+        stats.setTotalOmitidas(votoRelampagoOmitidaSerieRepository.countVigentesInPeriod(start, end));
+
+        stats.setTopOmitidas(sanitizeMapList(
+                votoRelampagoOmitidaSerieRepository.findTopOmitidasVigentes(PageRequest.of(0, 10))
+        ));
+
+        Map<String, Long> dailyTrend = new LinkedHashMap<>();
+        for (Object[] row : votoRelampagoOmitidaSerieRepository.getDailyOmitidasCount(start, end)) {
             if (row[0] != null) {
                 dailyTrend.put(row[0].toString(), ((Number) row[1]).longValue());
             }
