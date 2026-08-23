@@ -39,7 +39,7 @@ public class ReviewController {
     private final MovieService movieService;
     private final MovieRepository movieRepository;
     private final VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository;
-    private final GenreRepository genreRepository;
+    private final com.example.demo.application.services.MoviePersistenceService moviePersistenceService;
 
     public ReviewController(
             ReviewRepository reviewRepository,
@@ -49,7 +49,7 @@ public class ReviewController {
             MovieService movieService,
             MovieRepository movieRepository,
             VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository,
-            GenreRepository genreRepository
+            com.example.demo.application.services.MoviePersistenceService moviePersistenceService
     ) {
         this.reviewRepository = reviewRepository;
         this.userRepository = userRepository;
@@ -58,7 +58,7 @@ public class ReviewController {
         this.movieService = movieService;
         this.movieRepository = movieRepository;
         this.votoRelampagoOmitidaRepository = votoRelampagoOmitidaRepository;
-        this.genreRepository = genreRepository;
+        this.moviePersistenceService = moviePersistenceService;
     }
 
     @PostMapping("/movies/{movieId}")
@@ -107,50 +107,9 @@ public class ReviewController {
             return ResponseEntity.badRequest().build();
         }
 
-        // ✅ Obtener o crear película correctamente
-        Movie movie = movieRepository.findByTmdbId(movieId).orElse(null);
-
-        if (movie == null) {
-            TmdbMovieDto tmdbMovie = movieService.getMovieDetails(movieId);
-
-            if (tmdbMovie != null) {
-                Movie newMovie = new Movie();
-                newMovie.setTmdbId(tmdbMovie.getId());
-                newMovie.setTitle(tmdbMovie.getTitle());
-                newMovie.setOverview(tmdbMovie.getOverview());
-                newMovie.setPosterPath(tmdbMovie.getPosterPath());
-                newMovie.setBackdropPath(tmdbMovie.getBackdropPath());
-                newMovie.setReleaseDate(tmdbMovie.getReleaseDateAsLocalDate());
-                newMovie.setVoteAverage(tmdbMovie.getVoteAverage());
-                newMovie.setVoteCount(tmdbMovie.getVoteCount());
-                newMovie.setPopularity(tmdbMovie.getPopularity());
-                newMovie.setActive(true);
-
-                if (tmdbMovie.getGenres() != null) {
-                    List<Genre> generos = new java.util.ArrayList<>();
-                    for (TmdbMovieDto.TmdbGenreDto g : tmdbMovie.getGenres()) {
-                        Genre genero = genreRepository.findByTmdbGenreId(g.getId())
-                                .orElseGet(() -> {
-                                    Genre nuevo = new Genre();
-                                    nuevo.setName(g.getName());
-                                    nuevo.setTmdbGenreId(g.getId());
-                                    nuevo.setActive(true);
-                                    return genreRepository.save(nuevo);
-                                });
-                        generos.add(genero);
-                    }
-                    newMovie.setGenres(generos);
-                }
-
-                try {
-                    movie = movieRepository.save(newMovie);
-                } catch (DataIntegrityViolationException e) {
-                    // 🔥 otro thread la creó primero
-                    movie = movieRepository.findByTmdbId(movieId)
-                            .orElseThrow(() -> new RuntimeException("Error concurrente al crear película"));
-                }
-            }
-        }
+        // Obtener o crear película — extraído a MoviePersistenceService,
+        // reusado también por los endpoints de "Mis gustos" en UserController.
+        Movie movie = moviePersistenceService.obtenerOCrearPelicula(movieId);
 
         int basePoints = pointConfigService.getPoints(PointAction.VOTE_MOVIE);
         int points = user.isActivePremium() ? basePoints * 2 : basePoints;

@@ -43,6 +43,7 @@ public class SeriesCommentController {
     private final NotificationService              notificationService;
     private final SeriesSpoilerAcceptedRepository  seriesSpoilerAcceptedRepository;
     private final SeriesCommentReplyReportRepository seriesCommentReplyReportRepository;
+    private final com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService;
 
     public SeriesCommentController(SeriesCommentRepository seriesCommentRepository,
                                    SeriesCommentReportRepository seriesCommentReportRepository,
@@ -55,7 +56,8 @@ public class SeriesCommentController {
                                    BannedWordService bannedWordService,
                                    NotificationService notificationService,
                                    SeriesSpoilerAcceptedRepository seriesSpoilerAcceptedRepository,
-                                   SeriesCommentReplyReportRepository seriesCommentReplyReportRepository) {
+                                   SeriesCommentReplyReportRepository seriesCommentReplyReportRepository,
+                                   com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService) {
         this.seriesCommentRepository         = seriesCommentRepository;
         this.seriesCommentReportRepository   = seriesCommentReportRepository;
         this.seriesCommentReactionRepository = seriesCommentReactionRepository;
@@ -68,6 +70,7 @@ public class SeriesCommentController {
         this.notificationService             = notificationService;
         this.seriesSpoilerAcceptedRepository = seriesSpoilerAcceptedRepository;
         this.seriesCommentReplyReportRepository = seriesCommentReplyReportRepository;
+        this.seriesPersistenceService = seriesPersistenceService;
     }
 
     // ── Helper: resolver título de la serie ────────────────────────────────
@@ -200,6 +203,13 @@ public class SeriesCommentController {
 
         if (esDuplicado) otorgaPuntos = false;
         int points = otorgaPuntos ? (user.isActivePremium() ? 80 : 40) : 0;
+
+        // Persiste la serie localmente si todavía no existe — antes acá
+        // ni siquiera se intentaba, resolverTituloSerie() se resignaba a
+        // "Serie #12345" sin pedirle nada a TMDb. Mismo criterio que el
+        // resto de las acciones (votos, gustos, recomendaciones, comentarios
+        // de película).
+        seriesPersistenceService.obtenerOCrearSerie(seriesId);
 
         SeriesComment comment = new SeriesComment();
         comment.setUser(user);

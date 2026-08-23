@@ -12,6 +12,7 @@ import com.example.demo.domain.follow.UserFollow;
 import com.example.demo.domain.follow.UserFollowRepository;
 import com.example.demo.domain.movie.Movie;
 import com.example.demo.domain.movie.MovieRepository;
+import com.example.demo.domain.series.Series;
 import com.example.demo.domain.review.Review;
 import com.example.demo.domain.review.ReviewRepository;
 import com.example.demo.domain.review.ReviewType;
@@ -125,13 +126,60 @@ public class PublicProfileController {
         dto.setBioTitulo(target.getBioTitulo());
         dto.setBioTexto(target.getBioTexto());
         dto.setPeliculaFavoritaId(target.getPeliculaFavoritaId());
+        Movie peliculaFavorita = resolverPelicula(target.getPeliculaFavoritaId());
+        if (peliculaFavorita != null) {
+            dto.setPeliculaFavoritaTitulo(peliculaFavorita.getTitle());
+            dto.setPeliculaFavoritaPoster(peliculaFavorita.getPosterPath());
+        }
+
         dto.setUltimaVistaCineId(target.getUltimaVistaCineId());
+        Movie ultimaVistaCine = resolverPelicula(target.getUltimaVistaCineId());
+        if (ultimaVistaCine != null) {
+            dto.setUltimaVistaCineTitulo(ultimaVistaCine.getTitle());
+            dto.setUltimaVistaCinePoster(ultimaVistaCine.getPosterPath());
+        }
+
         dto.setNoMeCansoDeVerId(target.getNoMeCansoDeVerId());
+        Movie noMeCansoDeVer = resolverPelicula(target.getNoMeCansoDeVerId());
+        if (noMeCansoDeVer != null) {
+            dto.setNoMeCansoDeVerTitulo(noMeCansoDeVer.getTitle());
+            dto.setNoMeCansoDeVerPoster(noMeCansoDeVer.getPosterPath());
+        }
+
         dto.setNoLaBancoId(target.getNoLaBancoId());
+        Movie noLaBanco = resolverPelicula(target.getNoLaBancoId());
+        if (noLaBanco != null) {
+            dto.setNoLaBancoTitulo(noLaBanco.getTitle());
+            dto.setNoLaBancoPoster(noLaBanco.getPosterPath());
+        }
+
         dto.setSerieFavoritaId(target.getSerieFavoritaId());
+        Series serieFavorita = resolverSerie(target.getSerieFavoritaId());
+        if (serieFavorita != null) {
+            dto.setSerieFavoritaTitulo(serieFavorita.getTitle());
+            dto.setSerieFavoritaPoster(serieFavorita.getPosterPath());
+        }
+
         dto.setUltimaMaratonId(target.getUltimaMaratonId());
+        Series ultimaMaraton = resolverSerie(target.getUltimaMaratonId());
+        if (ultimaMaraton != null) {
+            dto.setUltimaMaratonTitulo(ultimaMaraton.getTitle());
+            dto.setUltimaMaratonPoster(ultimaMaraton.getPosterPath());
+        }
+
         dto.setNoMeCansoDeVerSerieId(target.getNoMeCansoDeVerSerieId());
+        Series noMeCansoDeVerSerie = resolverSerie(target.getNoMeCansoDeVerSerieId());
+        if (noMeCansoDeVerSerie != null) {
+            dto.setNoMeCansoDeVerSerieTitulo(noMeCansoDeVerSerie.getTitle());
+            dto.setNoMeCansoDeVerSeriePoster(noMeCansoDeVerSerie.getPosterPath());
+        }
+
         dto.setNoLaBancoSerieId(target.getNoLaBancoSerieId());
+        Series noLaBancoSerie = resolverSerie(target.getNoLaBancoSerieId());
+        if (noLaBancoSerie != null) {
+            dto.setNoLaBancoSerieTitulo(noLaBancoSerie.getTitle());
+            dto.setNoLaBancoSeriePoster(noLaBancoSerie.getPosterPath());
+        }
         dto.setAdnCinefilo(adnCinefiloService.calcular(target.getId()));
         dto.setAdnCinefiloSeries(adnCinefiloSeriesService.calcular(target.getId()));
 
@@ -459,6 +507,20 @@ public class PublicProfileController {
     }
 
     // ── helpers ────────────────────────────────────────────────
+    // Resuelve por tmdbId desde la base local — null si el gusto no está
+    // elegido, o si por algún motivo la película/serie todavía no está
+    // persistida (dato legado de antes de este cambio; se autocompleta
+    // la próxima vez que el usuario la vuelva a elegir).
+    private Movie resolverPelicula(Integer tmdbId) {
+        if (tmdbId == null) return null;
+        return movieRepository.findByTmdbId(tmdbId.longValue()).orElse(null);
+    }
+
+    private Series resolverSerie(Integer tmdbId) {
+        if (tmdbId == null) return null;
+        return seriesRepository.findByTmdbId(tmdbId.longValue()).orElse(null);
+    }
+
     private String formatMiembroDesde(LocalDateTime dt) {
         if (dt == null) return "";
         String[] meses = {"enero","febrero","marzo","abril","mayo","junio",

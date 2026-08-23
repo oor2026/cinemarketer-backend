@@ -36,6 +36,7 @@ public class RecommendationController {
     private final MovieService movieService;
     private final PointConfigService pointConfigService;
     private final PointTransactionService pointTransactionService;
+    private final com.example.demo.application.services.MoviePersistenceService moviePersistenceService;
 
     public RecommendationController(MovieRecommendationRepository recommendationRepository,
                                     UserRepository userRepository,
@@ -43,7 +44,8 @@ public class RecommendationController {
                                     NotificationRepository notificationRepository,
                                     MovieService movieService,
                                     PointConfigService pointConfigService,
-                                    PointTransactionService pointTransactionService) {
+                                    PointTransactionService pointTransactionService,
+                                    com.example.demo.application.services.MoviePersistenceService moviePersistenceService) {
         this.recommendationRepository = recommendationRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
@@ -51,6 +53,7 @@ public class RecommendationController {
         this.movieService = movieService;
         this.pointConfigService = pointConfigService;
         this.pointTransactionService = pointTransactionService;
+        this.moviePersistenceService = moviePersistenceService;
     }
 
     // POST /api/recommendations — crear recomendación
@@ -77,11 +80,15 @@ public class RecommendationController {
         rec.setReceiver(receiver);
         rec.setMovieId(req.getMovieId());
         try {
-            var tmdb = movieService.getMovieDetails(req.getMovieId());
-            if (tmdb != null) {
-                rec.setMovieTitle(tmdb.getTitle());
-                rec.setMoviePosterPath(tmdb.getPosterPath());
-                rec.setMovieOverview(tmdb.getOverview());
+            // Resuelve y persiste la película en la base local de paso
+            // (si no existía) — mismo criterio que ya usan los "gustos"
+            // de Mi Sala. Reusa este resultado para el snapshot de la
+            // recomendación en vez de pegarle a TMDb en vivo aparte.
+            var movie = moviePersistenceService.obtenerOCrearPelicula(req.getMovieId());
+            if (movie != null) {
+                rec.setMovieTitle(movie.getTitle());
+                rec.setMoviePosterPath(movie.getPosterPath());
+                rec.setMovieOverview(movie.getOverview());
             }
         } catch(Exception ignored) {}
         rec.setContextType(req.getContextType());
