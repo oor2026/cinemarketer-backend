@@ -156,4 +156,30 @@ public class PublicProfileDto {
         private int merecePuntoCount;
         private int replyCount;
     }
+
+    @Data
+    public static class AdnPeliculaItemDto {
+        private Long movieId;
+        private String titulo;
+        private String poster;
+
+        public AdnPeliculaItemDto(Long movieId, String titulo, String poster) {
+            this.movieId = movieId;
+            this.titulo = titulo;
+            this.poster = poster;
+        }
+    }
+
+    @Data
+    public static class AdnSerieItemDto {
+        private Long seriesId;
+        private String titulo;
+        private String poster;
+
+        public AdnSerieItemDto(Long seriesId, String titulo, String poster) {
+            this.seriesId = seriesId;
+            this.titulo = titulo;
+            this.poster = poster;
+        }
+    }
 }
