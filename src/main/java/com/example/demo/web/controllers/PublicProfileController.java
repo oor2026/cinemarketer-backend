@@ -5,7 +5,7 @@ import com.example.demo.domain.comment.Comment;
 import com.example.demo.domain.comment.CommentRepository;
 import com.example.demo.domain.comment.CommentReactionRepository;
 import com.example.demo.domain.comment.CommentReply;
-import com.example.demo.domain.review.AdnCinefiloService;
+import com.example.demo.domain.review.*;
 import com.example.demo.domain.comment.CommentReplyRepository;
 import com.example.demo.domain.comment.ReactionType;
 import com.example.demo.domain.follow.UserFollow;
@@ -13,9 +13,6 @@ import com.example.demo.domain.follow.UserFollowRepository;
 import com.example.demo.domain.movie.Movie;
 import com.example.demo.domain.movie.MovieRepository;
 import com.example.demo.domain.series.Series;
-import com.example.demo.domain.review.Review;
-import com.example.demo.domain.review.ReviewRepository;
-import com.example.demo.domain.review.ReviewType;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
 import com.example.demo.domain.user.UserBlockRepository;
@@ -576,5 +573,77 @@ public class PublicProfileController {
             return u;
         }).toList();
         return ResponseEntity.ok(lista);
+    }
+
+    // GET /api/users/{id}/adn-cinefilo/genero/{generoId}/peliculas
+    // Películas que componen el ADN Cinéfilo del usuario para ESE género
+    // puntual — solo LIKE (nunca DISLIKE, aunque reste en el cálculo) +
+    // recomendadas, mismo criterio que ya usa el algoritmo del ADN.
+    @GetMapping("/{id}/adn-cinefilo/genero/{generoId}/peliculas")
+    public ResponseEntity<?> getPeliculasPorGeneroAdn(
+            @PathVariable Long id,
+            @PathVariable Long generoId) {
+
+        userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        List<Long> tmdbIdsVotadasLike = reviewRepository.findByUserIdOrderByCreatedAtDesc(id).stream()
+                .filter(r -> r.getReviewType() == ReviewType.MOVIE && r.getVote() == VoteType.LIKE)
+                .map(Review::getTargetId)
+                .toList();
+
+        List<Long> tmdbIdsRecomendadas = movieRecommendationRepository.findBySenderIdOrderByCreatedAtDesc(id).stream()
+                .map(com.example.demo.domain.recommendation.MovieRecommendation::getMovieId)
+                .toList();
+
+        // LinkedHashSet: dedupe si una película fue votada Y recomendada,
+        // conservando el orden de inserción (votos primero, después recos).
+        java.util.Set<Long> tmdbIds = new java.util.LinkedHashSet<>();
+        tmdbIds.addAll(tmdbIdsVotadasLike);
+        tmdbIds.addAll(tmdbIdsRecomendadas);
+
+        List<PublicProfileDto.AdnPeliculaItemDto> resultado = tmdbIds.stream()
+                .map(movieRepository::findByTmdbId)
+                .filter(java.util.Optional::isPresent)
+                .map(java.util.Optional::get)
+                .filter(m -> m.getGeneroPrincipal() != null && generoId.equals(m.getGeneroPrincipal().getId()))
+                .map(m -> new PublicProfileDto.AdnPeliculaItemDto(m.getTmdbId(), m.getTitle(), m.getPosterPath()))
+                .toList();
+
+        return ResponseEntity.ok(resultado);
+    }
+
+    // GET /api/users/{id}/adn-cinefilo-series/genero/{generoId}/series
+    // Espejo del endpoint de Películas — mismo criterio (LIKE + recomendadas).
+    @GetMapping("/{id}/adn-cinefilo-series/genero/{generoId}/series")
+    public ResponseEntity<?> getSeriesPorGeneroAdn(
+            @PathVariable Long id,
+            @PathVariable Long generoId) {
+
+        userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        List<Long> tmdbIdsVotadasLike = seriesReviewRepository.findByUserIdAndVoteIsNotNullOrderByCreatedAtDesc(id).stream()
+                .filter(sr -> sr.getVote() == VoteType.LIKE)
+                .map(com.example.demo.domain.series.SeriesReview::getSeriesId)
+                .toList();
+
+        List<Long> tmdbIdsRecomendadas = seriesRecommendationRepository.findBySenderIdOrderByCreatedAtDesc(id).stream()
+                .map(com.example.demo.domain.recommendation.SeriesRecommendation::getSeriesId)
+                .toList();
+
+        java.util.Set<Long> tmdbIds = new java.util.LinkedHashSet<>();
+        tmdbIds.addAll(tmdbIdsVotadasLike);
+        tmdbIds.addAll(tmdbIdsRecomendadas);
+
+        List<PublicProfileDto.AdnSerieItemDto> resultado = tmdbIds.stream()
+                .map(seriesRepository::findByTmdbId)
+                .filter(java.util.Optional::isPresent)
+                .map(java.util.Optional::get)
+                .filter(s -> s.getGeneroPrincipal() != null && generoId.equals(s.getGeneroPrincipal().getId()))
+                .map(s -> new PublicProfileDto.AdnSerieItemDto(s.getTmdbId(), s.getTitle(), s.getPosterPath()))
+                .toList();
+
+        return ResponseEntity.ok(resultado);
     }
 }

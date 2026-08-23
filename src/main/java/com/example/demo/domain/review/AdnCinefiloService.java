@@ -17,19 +17,15 @@ public class AdnCinefiloService {
 
     public List<GenreScoreDto> calcular(Long userId) {
         Map<String, Integer> puntos = new HashMap<>();
+        Map<String, Long> generoIds = new HashMap<>();
 
         for (Object[] fila : adnCinefiloRepository.calcularPesosBase(userId)) {
-            String genero = (String) fila[0];
-            int peso = ((Number) fila[1]).intValue();
+            Long generoId = ((Number) fila[0]).longValue();
+            String genero = (String) fila[1];
+            int peso = ((Number) fila[2]).intValue();
             puntos.merge(genero, peso, Integer::sum);
+            generoIds.putIfAbsent(genero, generoId);
         }
-
-        // "Guardadas" queda fuera del ADN Cinéfilo — es señal de
-        // engagement (quiero que esto persista), no de sentimiento
-        // hacia el género: no sabemos si guardó para verla, para
-        // armar una colección, o para recordar que NO la quiere
-        // volver a ver. Ponderarla sería inventar una señal que no
-        // tenemos.
 
         int total = puntos.values().stream().filter(v -> v > 0).mapToInt(Integer::intValue).sum();
         if (total <= 0) return List.of();
@@ -38,6 +34,7 @@ public class AdnCinefiloService {
                 .filter(e -> e.getValue() > 0) // géneros con saldo negativo (muchos dislikes) no se muestran
                 .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
                 .map(e -> new GenreScoreDto(
+                        generoIds.get(e.getKey()),
                         e.getKey(),
                         e.getValue(),
                         Math.round(e.getValue() * 1000.0 / total) / 10.0))

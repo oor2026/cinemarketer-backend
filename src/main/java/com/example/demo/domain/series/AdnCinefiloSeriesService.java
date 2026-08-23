@@ -14,11 +14,14 @@ public class AdnCinefiloSeriesService {
 
     public List<GenreScoreDto> calcular(Long userId) {
         Map<String, Integer> puntos = new HashMap<>();
+        Map<String, Long> generoIds = new HashMap<>();
 
         for (Object[] fila : adnCinefiloSeriesRepository.calcularPesosBase(userId)) {
-            String genero = (String) fila[0];
-            int peso = ((Number) fila[1]).intValue();
+            Long generoId = ((Number) fila[0]).longValue();
+            String genero = (String) fila[1];
+            int peso = ((Number) fila[2]).intValue();
             puntos.merge(genero, peso, Integer::sum);
+            generoIds.putIfAbsent(genero, generoId);
         }
 
         int total = puntos.values().stream().filter(v -> v > 0).mapToInt(Integer::intValue).sum();
@@ -28,6 +31,7 @@ public class AdnCinefiloSeriesService {
                 .filter(e -> e.getValue() > 0)
                 .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
                 .map(e -> new GenreScoreDto(
+                        generoIds.get(e.getKey()),
                         e.getKey(),
                         e.getValue(),
                         Math.round(e.getValue() * 1000.0 / total) / 10.0))
