@@ -208,8 +208,11 @@ public class SeriesCommentController {
         // ni siquiera se intentaba, resolverTituloSerie() se resignaba a
         // "Serie #12345" sin pedirle nada a TMDb. Mismo criterio que el
         // resto de las acciones (votos, gustos, recomendaciones, comentarios
-        // de película).
-        seriesPersistenceService.obtenerOCrearSerie(seriesId);
+        // de película). Si TMDb falla, el comentario se crea igual —
+        // resolverTituloSerie() ya tiene su propio fallback a "Serie #id".
+        try {
+            seriesPersistenceService.obtenerOCrearSerie(seriesId);
+        } catch (Exception ignored) {}
 
         SeriesComment comment = new SeriesComment();
         comment.setUser(user);
