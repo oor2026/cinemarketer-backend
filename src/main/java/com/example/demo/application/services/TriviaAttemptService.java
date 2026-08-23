@@ -368,6 +368,7 @@ public class TriviaAttemptService {
     public List<TriviaRankingDto> obtenerRanking(Long userIdActual) {
         List<Object[]> filas = userRepository.findRankingTrivia(userIdActual != null ? userIdActual : -1L);
         return filas.stream().map(f -> new TriviaRankingDto(
+                ((Number) f[0]).longValue(),           // userId
                 ((Number) f[4]).intValue(),           // posicion
                 (String) f[1],                         // name
                 ((Number) f[2]).intValue(),            // aciertos

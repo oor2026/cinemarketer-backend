@@ -340,6 +340,7 @@ public class TriviaSeriesAttemptService {
     public List<TriviaRankingDto> obtenerRanking(Long userIdActual) {
         List<Object[]> filas = userRepository.findRankingTriviaSeries(userIdActual != null ? userIdActual : -1L);
         return filas.stream().map(f -> new TriviaRankingDto(
+                ((Number) f[0]).longValue(),
                 ((Number) f[4]).intValue(),
                 (String) f[1],
                 ((Number) f[2]).intValue(),

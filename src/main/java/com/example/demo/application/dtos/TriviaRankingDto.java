@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 @Data
 @AllArgsConstructor
 public class TriviaRankingDto {
+    private Long userId;
     private int posicion;
     private String nombre;
     private int aciertos;
