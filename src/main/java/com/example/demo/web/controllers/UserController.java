@@ -198,6 +198,8 @@ public class UserController {
         response.setSexo(user.getSexo());
         response.setProvincia(user.getProvincia());
         response.setLocalidad(user.getLocalidad());
+        response.setBioTitulo(user.getBioTitulo());
+        response.setBioTexto(user.getBioTexto());
 
         // ==============================================
         // CAMPOS DE AVATAR Y NIVEL

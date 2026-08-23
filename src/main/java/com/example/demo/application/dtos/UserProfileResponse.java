@@ -52,6 +52,10 @@ public class UserProfileResponse {
     private String provincia;
     private String localidad;
 
+    /** Bio de "Quién soy" en Mi Sala — título y texto, requeridos junto para pasar a Colaborador */
+    private String bioTitulo;
+    private String bioTexto;
+
     /**
      * URL del avatar actual del usuario
      */

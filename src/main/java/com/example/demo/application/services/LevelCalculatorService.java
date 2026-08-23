@@ -83,6 +83,12 @@ public class LevelCalculatorService {
                         user.getLocalidad() != null && !user.getLocalidad().isBlank();
         if (!perfilCompleto) return false;
 
+        // Bio completa (Quién soy, en Mi Sala): título y texto, los dos.
+        boolean bioCompleta =
+                user.getBioTitulo() != null && !user.getBioTitulo().isBlank() &&
+                        user.getBioTexto() != null && !user.getBioTexto().isBlank();
+        if (!bioCompleta) return false;
+
         // 100 películas únicas votadas
         long peliculas = reviewRepository.countDistinctMoviesVotedByUser(userId);
         if (peliculas < 100) return false;
@@ -186,7 +192,10 @@ public class LevelCalculatorService {
             long comentarios = commentRepository.countDistinctMoviesCommentedByUser(userId);
             double pPeliculas = Math.min(100.0, (peliculas / 100.0) * 100);
             double pComentarios = Math.min(100.0, (comentarios / 50.0) * 100);
-            return Math.min(pPeliculas, pComentarios);
+            boolean bioCompleta = user.getBioTitulo() != null && !user.getBioTitulo().isBlank()
+                    && user.getBioTexto() != null && !user.getBioTexto().isBlank();
+            double pBio = bioCompleta ? 100.0 : 0.0;
+            return Math.min(Math.min(pPeliculas, pComentarios), pBio);
         }
 
         if (current == UserLevel.COLABORADOR) {
