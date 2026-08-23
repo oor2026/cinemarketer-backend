@@ -36,6 +36,7 @@ public class SeriesRecommendationController {
     private final SeriesService seriesService;
     private final PointConfigService pointConfigService;
     private final PointTransactionService pointTransactionService;
+    private final com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService;
 
     public SeriesRecommendationController(SeriesRecommendationRepository recommendationRepository,
                                           UserRepository userRepository,
@@ -43,7 +44,8 @@ public class SeriesRecommendationController {
                                           NotificationRepository notificationRepository,
                                           SeriesService seriesService,
                                           PointConfigService pointConfigService,
-                                          PointTransactionService pointTransactionService) {
+                                          PointTransactionService pointTransactionService,
+                                          com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService) {
         this.recommendationRepository = recommendationRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
@@ -51,6 +53,7 @@ public class SeriesRecommendationController {
         this.seriesService = seriesService;
         this.pointConfigService = pointConfigService;
         this.pointTransactionService = pointTransactionService;
+        this.seriesPersistenceService = seriesPersistenceService;
     }
 
     // POST /api/series-recommendations — crear recomendación
@@ -82,11 +85,11 @@ public class SeriesRecommendationController {
         rec.setReceiver(receiver);
         rec.setSeriesId(seriesId);
         try {
-            var tmdb = seriesService.getSeriesDetails(seriesId);
-            if (tmdb != null) {
-                rec.setSeriesTitle(tmdb.getName());
-                rec.setSeriesPosterPath(tmdb.getPosterPath());
-                rec.setSeriesOverview(tmdb.getOverview());
+            var series = seriesPersistenceService.obtenerOCrearSerie(seriesId);
+            if (series != null) {
+                rec.setSeriesTitle(series.getTitle());
+                rec.setSeriesPosterPath(series.getPosterPath());
+                rec.setSeriesOverview(series.getOverview());
             }
         } catch (Exception ignored) {}
         rec.setContextType(req.getContextType());

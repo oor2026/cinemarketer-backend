@@ -23,13 +23,16 @@ public class SeriesWatchlistController {
     private final SeriesWatchlistRepository seriesWatchlistRepository;
     private final UserRepository userRepository;
     private final SeriesService seriesService;
+    private final com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService;
 
     public SeriesWatchlistController(SeriesWatchlistRepository seriesWatchlistRepository,
                                      UserRepository userRepository,
-                                     SeriesService seriesService) {
+                                     SeriesService seriesService,
+                                     com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService) {
         this.seriesWatchlistRepository = seriesWatchlistRepository;
         this.userRepository = userRepository;
         this.seriesService = seriesService;
+        this.seriesPersistenceService = seriesPersistenceService;
     }
 
     @GetMapping
@@ -60,14 +63,17 @@ public class SeriesWatchlistController {
         w.setUser(me);
         w.setSeriesId(seriesId);
 
+        // Persiste la serie localmente si todavía no existe — mismo
+        // criterio que el resto (votos, gustos, recomendaciones,
+        // comentarios, y ahora watchlist de películas).
         try {
-            var tmdb = seriesService.getSeriesDetails(seriesId);
-            if (tmdb != null) {
-                w.setSeriesTitle(tmdb.getName());
-                w.setSeriesPosterPath(tmdb.getPosterPath());
-                w.setSeriesOverview(tmdb.getOverview());
-                if (tmdb.getGenres() != null && !tmdb.getGenres().isEmpty()) {
-                    String genresJson = tmdb.getGenres().stream()
+            var series = seriesPersistenceService.obtenerOCrearSerie(seriesId);
+            if (series != null) {
+                w.setSeriesTitle(series.getTitle());
+                w.setSeriesPosterPath(series.getPosterPath());
+                w.setSeriesOverview(series.getOverview());
+                if (series.getGenres() != null && !series.getGenres().isEmpty()) {
+                    String genresJson = series.getGenres().stream()
                             .map(g -> "\"" + g.getName() + "\"")
                             .collect(java.util.stream.Collectors.joining(",", "[", "]"));
                     w.setSeriesGenres(genresJson);

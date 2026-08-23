@@ -44,6 +44,7 @@ public class CommentController {
     private final MovieService movieService;
     private final SpoilerAcceptedRepository spoilerAcceptedRepository;
     private final CommentReplyReportRepository commentReplyReportRepository;
+    private final com.example.demo.application.services.MoviePersistenceService moviePersistenceService;
 
     public CommentController(CommentRepository commentRepository,
                              CommentReportRepository commentReportRepository,
@@ -56,7 +57,8 @@ public class CommentController {
                              BannedWordService bannedWordService,
                              NotificationService notificationService,
                              MovieService movieService,
-                             SpoilerAcceptedRepository spoilerAcceptedRepository, SpoilerAcceptedRepository spoilerAcceptedRepository1, CommentReplyReportRepository commentReplyReportRepository) {
+                             SpoilerAcceptedRepository spoilerAcceptedRepository, SpoilerAcceptedRepository spoilerAcceptedRepository1, CommentReplyReportRepository commentReplyReportRepository,
+                             com.example.demo.application.services.MoviePersistenceService moviePersistenceService) {
         this.commentRepository         = commentRepository;
         this.commentReportRepository   = commentReportRepository;
         this.commentReactionRepository = commentReactionRepository;
@@ -70,6 +72,7 @@ public class CommentController {
         this.movieService = movieService;
         this.spoilerAcceptedRepository = spoilerAcceptedRepository;
         this.commentReplyReportRepository = commentReplyReportRepository;
+        this.moviePersistenceService = moviePersistenceService;
     }
 
     // ── Helper: construir CommentResponse con reacciones ──────────────────────
@@ -202,6 +205,12 @@ public class CommentController {
         if (esDuplicado) otorgaPuntos = false;
         int points = otorgaPuntos ? (user.isActivePremium() ? 80 : 40) : 0;
 
+        // Persiste la película localmente si todavía no existe — así queda
+        // resuelta de una sola vez, sea o no que este comentario otorgue
+        // puntos. Mismo criterio que ya aplicamos en votos, gustos y
+        // recomendaciones.
+        Movie movie = moviePersistenceService.obtenerOCrearPelicula(movieId);
+
         Comment comment = new Comment();
         comment.setUser(user);
         comment.setMovieId(movieId);
@@ -217,16 +226,7 @@ public class CommentController {
 
         if (points > 0) {
             user.addAccumulatedPoints(points);
-            String movieTitle = movieRepository.findByTmdbId(movieId)
-                    .map(Movie::getTitle)
-                    .orElseGet(() -> {
-                        try {
-                            var tmdb = movieService.getMovieDetails(movieId);
-                            return tmdb != null && tmdb.getTitle() != null ? tmdb.getTitle() : "Pelicula #" + movieId;
-                        } catch (Exception e) {
-                            return "Pelicula #" + movieId;
-                        }
-                    });
+            String movieTitle = movie != null && movie.getTitle() != null ? movie.getTitle() : "Pelicula #" + movieId;
             pointTransactionService.registerEarned(user, PointAction.COMMENT_MOVIE, points,
                     movieId, "Comentario en pelicula: " + movieTitle);
         }

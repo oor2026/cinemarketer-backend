@@ -70,6 +70,8 @@ public class UserController {
     private final PointBatchRepository pointBatchRepository;
     private final AvatarService avatarService;
     private final com.example.demo.application.services.NombreReservadoService nombreReservadoService;
+    private final com.example.demo.application.services.MoviePersistenceService moviePersistenceService;
+    private final com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService;
 
     public UserController(
             UserRepository userRepository,
@@ -87,7 +89,7 @@ public class UserController {
             PointBatchRepository pointBatchRepository,
             UserBlockRepository userBlockRepository,
             UserReportRepository userReportRepository,
-            UserFollowRepository userFollowRepository, com.example.demo.domain.recommendation.MovieRecommendationRepository recommendationRepository, com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, SeriesRecommendationRepository seriesRecommendationRepository, com.example.demo.application.services.NombreReservadoService nombreReservadoService) {
+            UserFollowRepository userFollowRepository, com.example.demo.domain.recommendation.MovieRecommendationRepository recommendationRepository, com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, SeriesRecommendationRepository seriesRecommendationRepository, com.example.demo.application.services.NombreReservadoService nombreReservadoService, com.example.demo.application.services.MoviePersistenceService moviePersistenceService, com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.redemptionRepository = redemptionRepository;
@@ -112,6 +114,8 @@ public class UserController {
         this.publicationRepository = publicationRepository;
         this.seriesRecommendationRepository = seriesRecommendationRepository;
         this.nombreReservadoService = nombreReservadoService;
+        this.moviePersistenceService = moviePersistenceService;
+        this.seriesPersistenceService = seriesPersistenceService;
     }
 
     @GetMapping("/me")
@@ -568,6 +572,11 @@ public class UserController {
                         .body(Map.of("message", "Falta el ID de la película"));
             }
 
+            // Persiste la película localmente si todavía no existe (por ej.
+            // si el usuario nunca la votó/comentó) — así el perfil no
+            // depende de pegarle a TMDb en vivo cada vez que alguien lo mira.
+            moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
+
             user.setPeliculaFavoritaId(movieId);
             userRepository.save(user);
 
@@ -591,6 +600,7 @@ public class UserController {
             if (movieId == null) {
                 return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la película"));
             }
+            moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
             user.setUltimaVistaCineId(movieId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "ultimaVistaCineId", movieId, "success", true));
@@ -605,6 +615,7 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer movieId = body.get("movieId");
             if (movieId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la película"));
+            moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
             user.setNoMeCansoDeVerId(movieId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noMeCansoDeVerId", movieId, "success", true));
@@ -619,6 +630,7 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer movieId = body.get("movieId");
             if (movieId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la película"));
+            moviePersistenceService.obtenerOCrearPelicula(movieId.longValue());
             user.setNoLaBancoId(movieId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noLaBancoId", movieId, "success", true));
@@ -635,6 +647,7 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer seriesId = body.get("seriesId");
             if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
+            seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
             user.setSerieFavoritaId(seriesId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Serie favorita actualizada correctamente", "serieFavoritaId", seriesId, "success", true));
@@ -649,6 +662,7 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer seriesId = body.get("seriesId");
             if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
+            seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
             user.setUltimaMaratonId(seriesId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "ultimaMaratonId", seriesId, "success", true));
@@ -663,6 +677,7 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer seriesId = body.get("seriesId");
             if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
+            seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
             user.setNoMeCansoDeVerSerieId(seriesId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noMeCansoDeVerSerieId", seriesId, "success", true));
@@ -677,6 +692,7 @@ public class UserController {
             User user = getAuthenticatedUser();
             Integer seriesId = body.get("seriesId");
             if (seriesId == null) return ResponseEntity.badRequest().body(Map.of("message", "Falta el ID de la serie"));
+            seriesPersistenceService.obtenerOCrearSerie(seriesId.longValue());
             user.setNoLaBancoSerieId(seriesId);
             userRepository.save(user);
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noLaBancoSerieId", seriesId, "success", true));

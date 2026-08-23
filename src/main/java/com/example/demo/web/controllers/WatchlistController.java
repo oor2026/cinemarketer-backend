@@ -23,13 +23,16 @@ public class WatchlistController {
     private final WatchlistRepository watchlistRepository;
     private final UserRepository userRepository;
     private final MovieService movieService;
+    private final com.example.demo.application.services.MoviePersistenceService moviePersistenceService;
 
     public WatchlistController(WatchlistRepository watchlistRepository,
                                UserRepository userRepository,
-                               MovieService movieService) {
+                               MovieService movieService,
+                               com.example.demo.application.services.MoviePersistenceService moviePersistenceService) {
         this.watchlistRepository = watchlistRepository;
         this.userRepository = userRepository;
         this.movieService = movieService;
+        this.moviePersistenceService = moviePersistenceService;
     }
 
     // GET /api/watchlist — listar mis películas guardadas
@@ -64,15 +67,20 @@ public class WatchlistController {
         w.setUser(me);
         w.setMovieId(movieId);
 
-        // Obtener datos de TMDB
+        // Persiste la película localmente si todavía no existe — mismo
+        // criterio que votos, gustos, recomendaciones y comentarios.
+        // Reusa el resultado para el snapshot de esta watchlist en vez de
+        // pegarle a TMDb en vivo aparte. movieGenres queda igual que
+        // antes (JSON de nombres sueltos) — es un campo propio de
+        // Watchlist para mostrar géneros sin JOIN, no se tocó su formato.
         try {
-            var tmdb = movieService.getMovieDetails(movieId);
-            if (tmdb != null) {
-                w.setMovieTitle(tmdb.getTitle());
-                w.setMoviePosterPath(tmdb.getPosterPath());
-                w.setMovieOverview(tmdb.getOverview());
-                if (tmdb.getGenres() != null && !tmdb.getGenres().isEmpty()) {
-                    String genresJson = tmdb.getGenres().stream()
+            var movie = moviePersistenceService.obtenerOCrearPelicula(movieId);
+            if (movie != null) {
+                w.setMovieTitle(movie.getTitle());
+                w.setMoviePosterPath(movie.getPosterPath());
+                w.setMovieOverview(movie.getOverview());
+                if (movie.getGenres() != null && !movie.getGenres().isEmpty()) {
+                    String genresJson = movie.getGenres().stream()
                             .map(g -> "\"" + g.getName() + "\"")
                             .collect(java.util.stream.Collectors.joining(",", "[", "]"));
                     w.setMovieGenres(genresJson);
