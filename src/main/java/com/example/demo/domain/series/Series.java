@@ -67,6 +67,11 @@ public class Series {
     )
     private List<Genre> genres;
 
+    // Género principal según TMDb — mismo criterio que Movie.generoPrincipal.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "genero_principal_id")
+    private Genre generoPrincipal;
+
     @Column(name = "original_language", length = 10)
     private String originalLanguage;
 

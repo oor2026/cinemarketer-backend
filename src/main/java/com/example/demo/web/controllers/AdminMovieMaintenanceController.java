@@ -230,4 +230,99 @@ public class AdminMovieMaintenanceController {
                 "fallidas", fallidas
         ));
     }
+
+    /**
+     * Backfill único: completa genero_principal_id para todas las
+     * películas que ya tienen género(s) asignados pero no tienen el
+     * principal seteado (columna nueva, agregada después de que estas
+     * filas ya existieran). Vuelve a pedirle a TMDb el detalle para
+     * recuperar el orden original del array genres[].
+     * POST /api/admin/movies/backfill-genero-principal
+     */
+    @PostMapping("/backfill-genero-principal")
+    public ResponseEntity<?> backfillGeneroPrincipalPeliculas() {
+        List<Movie> sinPrincipal = movieRepository.findAll().stream()
+                .filter(m -> m.getGeneroPrincipal() == null)
+                .toList();
+
+        int procesadas = 0;
+        int fallidas = 0;
+
+        for (Movie movie : sinPrincipal) {
+            try {
+                TmdbMovieDto tmdbMovie = movieService.getMovieDetails(movie.getTmdbId());
+                if (tmdbMovie != null && tmdbMovie.getGenres() != null && !tmdbMovie.getGenres().isEmpty()) {
+                    TmdbMovieDto.TmdbGenreDto primero = tmdbMovie.getGenres().get(0);
+                    Genre genero = genreRepository.findByTmdbGenreId(primero.getId())
+                            .orElseGet(() -> {
+                                Genre nuevo = new Genre();
+                                nuevo.setName(primero.getName());
+                                nuevo.setTmdbGenreId(primero.getId());
+                                nuevo.setActive(true);
+                                return genreRepository.save(nuevo);
+                            });
+                    movie.setGeneroPrincipal(genero);
+                    movieRepository.save(movie);
+                    procesadas++;
+                } else {
+                    fallidas++;
+                }
+                Thread.sleep(250);
+            } catch (Exception e) {
+                fallidas++;
+            }
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "totalEncontradas", sinPrincipal.size(),
+                "procesadas", procesadas,
+                "fallidas", fallidas
+        ));
+    }
+
+    /**
+     * Backfill único, equivalente para series.
+     * POST /api/admin/movies/backfill-genero-principal-series
+     */
+    @PostMapping("/backfill-genero-principal-series")
+    public ResponseEntity<?> backfillGeneroPrincipalSeries() {
+        List<Series> sinPrincipal = seriesRepository.findAll().stream()
+                .filter(s -> s.getGeneroPrincipal() == null)
+                .toList();
+
+        int procesadas = 0;
+        int fallidas = 0;
+
+        for (Series serie : sinPrincipal) {
+            try {
+                TmdbSeriesDto tmdbSeries = seriesService.getSeriesDetails(serie.getTmdbId());
+                if (tmdbSeries != null && tmdbSeries.getGenres() != null && !tmdbSeries.getGenres().isEmpty()) {
+                    var primero = tmdbSeries.getGenres().get(0);
+                    Integer generoTmdbId = primero.getId() != null ? primero.getId().intValue() : null;
+                    Genre genero = genreRepository.findByTmdbGenreId(generoTmdbId)
+                            .orElseGet(() -> {
+                                Genre nuevo = new Genre();
+                                nuevo.setName(primero.getName());
+                                nuevo.setTmdbGenreId(generoTmdbId);
+                                nuevo.setActive(true);
+                                return genreRepository.save(nuevo);
+                            });
+                    serie.setGeneroPrincipal(genero);
+                    seriesRepository.save(serie);
+                    procesadas++;
+                } else {
+                    fallidas++;
+                }
+                Thread.sleep(250);
+            } catch (Exception e) {
+                fallidas++;
+            }
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "totalEncontradas", sinPrincipal.size(),
+                "procesadas", procesadas,
+                "fallidas", fallidas
+        ));
+    }
 }
