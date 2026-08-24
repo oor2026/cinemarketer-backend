@@ -1,6 +1,7 @@
 package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.ReceivedRecommendationDto;
+import com.example.demo.application.dtos.SentRecommendationDto;
 import com.example.demo.application.dtos.RecommendationRequest;
 import com.example.demo.application.dtos.SuggestedUserDto;
 import com.example.demo.application.services.SeriesService;
@@ -75,7 +76,7 @@ public class SeriesRecommendationController {
         User receiver = userRepository.findById(req.getReceiverId())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        if (recommendationRepository.existsBySenderIdAndReceiverIdAndSeriesId(
+        if (recommendationRepository.existsActivaBySenderAndReceiverAndSeries(
                 me.getId(), req.getReceiverId(), seriesId)) {
             return ResponseEntity.badRequest().body(Map.of("error", "Ya le recomendaste esta serie"));
         }
@@ -151,11 +152,40 @@ public class SeriesRecommendationController {
         List<ReceivedRecommendationDto> result = recommendationRepository
                 .findByReceiverIdOrderByCreatedAtDesc(me.getId())
                 .stream()
+                .filter(r -> !r.isHiddenForReceiver())
                 .map(r -> new ReceivedRecommendationDto(
                         r.getId(),
                         r.getSender().getId(),
                         r.getSender().getName(),
                         r.getSender().getEffectiveAvatarUrl(),
+                        r.getSeriesId(),
+                        r.getSeriesTitle() != null ? r.getSeriesTitle() : resolverTitulo(r.getSeriesId()),
+                        r.getSeriesPosterPath() != null ? r.getSeriesPosterPath() : resolverPoster(r.getSeriesId()),
+                        r.getSeriesOverview(),
+                        r.getContextType(),
+                        r.getStatus(),
+                        r.getSeenAt(),
+                        r.getRating(),
+                        r.getCreatedAt()
+                ))
+                .toList();
+        return ResponseEntity.ok(result);
+    }
+
+    // GET /api/series-recommendations/sent — recomendaciones de series que YO envié
+    @GetMapping("/sent")
+    public ResponseEntity<List<SentRecommendationDto>> enviadas(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User me = getUser(userDetails);
+        List<SentRecommendationDto> result = recommendationRepository
+                .findBySenderIdOrderByCreatedAtDesc(me.getId())
+                .stream()
+                .filter(r -> !r.isHiddenForSender())
+                .map(r -> new SentRecommendationDto(
+                        r.getId(),
+                        r.getReceiver().getId(),
+                        r.getReceiver().getName(),
+                        r.getReceiver().getEffectiveAvatarUrl(),
                         r.getSeriesId(),
                         r.getSeriesTitle() != null ? r.getSeriesTitle() : resolverTitulo(r.getSeriesId()),
                         r.getSeriesPosterPath() != null ? r.getSeriesPosterPath() : resolverPoster(r.getSeriesId()),
@@ -251,10 +281,27 @@ public class SeriesRecommendationController {
     @Transactional
     public ResponseEntity<?> eliminar(@PathVariable Long id,
                                       @AuthenticationPrincipal UserDetails userDetails) {
+        // Ya no es un borrado físico — se oculta SOLO del lado de quien
+        // lo pide (acá siempre el receptor, es el único botón que existe
+        // hoy). El emisor sigue viéndola en "Enviadas", el dato se
+        // conserva siempre en la base para analítica.
         User me = getUser(userDetails);
         SeriesRecommendation rec = recommendationRepository.findByIdAndReceiverId(id, me.getId())
                 .orElseThrow(() -> new RuntimeException("Recomendación no encontrada"));
-        recommendationRepository.delete(rec);
+        rec.setHiddenForReceiver(true);
+        recommendationRepository.save(rec);
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    @DeleteMapping("/sent/{id}")
+    @Transactional
+    public ResponseEntity<?> ocultarEnviada(@PathVariable Long id,
+                                            @AuthenticationPrincipal UserDetails userDetails) {
+        User me = getUser(userDetails);
+        SeriesRecommendation rec = recommendationRepository.findByIdAndSenderId(id, me.getId())
+                .orElseThrow(() -> new RuntimeException("Recomendación no encontrada"));
+        rec.setHiddenForSender(true);
+        recommendationRepository.save(rec);
         return ResponseEntity.ok(Map.of("success", true));
     }
 

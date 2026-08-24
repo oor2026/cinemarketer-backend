@@ -15,6 +15,7 @@ public interface MovieRecommendationRepository extends JpaRepository<MovieRecomm
     boolean existsBySenderIdAndReceiverIdAndMovieId(Long senderId, Long receiverId, Long movieId);
     Optional<MovieRecommendation> findByIdAndReceiverId(Long id, Long receiverId);
     long countBySenderId(Long senderId);
+    Optional<MovieRecommendation> findByIdAndSenderId(Long id, Long senderId);
 
     // Recomendadas agrupadas por película — para no repetir el mismo
     // póster una vez por cada destinatario. "veces" cuenta TODAS las
@@ -72,4 +73,15 @@ public interface MovieRecommendationRepository extends JpaRepository<MovieRecomm
         """, nativeQuery = true)
     List<Object[]> findRandomUsers(@Param("senderId") Long senderId,
                                    @Param("limit") int limit);
+
+    // A diferencia de existsBySenderIdAndReceiverIdAndMovieId, este
+    // ignora las que están ocultas para los dos lados — si ninguno de
+    // los dos "tiene memoria" de esa recomendación (ambos la borraron),
+    // no debería bloquear que se vuelva a recomendar lo mismo.
+    @Query("SELECT COUNT(r) > 0 FROM MovieRecommendation r " +
+            "WHERE r.sender.id = :senderId AND r.receiver.id = :receiverId AND r.movieId = :movieId " +
+            "AND NOT (r.hiddenForSender = true AND r.hiddenForReceiver = true)")
+    boolean existsActivaBySenderAndReceiverAndMovie(@Param("senderId") Long senderId,
+                                                    @Param("receiverId") Long receiverId,
+                                                    @Param("movieId") Long movieId);
 }
