@@ -1,6 +1,7 @@
 package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.ReceivedRecommendationDto;
+import com.example.demo.application.dtos.SentRecommendationDto;
 import com.example.demo.application.dtos.RecommendationRequest;
 import com.example.demo.application.dtos.SuggestedUserDto;
 import com.example.demo.application.services.MovieService;
@@ -69,8 +70,11 @@ public class RecommendationController {
         User receiver = userRepository.findById(req.getReceiverId())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // Evitar duplicado
-        if (recommendationRepository.existsBySenderIdAndReceiverIdAndMovieId(
+        // Evitar duplicado — solo bloquea si queda "memoria" viva de esa
+        // recomendación en al menos uno de los dos lados. Si ambos la
+        // ocultaron (borraron), se puede volver a recomendar como si
+        // fuera la primera vez.
+        if (recommendationRepository.existsActivaBySenderAndReceiverAndMovie(
                 me.getId(), req.getReceiverId(), req.getMovieId())) {
             return ResponseEntity.badRequest().body(Map.of("error", "Ya le recomendaste esta película"));
         }
@@ -153,11 +157,40 @@ public class RecommendationController {
         List<ReceivedRecommendationDto> result = recommendationRepository
                 .findByReceiverIdOrderByCreatedAtDesc(me.getId())
                 .stream()
+                .filter(r -> !r.isHiddenForReceiver())
                 .map(r -> new ReceivedRecommendationDto(
                         r.getId(),
                         r.getSender().getId(),
                         r.getSender().getName(),
                         r.getSender().getEffectiveAvatarUrl(),
+                        r.getMovieId(),
+                        r.getMovieTitle() != null ? r.getMovieTitle() : resolverTitulo(r.getMovieId()),
+                        r.getMoviePosterPath() != null ? r.getMoviePosterPath() : resolverPoster(r.getMovieId()),
+                        r.getMovieOverview(),
+                        r.getContextType(),
+                        r.getStatus(),
+                        r.getSeenAt(),
+                        r.getRating(),
+                        r.getCreatedAt()
+                ))
+                .toList();
+        return ResponseEntity.ok(result);
+    }
+
+    // GET /api/recommendations/sent — recomendaciones que YO envié
+    @GetMapping("/sent")
+    public ResponseEntity<List<SentRecommendationDto>> enviadas(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User me = getUser(userDetails);
+        List<SentRecommendationDto> result = recommendationRepository
+                .findBySenderIdOrderByCreatedAtDesc(me.getId())
+                .stream()
+                .filter(r -> !r.isHiddenForSender())
+                .map(r -> new SentRecommendationDto(
+                        r.getId(),
+                        r.getReceiver().getId(),
+                        r.getReceiver().getName(),
+                        r.getReceiver().getEffectiveAvatarUrl(),
                         r.getMovieId(),
                         r.getMovieTitle() != null ? r.getMovieTitle() : resolverTitulo(r.getMovieId()),
                         r.getMoviePosterPath() != null ? r.getMoviePosterPath() : resolverPoster(r.getMovieId()),
@@ -256,10 +289,30 @@ public class RecommendationController {
     @Transactional
     public ResponseEntity<?> eliminar(@PathVariable Long id,
                                       @AuthenticationPrincipal UserDetails userDetails) {
+        // Ya no es un borrado físico — se oculta SOLO del lado de quien
+        // lo pide (acá siempre el receptor, es el único botón que existe
+        // hoy). El emisor sigue viéndola en "Enviadas", el dato se
+        // conserva siempre en la base para analítica.
         User me = getUser(userDetails);
         MovieRecommendation rec = recommendationRepository.findByIdAndReceiverId(id, me.getId())
                 .orElseThrow(() -> new RuntimeException("Recomendación no encontrada"));
-        recommendationRepository.delete(rec);
+        rec.setHiddenForReceiver(true);
+        recommendationRepository.save(rec);
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    // Ocultar del lado de quien ENVIÓ (compartimento "Enviadas") — mismo
+    // criterio que el DELETE de "Recibidas": nunca se borra la fila,
+    // solo se marca oculta para este lado.
+    @DeleteMapping("/sent/{id}")
+    @Transactional
+    public ResponseEntity<?> ocultarEnviada(@PathVariable Long id,
+                                            @AuthenticationPrincipal UserDetails userDetails) {
+        User me = getUser(userDetails);
+        MovieRecommendation rec = recommendationRepository.findByIdAndSenderId(id, me.getId())
+                .orElseThrow(() -> new RuntimeException("Recomendación no encontrada"));
+        rec.setHiddenForSender(true);
+        recommendationRepository.save(rec);
         return ResponseEntity.ok(Map.of("success", true));
     }
 

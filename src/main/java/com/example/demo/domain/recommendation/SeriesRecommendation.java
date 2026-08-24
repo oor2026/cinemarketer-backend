@@ -58,4 +58,10 @@ public class SeriesRecommendation {
 
     @Column(name = "series_overview", columnDefinition = "TEXT")
     private String seriesOverview;
+
+    @Column(name = "hidden_for_sender", nullable = false)
+    private boolean hiddenForSender = false;
+
+    @Column(name = "hidden_for_receiver", nullable = false)
+    private boolean hiddenForReceiver = false;
 }

@@ -58,4 +58,10 @@ public class MovieRecommendation {
 
     @Column(name = "movie_overview", columnDefinition = "TEXT")
     private String movieOverview;
+
+    @Column(name = "hidden_for_sender", nullable = false)
+    private boolean hiddenForSender = false;
+
+    @Column(name = "hidden_for_receiver", nullable = false)
+    private boolean hiddenForReceiver = false;
 }
