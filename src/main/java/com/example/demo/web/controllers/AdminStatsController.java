@@ -64,6 +64,8 @@ public class AdminStatsController {
     private final com.example.demo.domain.publication.PublicationRepository publicationRepository;
     private final com.example.demo.domain.review.VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository;
     private final com.example.demo.domain.series.VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository;
+    private final com.example.demo.domain.espiritu.EspirituSnapshotRepository espirituSnapshotRepository;
+    private final com.example.demo.domain.gusto.GustoHistorialRepository gustoHistorialRepository;
 
     public AdminStatsController(
             UserRepository userRepository,
@@ -74,7 +76,7 @@ public class AdminStatsController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository supportTicketRepository,
             PremiumRewardRepository premiumRewardRepository,
-            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, SeriesRecommendationRepository seriesRecommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SeriesWatchlistRepository seriesWatchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, com.example.demo.domain.review.VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository, com.example.demo.domain.series.VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository) {
+            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, SeriesRecommendationRepository seriesRecommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SeriesWatchlistRepository seriesWatchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, com.example.demo.domain.review.VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository, com.example.demo.domain.series.VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository, com.example.demo.domain.espiritu.EspirituSnapshotRepository espirituSnapshotRepository, com.example.demo.domain.gusto.GustoHistorialRepository gustoHistorialRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.seriesReviewRepository = seriesReviewRepository;
@@ -98,6 +100,8 @@ public class AdminStatsController {
         this.publicationRepository = publicationRepository;
         this.votoRelampagoOmitidaRepository = votoRelampagoOmitidaRepository;
         this.votoRelampagoOmitidaSerieRepository = votoRelampagoOmitidaSerieRepository;
+        this.espirituSnapshotRepository = espirituSnapshotRepository;
+        this.gustoHistorialRepository = gustoHistorialRepository;
     }
 
     @GetMapping
@@ -130,6 +134,7 @@ public class AdminStatsController {
         response.setSupport(calculateSupportStats());
         response.setGrowth(calculateGrowthStats(start, end, prevStart, prevEnd));
         response.setNoVistas(calculateNoVistasStats(start, end, prevStart, prevEnd));
+        response.setPreferencias(calculatePreferenciasStats(start, end));
 // Premium stats
         PremiumStatsDto premiumStats = new PremiumStatsDto();
         premiumStats.setTotalPremiumRewards(premiumRewardRepository.count());
@@ -333,6 +338,48 @@ public class AdminStatsController {
         stats.setPctPeliculas(totalOmitidas > 0 ? (double) peliculas.getTotalOmitidas() / totalOmitidas * 100 : 0);
         stats.setPctSeries(totalOmitidas > 0 ? (double) series.getTotalOmitidas() / totalOmitidas * 100 : 0);
         return stats;
+    }
+
+    private PreferenciasStatsDto calculatePreferenciasStats(LocalDateTime start, LocalDateTime end) {
+        PreferenciasStatsDto stats = new PreferenciasStatsDto();
+        stats.setTotal(buildSeccionPreferencias(null, start, end));
+        stats.setPeliculas(buildSeccionPreferencias("PELICULA", start, end));
+        stats.setSeries(buildSeccionPreferencias("SERIE", start, end));
+        return stats;
+    }
+
+    private PreferenciasStatsSectionDto buildSeccionPreferencias(String tipo, LocalDateTime start, LocalDateTime end) {
+        List<Map<String, Object>> distribucion = (tipo == null)
+                ? espirituSnapshotRepository.findDistribucionEspiritu(start, end)
+                : espirituSnapshotRepository.findDistribucionEspirituPorTipo(tipo, start, end);
+        distribucion = calcularPorcentajes(distribucion);
+
+        List<Map<String, Object>> favoritas = (tipo == null)
+                ? gustoHistorialRepository.findTopGustoTotal("FAVORITA", start, end, PageRequest.of(0, 25))
+                : gustoHistorialRepository.findTopGustoPorTipo(tipo, "FAVORITA", start, end, PageRequest.of(0, 25));
+
+        List<Map<String, Object>> noMeCanso = (tipo == null)
+                ? gustoHistorialRepository.findTopGustoTotal("NO_ME_CANSO", start, end, PageRequest.of(0, 25))
+                : gustoHistorialRepository.findTopGustoPorTipo(tipo, "NO_ME_CANSO", start, end, PageRequest.of(0, 25));
+
+        List<Map<String, Object>> noLaBanco = (tipo == null)
+                ? gustoHistorialRepository.findTopGustoTotal("NO_LA_BANCO", start, end, PageRequest.of(0, 25))
+                : gustoHistorialRepository.findTopGustoPorTipo(tipo, "NO_LA_BANCO", start, end, PageRequest.of(0, 25));
+
+        return new PreferenciasStatsSectionDto(distribucion, favoritas, noMeCanso, noLaBanco);
+    }
+
+    // El COUNT sale directo de SQL, pero el % lo calculamos acá — más
+    // simple que meterlo en la query nativa, y evita repetir el total
+    // dos veces por fila.
+    private List<Map<String, Object>> calcularPorcentajes(List<Map<String, Object>> filas) {
+        long total = filas.stream().mapToLong(f -> ((Number) f.get("total")).longValue()).sum();
+        if (total == 0) return filas;
+        for (Map<String, Object> fila : filas) {
+            long cantidad = ((Number) fila.get("total")).longValue();
+            fila.put("porcentaje", Math.round(cantidad * 1000.0 / total) / 10.0);
+        }
+        return filas;
     }
 
     private NoVistasStatsSectionDto calculateNoVistasPeliculas(LocalDateTime start, LocalDateTime end) {
