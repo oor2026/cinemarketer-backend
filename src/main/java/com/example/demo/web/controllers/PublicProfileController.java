@@ -116,6 +116,7 @@ public class PublicProfileController {
         dto.setId(target.getId());
         dto.setNombre(target.getName());
         dto.setAvatarUrl(target.getEffectiveAvatarUrl());
+        dto.setBannerUrl(target.getBannerUrl());
         dto.setNivel(target.getLevel() != null ? target.getLevel().name() : "AMATEUR");
         dto.setNivelEmoji(target.getLevel() != null ? target.getLevel().getEmoji() : "🟢");
         dto.setNivelDisplayName(target.getLevel() != null ? target.getLevel().getDisplayName() : "Amateur");
