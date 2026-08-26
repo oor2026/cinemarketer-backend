@@ -39,6 +39,9 @@ public class SeriesWatchlist {
     @Column(name = "seen_at")
     private LocalDateTime seenAt;
 
+    @Column(length = 50)
+    private String motivo; // opcional — por qué la guardó (chip elegido en el modal post-guardado)
+
     @Column(name = "rating")
     private Short rating;
 

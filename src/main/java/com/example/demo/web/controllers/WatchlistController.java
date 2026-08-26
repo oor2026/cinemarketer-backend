@@ -88,8 +88,8 @@ public class WatchlistController {
             }
         } catch (Exception ignored) {}
 
-        watchlistRepository.save(w);
-        return ResponseEntity.ok(Map.of("saved", true));
+        Watchlist guardada = watchlistRepository.save(w);
+        return ResponseEntity.ok(Map.of("saved", true, "id", guardada.getId()));
     }
 
     // GET /api/watchlist/{movieId}/status — consultar si una película está guardada
@@ -165,6 +165,23 @@ public class WatchlistController {
                 .map(Watchlist::getMovieId)
                 .toList();
         return ResponseEntity.ok(ids);
+    }
+
+    // PATCH /api/watchlist/{id}/motivo — opcional, se llama después del
+    // guardado si el usuario elige un motivo en el modal amigable. Si
+    // nunca se llama, motivo queda en null — el guardado en sí ya se
+    // completó antes, esto es puro dato adicional, no bloquea nada.
+    @PatchMapping("/{id}/motivo")
+    public ResponseEntity<?> setMotivo(@PathVariable Long id,
+                                       @RequestBody Map<String, String> body,
+                                       @AuthenticationPrincipal UserDetails userDetails) {
+        User me = getUser(userDetails);
+        Watchlist w = watchlistRepository.findById(id)
+                .filter(item -> item.getUser().getId().equals(me.getId()))
+                .orElseThrow(() -> new RuntimeException("No encontrada"));
+        w.setMotivo(body.get("motivo"));
+        watchlistRepository.save(w);
+        return ResponseEntity.ok(Map.of("success", true));
     }
 
     // ── helpers ──────────────────────────────────────────────
