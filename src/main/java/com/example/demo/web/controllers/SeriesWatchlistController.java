@@ -81,8 +81,8 @@ public class SeriesWatchlistController {
             }
         } catch (Exception ignored) {}
 
-        seriesWatchlistRepository.save(w);
-        return ResponseEntity.ok(Map.of("saved", true));
+        SeriesWatchlist guardada = seriesWatchlistRepository.save(w);
+        return ResponseEntity.ok(Map.of("saved", true, "id", guardada.getId()));
     }
 
     @GetMapping("/{seriesId}/status")
@@ -106,6 +106,19 @@ public class SeriesWatchlistController {
 
         w.setSeenAt(LocalDateTime.now());
         w.setStatus("SEEN");
+        seriesWatchlistRepository.save(w);
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    @PatchMapping("/{id}/motivo")
+    public ResponseEntity<?> setMotivo(@PathVariable Long id,
+                                       @RequestBody Map<String, String> body,
+                                       @AuthenticationPrincipal UserDetails userDetails) {
+        User me = getUser(userDetails);
+        SeriesWatchlist w = seriesWatchlistRepository.findById(id)
+                .filter(item -> item.getUser().getId().equals(me.getId()))
+                .orElseThrow(() -> new RuntimeException("No encontrada"));
+        w.setMotivo(body.get("motivo"));
         seriesWatchlistRepository.save(w);
         return ResponseEntity.ok(Map.of("success", true));
     }

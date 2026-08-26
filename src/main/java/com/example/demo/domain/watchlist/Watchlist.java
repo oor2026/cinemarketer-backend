@@ -42,6 +42,9 @@ public class Watchlist {
     @Column(name = "rating")
     private Short rating;
 
+    @Column(length = 50)
+    private String motivo; // opcional — por qué la guardó (chip elegido en el modal post-guardado)
+
     @Column(name = "rated_at")
     private LocalDateTime ratedAt;
 
