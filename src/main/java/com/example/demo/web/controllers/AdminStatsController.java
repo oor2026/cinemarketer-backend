@@ -374,12 +374,19 @@ public class AdminStatsController {
     // dos veces por fila.
     private List<Map<String, Object>> calcularPorcentajes(List<Map<String, Object>> filas) {
         long total = filas.stream().mapToLong(f -> ((Number) f.get("total")).longValue()).sum();
-        if (total == 0) return filas;
-        for (Map<String, Object> fila : filas) {
-            long cantidad = ((Number) fila.get("total")).longValue();
-            fila.put("porcentaje", Math.round(cantidad * 1000.0 / total) / 10.0);
+        // Los Map<String,Object> que devuelve JPQL con alias pueden venir
+        // inmutables — se copian a un HashMap propio antes de mutarlos,
+        // así fila.put(...) nunca revienta con UnsupportedOperationException.
+        List<Map<String, Object>> resultado = new java.util.ArrayList<>();
+        for (Map<String, Object> filaOriginal : filas) {
+            Map<String, Object> fila = new java.util.HashMap<>(filaOriginal);
+            if (total > 0) {
+                long cantidad = ((Number) fila.get("total")).longValue();
+                fila.put("porcentaje", Math.round(cantidad * 1000.0 / total) / 10.0);
+            }
+            resultado.add(fila);
         }
-        return filas;
+        return resultado;
     }
 
     private NoVistasStatsSectionDto calculateNoVistasPeliculas(LocalDateTime start, LocalDateTime end) {
