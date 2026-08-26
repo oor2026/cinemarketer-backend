@@ -45,6 +45,9 @@ public class Watchlist {
     @Column(length = 50)
     private String motivo; // opcional — por qué la guardó (chip elegido en el modal post-guardado)
 
+    @Column(nullable = false)
+    private boolean hidden = false; // "ocultar" en vez de borrar — preserva el historial para siempre
+
     @Column(name = "rated_at")
     private LocalDateTime ratedAt;
 

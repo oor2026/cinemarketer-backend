@@ -40,7 +40,7 @@ public class SeriesWatchlistController {
             @AuthenticationPrincipal UserDetails userDetails) {
         User me = getUser(userDetails);
         List<SeriesWatchlistDto> result = seriesWatchlistRepository
-                .findByUserIdOrderByCreatedAtDesc(me.getId())
+                .findByUserIdAndHiddenFalseOrderByCreatedAtDesc(me.getId())
                 .stream()
                 .map(this::toDto)
                 .toList();
@@ -53,9 +53,11 @@ public class SeriesWatchlistController {
                                     @AuthenticationPrincipal UserDetails userDetails) {
         User me = getUser(userDetails);
 
-        var existing = seriesWatchlistRepository.findByUserIdAndSeriesId(me.getId(), seriesId);
+        var existing = seriesWatchlistRepository.findByUserIdAndSeriesIdAndHiddenFalse(me.getId(), seriesId);
         if (existing.isPresent()) {
-            seriesWatchlistRepository.delete(existing.get());
+            SeriesWatchlist w = existing.get();
+            w.setHidden(true);
+            seriesWatchlistRepository.save(w);
             return ResponseEntity.ok(Map.of("saved", false));
         }
 
@@ -89,7 +91,7 @@ public class SeriesWatchlistController {
     public ResponseEntity<?> getStatus(@PathVariable Long seriesId,
                                        @AuthenticationPrincipal UserDetails userDetails) {
         User me = getUser(userDetails);
-        boolean saved = seriesWatchlistRepository.existsByUserIdAndSeriesId(me.getId(), seriesId);
+        boolean saved = seriesWatchlistRepository.existsByUserIdAndSeriesIdAndHiddenFalse(me.getId(), seriesId);
         return ResponseEntity.ok(Map.of("saved", saved));
     }
 
@@ -153,7 +155,8 @@ public class SeriesWatchlistController {
         User me = getUser(userDetails);
         SeriesWatchlist w = seriesWatchlistRepository.findByIdAndUserId(id, me.getId())
                 .orElseThrow(() -> new RuntimeException("Entrada no encontrada"));
-        seriesWatchlistRepository.delete(w);
+        w.setHidden(true);
+        seriesWatchlistRepository.save(w);
         return ResponseEntity.ok(Map.of("success", true));
     }
 
@@ -161,7 +164,7 @@ public class SeriesWatchlistController {
     public ResponseEntity<List<Long>> getMisIds(
             @AuthenticationPrincipal UserDetails userDetails) {
         User me = getUser(userDetails);
-        List<Long> ids = seriesWatchlistRepository.findByUserIdOrderByCreatedAtDesc(me.getId())
+        List<Long> ids = seriesWatchlistRepository.findByUserIdAndHiddenFalseOrderByCreatedAtDesc(me.getId())
                 .stream()
                 .map(SeriesWatchlist::getSeriesId)
                 .toList();

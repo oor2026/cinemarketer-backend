@@ -23,6 +23,12 @@ public interface WatchlistRepository extends JpaRepository<Watchlist, Long> {
 
     long count();  // ya existe en JpaRepository
 
+    Optional<Watchlist> findByUserIdAndMovieIdAndHiddenFalse(Long userId, Long movieId);
+
+    List<Watchlist> findByUserIdAndHiddenFalseOrderByCreatedAtDesc(Long userId);
+
+    boolean existsByUserIdAndMovieIdAndHiddenFalse(Long userId, Long movieId);
+
     @Query("SELECT COUNT(DISTINCT w.movieId) FROM Watchlist w")
     long countDistinctMovies();
 
