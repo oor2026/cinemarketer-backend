@@ -15,4 +15,10 @@ public class WatchlistStatsSectionDto {
     private double promedioPorUsuario;
     private List<Map<String, Object>> topContent;
     private List<Map<String, Object>> generos;
+    // Distribución de "¿por qué la guardaste?" — solo cuenta las que
+    // tienen motivo (el modal es opcional, muchas van a quedar null).
+    private List<Map<String, Object>> motivos;
+    // % de guardadas que sí respondieron el motivo, sobre el total —
+    // mide qué tanto se usa esa pregunta opcional, no solo qué contestan.
+    private double pctConMotivo;
 }

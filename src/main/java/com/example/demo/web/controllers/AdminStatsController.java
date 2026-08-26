@@ -852,6 +852,21 @@ public class AdminStatsController {
         total.setPromedioPorUsuario(usuariosConLista > 0 ?
                 Math.round((double) totalGuardadas / usuariosConLista * 10) / 10.0 : 0);
 
+        // "Total" mezcla motivos de Películas + Series en una sola bolsa
+        // — mismo criterio que ya aplicamos con Espíritu en "Preferencias".
+        Map<String, Long> motivosUnificados = new java.util.LinkedHashMap<>();
+        for (var m : peliculas.getMotivos()) motivosUnificados.merge((String) m.get("motivo"), ((Number) m.get("total")).longValue(), Long::sum);
+        for (var m : series.getMotivos()) motivosUnificados.merge((String) m.get("motivo"), ((Number) m.get("total")).longValue(), Long::sum);
+        List<Map<String, Object>> motivosTotal = motivosUnificados.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .map(e -> { Map<String, Object> m = new HashMap<>(); m.put("motivo", e.getKey()); m.put("total", e.getValue()); return m; })
+                .toList();
+        total.setMotivos(calcularPorcentajes(motivosTotal));
+
+        long conMotivoTotal = peliculas.getMotivos().stream().mapToLong(m -> ((Number) m.get("total")).longValue()).sum()
+                + series.getMotivos().stream().mapToLong(m -> ((Number) m.get("total")).longValue()).sum();
+        total.setPctConMotivo(totalGuardadas > 0 ? Math.round(conMotivoTotal * 1000.0 / totalGuardadas) / 10.0 : 0);
+
         WatchlistStatsDto stats = new WatchlistStatsDto();
         stats.setTotal(total);
         stats.setPeliculas(peliculas);
@@ -881,6 +896,11 @@ public class AdminStatsController {
                 }).toList());
 
         stats.setGeneros(calcularGenerosConPorcentaje(watchlistRepository.findAllMovieGenres()));
+
+        long conMotivo = watchlistRepository.countByMotivoIsNotNull();
+        stats.setPctConMotivo(total > 0 ? Math.round(conMotivo * 1000.0 / total) / 10.0 : 0);
+        stats.setMotivos(calcularPorcentajes(watchlistRepository.findDistribucionMotivos()));
+
         return stats;
     }
 
@@ -904,6 +924,11 @@ public class AdminStatsController {
                 }).toList());
 
         stats.setGeneros(calcularGenerosConPorcentaje(seriesWatchlistRepository.findAllSeriesGenres()));
+
+        long conMotivo = seriesWatchlistRepository.countByMotivoIsNotNull();
+        stats.setPctConMotivo(total > 0 ? Math.round(conMotivo * 1000.0 / total) / 10.0 : 0);
+        stats.setMotivos(calcularPorcentajes(seriesWatchlistRepository.findDistribucionMotivos()));
+
         return stats;
     }
 

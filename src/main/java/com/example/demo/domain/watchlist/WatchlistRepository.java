@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -42,4 +43,11 @@ public interface WatchlistRepository extends JpaRepository<Watchlist, Long> {
 
     @Query("SELECT w.movieGenres FROM Watchlist w WHERE w.movieGenres IS NOT NULL")
     List<String> findAllMovieGenres();
+
+    @Query("SELECT w.motivo as motivo, COUNT(w) as total FROM Watchlist w " +
+            "WHERE w.motivo IS NOT NULL " +
+            "GROUP BY w.motivo ORDER BY total DESC")
+    List<Map<String, Object>> findDistribucionMotivos();
+
+    long countByMotivoIsNotNull();
 }

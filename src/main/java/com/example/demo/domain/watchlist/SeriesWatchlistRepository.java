@@ -32,4 +32,11 @@ public interface SeriesWatchlistRepository extends JpaRepository<SeriesWatchlist
 
     @org.springframework.data.jpa.repository.Query("SELECT w.seriesGenres FROM SeriesWatchlist w WHERE w.seriesGenres IS NOT NULL")
     java.util.List<String> findAllSeriesGenres();
+
+    @org.springframework.data.jpa.repository.Query("SELECT w.motivo as motivo, COUNT(w) as total FROM SeriesWatchlist w " +
+            "WHERE w.motivo IS NOT NULL " +
+            "GROUP BY w.motivo ORDER BY total DESC")
+    java.util.List<java.util.Map<String, Object>> findDistribucionMotivos();
+
+    long countByMotivoIsNotNull();
 }
