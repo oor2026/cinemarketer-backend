@@ -10,6 +10,7 @@ public class PublicProfileDto {
     private Long id;
     private String nombre;
     private String avatarUrl;
+    private String bannerUrl;
     private String nivel;
     private String nivelEmoji;
     private String nivelDisplayName;
