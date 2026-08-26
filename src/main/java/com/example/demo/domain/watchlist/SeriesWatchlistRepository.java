@@ -16,6 +16,12 @@ public interface SeriesWatchlistRepository extends JpaRepository<SeriesWatchlist
 
     long countByUserId(Long userId);
 
+    Optional<SeriesWatchlist> findByUserIdAndSeriesIdAndHiddenFalse(Long userId, Long seriesId);
+
+    List<SeriesWatchlist> findByUserIdAndHiddenFalseOrderByCreatedAtDesc(Long userId);
+
+    boolean existsByUserIdAndSeriesIdAndHiddenFalse(Long userId, Long seriesId);
+
     @org.springframework.data.jpa.repository.Query("SELECT COUNT(DISTINCT w.user.id) FROM SeriesWatchlist w")
     long countDistinctUsers();
 

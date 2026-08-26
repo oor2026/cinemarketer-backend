@@ -41,7 +41,7 @@ public class WatchlistController {
             @AuthenticationPrincipal UserDetails userDetails) {
         User me = getUser(userDetails);
         List<WatchlistDto> result = watchlistRepository
-                .findByUserIdOrderByCreatedAtDesc(me.getId())
+                .findByUserIdAndHiddenFalseOrderByCreatedAtDesc(me.getId())
                 .stream()
                 .map(this::toDto)
                 .toList();
@@ -55,12 +55,19 @@ public class WatchlistController {
                                     @AuthenticationPrincipal UserDetails userDetails) {
         User me = getUser(userDetails);
 
-        // Si ya existe, eliminar (quitar de lista)
-        var existing = watchlistRepository.findByUserIdAndMovieId(me.getId(), movieId);
+        // Si ya tiene una entrada ACTIVA, ocultarla (nunca se borra) —
+        // preserva el historial completo para analítica futura.
+        var existing = watchlistRepository.findByUserIdAndMovieIdAndHiddenFalse(me.getId(), movieId);
         if (existing.isPresent()) {
-            watchlistRepository.delete(existing.get());
+            Watchlist w = existing.get();
+            w.setHidden(true);
+            watchlistRepository.save(w);
             return ResponseEntity.ok(Map.of("saved", false));
         }
+        // No hay entrada activa — se crea una fila NUEVA siempre, aunque
+        // ya haya habido guardados anteriores ocultos para esta misma
+        // película. Así cada guardado conserva su propio motivo, sin
+        // pisar el de una vez anterior.
 
         // Si no existe, guardar
         Watchlist w = new Watchlist();
@@ -97,7 +104,7 @@ public class WatchlistController {
     public ResponseEntity<?> getStatus(@PathVariable Long movieId,
                                        @AuthenticationPrincipal UserDetails userDetails) {
         User me = getUser(userDetails);
-        boolean saved = watchlistRepository.existsByUserIdAndMovieId(me.getId(), movieId);
+        boolean saved = watchlistRepository.existsByUserIdAndMovieIdAndHiddenFalse(me.getId(), movieId);
         return ResponseEntity.ok(Map.of("saved", saved));
     }
 
@@ -151,7 +158,8 @@ public class WatchlistController {
         User me = getUser(userDetails);
         Watchlist w = watchlistRepository.findByIdAndUserId(id, me.getId())
                 .orElseThrow(() -> new RuntimeException("Entrada no encontrada"));
-        watchlistRepository.delete(w);
+        w.setHidden(true);
+        watchlistRepository.save(w);
         return ResponseEntity.ok(Map.of("success", true));
     }
 
@@ -160,7 +168,7 @@ public class WatchlistController {
     public ResponseEntity<List<Long>> getMisIds(
             @AuthenticationPrincipal UserDetails userDetails) {
         User me = getUser(userDetails);
-        List<Long> ids = watchlistRepository.findByUserIdOrderByCreatedAtDesc(me.getId())
+        List<Long> ids = watchlistRepository.findByUserIdAndHiddenFalseOrderByCreatedAtDesc(me.getId())
                 .stream()
                 .map(Watchlist::getMovieId)
                 .toList();
