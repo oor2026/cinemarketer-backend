@@ -19,8 +19,15 @@ public interface CommentReplyRepository extends JpaRepository<CommentReply, Long
 
     // Contar respuestas visibles
     @Query("SELECT COUNT(r) FROM CommentReply r WHERE r.comment.id = :commentId " +
-           "AND r.moderationStatus NOT IN ('REMOVED', 'REJECTED', 'AUTO_HIDDEN', 'HIDDEN_BY_USER')")
+            "AND r.moderationStatus NOT IN ('REMOVED', 'REJECTED', 'AUTO_HIDDEN', 'HIDDEN_BY_USER')")
     long countVisibleByCommentId(@Param("commentId") Long commentId);
+
+    // Batch: mismo conteo pero para varios comentarios de una — reemplaza
+    // un countVisibleByCommentId() por cada uno en un loop.
+    @Query("SELECT r.comment.id, COUNT(r) FROM CommentReply r WHERE r.comment.id IN :commentIds " +
+            "AND r.moderationStatus NOT IN ('REMOVED', 'REJECTED', 'AUTO_HIDDEN', 'HIDDEN_BY_USER') " +
+            "GROUP BY r.comment.id")
+    List<Object[]> countVisibleByCommentIds(@Param("commentIds") List<Long> commentIds);
 
     // Ultimo comentario del usuario para antispam
     java.util.Optional<CommentReply> findFirstByUserIdOrderByCreatedAtDesc(Long userId);

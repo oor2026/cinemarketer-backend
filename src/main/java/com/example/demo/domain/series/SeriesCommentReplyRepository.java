@@ -44,4 +44,10 @@ public interface SeriesCommentReplyRepository extends JpaRepository<SeriesCommen
     List<SeriesCommentReply> findResolved();
 
     long countByHasGifTrue();
+
+    // Batch, mismo criterio que CommentReplyRepository.countVisibleByCommentIds.
+    @Query("SELECT r.comment.id, COUNT(r) FROM SeriesCommentReply r WHERE r.comment.id IN :commentIds " +
+            "AND r.moderationStatus NOT IN ('REMOVED', 'REJECTED', 'AUTO_HIDDEN', 'HIDDEN_BY_USER') " +
+            "GROUP BY r.comment.id")
+    List<Object[]> countVisibleByCommentIds(@Param("commentIds") List<Long> commentIds);
 }

@@ -53,4 +53,8 @@ public interface MovieRepository extends JpaRepository<Movie, Long> {
 
     // Verificar si una película ya existe por tmdbId
     boolean existsByTmdbId(Long tmdbId);
+
+    // Trae varias películas de una sola vez por su tmdbId — reemplaza
+    // el patrón de hacer un findByTmdbId() por cada fila en un loop.
+    List<Movie> findByTmdbIdIn(List<Long> tmdbIds);
 }

@@ -14,6 +14,10 @@ public interface WatchlistRepository extends JpaRepository<Watchlist, Long> {
 
     List<Watchlist> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    // Últimas 8 directo de la base — reemplaza traer TODO el historial
+    // guardado del usuario y cortarlo con .limit(8) en Java.
+    List<Watchlist> findTop8ByUserIdOrderByCreatedAtDesc(Long userId);
+
     Optional<Watchlist> findByUserIdAndMovieId(Long userId, Long movieId);
 
     boolean existsByUserIdAndMovieId(Long userId, Long movieId);
