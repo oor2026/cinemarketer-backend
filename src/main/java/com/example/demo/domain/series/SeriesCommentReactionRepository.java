@@ -64,4 +64,10 @@ public interface SeriesCommentReactionRepository extends JpaRepository<SeriesCom
     long countMerecePuntosRecibidosByUser(@Param("userId") Long userId);
 
     long countByCommentIdAndTypeAndActiveTrueAndReplyIsNull(Long commentId, ReactionType type);
+
+    // Batch, mismo criterio que CommentReactionRepository.countByCommentIdsGroupedByType.
+    @Query("SELECT r.comment.id, r.type, COUNT(r) FROM SeriesCommentReaction r " +
+            "WHERE r.comment.id IN :commentIds AND r.active = true " +
+            "GROUP BY r.comment.id, r.type")
+    java.util.List<Object[]> countByCommentIdsGroupedByType(@Param("commentIds") java.util.List<Long> commentIds);
 }

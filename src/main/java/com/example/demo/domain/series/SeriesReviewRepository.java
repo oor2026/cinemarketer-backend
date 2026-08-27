@@ -17,6 +17,12 @@ public interface SeriesReviewRepository extends JpaRepository<SeriesReview, Long
 
     List<SeriesReview> findByUserIdAndVoteIsNotNullOrderByCreatedAtDesc(Long userId);
 
+    // Misma búsqueda pero paginada en la base — reemplaza traer todo
+    // el historial de votos de series y cortar a 6 con .stream().limit()
+    // en Java.
+    org.springframework.data.domain.Page<SeriesReview> findByUserIdAndVoteIsNotNullOrderByCreatedAtDesc(
+            Long userId, org.springframework.data.domain.Pageable pageable);
+
     long countByUserId(Long userId);
 
     @org.springframework.data.jpa.repository.Query("SELECT COUNT(sr) FROM SeriesReview sr WHERE sr.vote = :voteType AND sr.createdAt BETWEEN :start AND :end")

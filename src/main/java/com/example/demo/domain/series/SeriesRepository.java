@@ -41,4 +41,8 @@ public interface SeriesRepository extends JpaRepository<Series, Long> {
     List<Series> findTop20ByOrderByPopularityDesc();
 
     boolean existsByTmdbId(Long tmdbId);
+
+    // Mismo criterio que MovieRepository.findByTmdbIdIn — una sola
+    // query para varias series en vez de una por cada una.
+    List<Series> findByTmdbIdIn(List<Long> tmdbIds);
 }

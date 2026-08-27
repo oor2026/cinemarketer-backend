@@ -8,6 +8,9 @@ public interface SeriesWatchlistRepository extends JpaRepository<SeriesWatchlist
 
     List<SeriesWatchlist> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    // Últimas 8 directo de la base — mismo criterio que WatchlistRepository.
+    List<SeriesWatchlist> findTop8ByUserIdOrderByCreatedAtDesc(Long userId);
+
     Optional<SeriesWatchlist> findByUserIdAndSeriesId(Long userId, Long seriesId);
 
     boolean existsByUserIdAndSeriesId(Long userId, Long seriesId);

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -25,6 +26,14 @@ public interface CommentReactionRepository extends JpaRepository<CommentReaction
 
     // Contar reacciones activas de un tipo para un comentario
     long countByCommentIdAndTypeAndActiveTrue(Long commentId, ReactionType type);
+
+    // Batch: conteo de reacciones activas (por tipo) para varios
+    // comentarios de una sola vez — reemplaza hacer 2 llamadas
+    // (BANCO + MERECE_PUNTO) por cada comentario en un loop.
+    @Query("SELECT r.comment.id, r.type, COUNT(r) FROM CommentReaction r " +
+            "WHERE r.comment.id IN :commentIds AND r.active = true " +
+            "GROUP BY r.comment.id, r.type")
+    List<Object[]> countByCommentIdsGroupedByType(@Param("commentIds") java.util.List<Long> commentIds);
 
     // Verificar si existe una reaccion activa
     boolean existsByCommentIdAndUserIdAndTypeAndActiveTrue(

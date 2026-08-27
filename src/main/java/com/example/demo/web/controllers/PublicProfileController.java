@@ -30,7 +30,9 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -123,63 +125,98 @@ public class PublicProfileController {
         dto.setMiembroDesde(formatMiembroDesde(target.getCreatedAt()));
         dto.setBioTitulo(target.getBioTitulo());
         dto.setBioTexto(target.getBioTexto());
+        // Los 4 "gustos" de películas y los 4 de series se resuelven con
+        // UNA query cada grupo (findByTmdbIdIn), en vez de 8 llamadas a
+        // resolverPelicula()/resolverSerie() secuenciales — mismo criterio
+        // batch que ya usamos para votaciones/comentarios/recomendadas.
+        List<Long> peliculaGustoIds = java.util.stream.Stream.of(
+                        target.getPeliculaFavoritaId(), target.getUltimaVistaCineId(),
+                        target.getNoMeCansoDeVerId(), target.getNoLaBancoId())
+                .filter(java.util.Objects::nonNull)
+                .map(Integer::longValue)
+                .toList();
+        Map<Long, Movie> peliculasGustoById = peliculaGustoIds.isEmpty()
+                ? Map.of()
+                : movieRepository.findByTmdbIdIn(peliculaGustoIds).stream()
+                .collect(Collectors.toMap(Movie::getTmdbId, m -> m));
+
+        List<Long> serieGustoIds = java.util.stream.Stream.of(
+                        target.getSerieFavoritaId(), target.getUltimaMaratonId(),
+                        target.getNoMeCansoDeVerSerieId(), target.getNoLaBancoSerieId())
+                .filter(java.util.Objects::nonNull)
+                .map(Integer::longValue)
+                .toList();
+        Map<Long, Series> seriesGustoById = serieGustoIds.isEmpty()
+                ? Map.of()
+                : seriesRepository.findByTmdbIdIn(serieGustoIds).stream()
+                .collect(Collectors.toMap(Series::getTmdbId, s -> s));
+
         dto.setPeliculaFavoritaId(target.getPeliculaFavoritaId());
-        Movie peliculaFavorita = resolverPelicula(target.getPeliculaFavoritaId());
+        Movie peliculaFavorita = target.getPeliculaFavoritaId() != null
+                ? peliculasGustoById.get(target.getPeliculaFavoritaId().longValue()) : null;
         if (peliculaFavorita != null) {
             dto.setPeliculaFavoritaTitulo(peliculaFavorita.getTitle());
             dto.setPeliculaFavoritaPoster(peliculaFavorita.getPosterPath());
         }
 
         dto.setUltimaVistaCineId(target.getUltimaVistaCineId());
-        Movie ultimaVistaCine = resolverPelicula(target.getUltimaVistaCineId());
+        Movie ultimaVistaCine = target.getUltimaVistaCineId() != null
+                ? peliculasGustoById.get(target.getUltimaVistaCineId().longValue()) : null;
         if (ultimaVistaCine != null) {
             dto.setUltimaVistaCineTitulo(ultimaVistaCine.getTitle());
             dto.setUltimaVistaCinePoster(ultimaVistaCine.getPosterPath());
         }
 
         dto.setNoMeCansoDeVerId(target.getNoMeCansoDeVerId());
-        Movie noMeCansoDeVer = resolverPelicula(target.getNoMeCansoDeVerId());
+        Movie noMeCansoDeVer = target.getNoMeCansoDeVerId() != null
+                ? peliculasGustoById.get(target.getNoMeCansoDeVerId().longValue()) : null;
         if (noMeCansoDeVer != null) {
             dto.setNoMeCansoDeVerTitulo(noMeCansoDeVer.getTitle());
             dto.setNoMeCansoDeVerPoster(noMeCansoDeVer.getPosterPath());
         }
 
         dto.setNoLaBancoId(target.getNoLaBancoId());
-        Movie noLaBanco = resolverPelicula(target.getNoLaBancoId());
+        Movie noLaBanco = target.getNoLaBancoId() != null
+                ? peliculasGustoById.get(target.getNoLaBancoId().longValue()) : null;
         if (noLaBanco != null) {
             dto.setNoLaBancoTitulo(noLaBanco.getTitle());
             dto.setNoLaBancoPoster(noLaBanco.getPosterPath());
         }
 
         dto.setSerieFavoritaId(target.getSerieFavoritaId());
-        Series serieFavorita = resolverSerie(target.getSerieFavoritaId());
+        Series serieFavorita = target.getSerieFavoritaId() != null
+                ? seriesGustoById.get(target.getSerieFavoritaId().longValue()) : null;
         if (serieFavorita != null) {
             dto.setSerieFavoritaTitulo(serieFavorita.getTitle());
             dto.setSerieFavoritaPoster(serieFavorita.getPosterPath());
         }
 
         dto.setUltimaMaratonId(target.getUltimaMaratonId());
-        Series ultimaMaraton = resolverSerie(target.getUltimaMaratonId());
+        Series ultimaMaraton = target.getUltimaMaratonId() != null
+                ? seriesGustoById.get(target.getUltimaMaratonId().longValue()) : null;
         if (ultimaMaraton != null) {
             dto.setUltimaMaratonTitulo(ultimaMaraton.getTitle());
             dto.setUltimaMaratonPoster(ultimaMaraton.getPosterPath());
         }
 
         dto.setNoMeCansoDeVerSerieId(target.getNoMeCansoDeVerSerieId());
-        Series noMeCansoDeVerSerie = resolverSerie(target.getNoMeCansoDeVerSerieId());
+        Series noMeCansoDeVerSerie = target.getNoMeCansoDeVerSerieId() != null
+                ? seriesGustoById.get(target.getNoMeCansoDeVerSerieId().longValue()) : null;
         if (noMeCansoDeVerSerie != null) {
             dto.setNoMeCansoDeVerSerieTitulo(noMeCansoDeVerSerie.getTitle());
             dto.setNoMeCansoDeVerSeriePoster(noMeCansoDeVerSerie.getPosterPath());
         }
 
         dto.setNoLaBancoSerieId(target.getNoLaBancoSerieId());
-        Series noLaBancoSerie = resolverSerie(target.getNoLaBancoSerieId());
+        Series noLaBancoSerie = target.getNoLaBancoSerieId() != null
+                ? seriesGustoById.get(target.getNoLaBancoSerieId().longValue()) : null;
         if (noLaBancoSerie != null) {
             dto.setNoLaBancoSerieTitulo(noLaBancoSerie.getTitle());
             dto.setNoLaBancoSeriePoster(noLaBancoSerie.getPosterPath());
         }
-        dto.setAdnCinefilo(adnCinefiloService.calcular(target.getId()));
-        dto.setAdnCinefiloSeries(adnCinefiloSeriesService.calcular(target.getId()));
+        // adnCinefilo / adnCinefiloSeries se movieron a un endpoint aparte
+        // (GET /{id}/adn-cinefilo-completo), pedido en paralelo desde el
+        // frontend — así no bloquean el primer pintado de Mi Sala.
 
         // Pilar "Saber" — posición en el ranking de Trivia (null = nunca jugó, no se muestra nada)
         dto.setRankingTriviaPeliculas(
@@ -227,46 +264,70 @@ public class PublicProfileController {
 
         // ── Últimas votaciones (máx 6) ─────────────────────────
         List<Review> reviews = reviewRepository
-                .findByUserIdOrderByCreatedAtDesc(target.getId())
-                .stream()
-                .filter(r -> r.getReviewType() == ReviewType.MOVIE && r.getVote() != null)
-                .limit(100)
-                .toList();
+                .findVotacionesRecientesByUserId(target.getId(), PageRequest.of(0, 6));
+
+        // Una sola query trayendo todas las películas de este lote, en
+        // vez de un findByTmdbId() por cada una de las 6 votaciones.
+        Map<Long, Movie> peliculasVotacionesById = movieRepository
+                .findByTmdbIdIn(reviews.stream().map(Review::getTargetId).toList())
+                .stream().collect(Collectors.toMap(Movie::getTmdbId, m -> m));
 
         dto.setUltimasVotaciones(reviews.stream().map(r -> {
             PublicProfileDto.VotacionDto v = new PublicProfileDto.VotacionDto();
             v.setMovieId(r.getTargetId());
             v.setVoto(r.getVote().name());
-            Optional<Movie> movie = movieRepository.findByTmdbId(r.getTargetId());
-            movie.ifPresent(m -> {
+            Movie m = peliculasVotacionesById.get(r.getTargetId());
+            if (m != null) {
                 v.setMovieTitle(m.getTitle());
                 v.setPosterPath(m.getPosterPath());
-            });
+            }
             return v;
         }).toList());
 
         // ── Últimas votaciones de series (máx 6) ───────────────
         List<com.example.demo.domain.series.SeriesReview> seriesReviews = seriesReviewRepository
-                .findByUserIdAndVoteIsNotNullOrderByCreatedAtDesc(target.getId())
-                .stream()
-                .limit(6)
-                .toList();
+                .findByUserIdAndVoteIsNotNullOrderByCreatedAtDesc(target.getId(), PageRequest.of(0, 6))
+                .getContent();
+
+        Map<Long, com.example.demo.domain.series.Series> seriesVotacionesById = seriesRepository
+                .findByTmdbIdIn(seriesReviews.stream().map(com.example.demo.domain.series.SeriesReview::getSeriesId).toList())
+                .stream().collect(Collectors.toMap(com.example.demo.domain.series.Series::getTmdbId, s -> s));
 
         dto.setUltimasVotacionesSeries(seriesReviews.stream().map(r -> {
             PublicProfileDto.VotacionSerieDto v = new PublicProfileDto.VotacionSerieDto();
             v.setSeriesId(r.getSeriesId());
             v.setVoto(r.getVote().name());
-            Optional<com.example.demo.domain.series.Series> serie = seriesRepository.findByTmdbId(r.getSeriesId());
-            serie.ifPresent(s -> {
+            com.example.demo.domain.series.Series s = seriesVotacionesById.get(r.getSeriesId());
+            if (s != null) {
                 v.setSeriesTitle(s.getTitle());
                 v.setPosterPath(s.getPosterPath());
-            });
+            }
             return v;
         }).toList());
 
         // Usamos el query correcto por userId
         List<Comment> userComments = commentRepository
                 .findPublicByUserId(target.getId(), PageRequest.of(0, 5));
+
+        Map<Long, Movie> peliculasComentariosById = movieRepository
+                .findByTmdbIdIn(userComments.stream().map(Comment::getMovieId).toList())
+                .stream().collect(Collectors.toMap(Movie::getTmdbId, m -> m));
+
+        List<Long> comentarioIds = userComments.stream().map(Comment::getId).toList();
+
+        // reaccionesPorComentario: commentId -> { "BANCO" -> N, "MERECE_PUNTO" -> N }
+        Map<Long, Map<ReactionType, Long>> reaccionesPorComentario = new java.util.HashMap<>();
+        for (Object[] fila : commentReactionRepository.countByCommentIdsGroupedByType(comentarioIds)) {
+            Long commentId = (Long) fila[0];
+            ReactionType tipo = (ReactionType) fila[1];
+            Long cantidad = (Long) fila[2];
+            reaccionesPorComentario.computeIfAbsent(commentId, k -> new java.util.HashMap<>()).put(tipo, cantidad);
+        }
+
+        Map<Long, Long> respuestasPorComentario = new java.util.HashMap<>();
+        for (Object[] fila : commentReplyRepository.countVisibleByCommentIds(comentarioIds)) {
+            respuestasPorComentario.put((Long) fila[0], (Long) fila[1]);
+        }
 
         dto.setUltimosComentarios(userComments.stream().map(c -> {
             PublicProfileDto.ComentarioPublicoDto cd = new PublicProfileDto.ComentarioPublicoDto();
@@ -278,17 +339,16 @@ public class PublicProfileController {
             String contenido = c.isSpoiler() ? "— Comentario con spoiler —" : c.getContent();
             cd.setContenido(contenido);
 
-            Optional<Movie> movie = movieRepository.findByTmdbId(c.getMovieId());
-            movie.ifPresent(m -> {
+            Movie m = peliculasComentariosById.get(c.getMovieId());
+            if (m != null) {
                 cd.setMovieTitle(m.getTitle());
                 cd.setPosterPath(m.getPosterPath());
-            });
+            }
 
-            cd.setBancoCount((int) commentReactionRepository
-                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.BANCO));
-            cd.setMerecePuntoCount((int) commentReactionRepository
-                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.MERECE_PUNTO));
-            cd.setReplyCount((int) commentReplyRepository.countVisibleByCommentId(c.getId()));
+            Map<ReactionType, Long> reacciones = reaccionesPorComentario.getOrDefault(c.getId(), Map.of());
+            cd.setBancoCount(reacciones.getOrDefault(ReactionType.BANCO, 0L).intValue());
+            cd.setMerecePuntoCount(reacciones.getOrDefault(ReactionType.MERECE_PUNTO, 0L).intValue());
+            cd.setReplyCount(respuestasPorComentario.getOrDefault(c.getId(), 0L).intValue());
 
             return cd;
         }).toList());
@@ -296,6 +356,25 @@ public class PublicProfileController {
         // ── Últimos comentarios de series (máx 5) ──────────────
         List<SeriesComment> userSeriesComments = seriesCommentRepository
                 .findPublicByUserId(target.getId(), PageRequest.of(0, 5));
+
+        Map<Long, com.example.demo.domain.series.Series> seriesComentariosById = seriesRepository
+                .findByTmdbIdIn(userSeriesComments.stream().map(SeriesComment::getSeriesId).toList())
+                .stream().collect(Collectors.toMap(com.example.demo.domain.series.Series::getTmdbId, s -> s));
+
+        List<Long> comentarioSerieIds = userSeriesComments.stream().map(SeriesComment::getId).toList();
+
+        Map<Long, Map<ReactionType, Long>> reaccionesPorComentarioSerie = new java.util.HashMap<>();
+        for (Object[] fila : seriesCommentReactionRepository.countByCommentIdsGroupedByType(comentarioSerieIds)) {
+            Long commentId = (Long) fila[0];
+            ReactionType tipo = (ReactionType) fila[1];
+            Long cantidad = (Long) fila[2];
+            reaccionesPorComentarioSerie.computeIfAbsent(commentId, k -> new java.util.HashMap<>()).put(tipo, cantidad);
+        }
+
+        Map<Long, Long> respuestasPorComentarioSerie = new java.util.HashMap<>();
+        for (Object[] fila : seriesCommentReplyRepository.countVisibleByCommentIds(comentarioSerieIds)) {
+            respuestasPorComentarioSerie.put((Long) fila[0], (Long) fila[1]);
+        }
 
         dto.setUltimosComentariosSeries(userSeriesComments.stream().map(c -> {
             PublicProfileDto.ComentarioSerieDto cd = new PublicProfileDto.ComentarioSerieDto();
@@ -307,17 +386,16 @@ public class PublicProfileController {
             String contenido = c.isSpoiler() ? "— Comentario con spoiler —" : c.getContent();
             cd.setContenido(contenido);
 
-            Optional<com.example.demo.domain.series.Series> serie = seriesRepository.findByTmdbId(c.getSeriesId());
-            serie.ifPresent(s -> {
+            com.example.demo.domain.series.Series s = seriesComentariosById.get(c.getSeriesId());
+            if (s != null) {
                 cd.setSeriesTitle(s.getTitle());
                 cd.setPosterPath(s.getPosterPath());
-            });
+            }
 
-            cd.setBancoCount((int) seriesCommentReactionRepository
-                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.BANCO));
-            cd.setMerecePuntoCount((int) seriesCommentReactionRepository
-                    .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.MERECE_PUNTO));
-            cd.setReplyCount((int) seriesCommentReplyRepository.countVisibleByCommentId(c.getId()));
+            Map<ReactionType, Long> reacciones = reaccionesPorComentarioSerie.getOrDefault(c.getId(), Map.of());
+            cd.setBancoCount(reacciones.getOrDefault(ReactionType.BANCO, 0L).intValue());
+            cd.setMerecePuntoCount(reacciones.getOrDefault(ReactionType.MERECE_PUNTO, 0L).intValue());
+            cd.setReplyCount(respuestasPorComentarioSerie.getOrDefault(c.getId(), 0L).intValue());
 
             return cd;
         }).toList());
@@ -326,8 +404,8 @@ public class PublicProfileController {
         // distintos) — cada póster aparece una sola vez con la cantidad
         // real de veces que se recomendó, no un póster por destinatario.
         dto.setUltimasRecomendadas(movieRecommendationRepository
-                .findRecomendadasAgrupadasBySenderId(target.getId())
-                .stream().limit(8).map(row -> {
+                .findRecomendadasAgrupadasBySenderId(target.getId(), PageRequest.of(0, 8))
+                .stream().map(row -> {
                     PublicProfileDto.RecomendadaDto rd = new PublicProfileDto.RecomendadaDto();
                     rd.setMovieId((Long) row[0]);
                     rd.setMovieTitle((String) row[1]);
@@ -338,8 +416,8 @@ public class PublicProfileController {
 
         // ── Últimas recomendadas de series, mismo criterio agrupado ──
         dto.setUltimasRecomendadasSeries(seriesRecommendationRepository
-                .findRecomendadasAgrupadasBySenderId(target.getId())
-                .stream().limit(8).map(row -> {
+                .findRecomendadasAgrupadasBySenderId(target.getId(), PageRequest.of(0, 8))
+                .stream().map(row -> {
                     PublicProfileDto.RecomendadaSerieDto rd = new PublicProfileDto.RecomendadaSerieDto();
                     rd.setSeriesId((Long) row[0]);
                     rd.setSeriesTitle((String) row[1]);
@@ -350,8 +428,8 @@ public class PublicProfileController {
 
         // ── Últimas guardadas (máx 8) ───────────────────────────
         dto.setUltimasGuardadas(watchlistRepository
-                .findByUserIdOrderByCreatedAtDesc(target.getId())
-                .stream().limit(8).map(w -> {
+                .findTop8ByUserIdOrderByCreatedAtDesc(target.getId())
+                .stream().map(w -> {
                     PublicProfileDto.GuardadaDto gd = new PublicProfileDto.GuardadaDto();
                     gd.setMovieId(w.getMovieId());
                     gd.setMovieTitle(w.getMovieTitle());
@@ -361,8 +439,8 @@ public class PublicProfileController {
 
         // ── Últimas guardadas de series (máx 8) ─────────────────
         dto.setUltimasGuardadasSeries(seriesWatchlistRepository
-                .findByUserIdOrderByCreatedAtDesc(target.getId())
-                .stream().limit(8).map(w -> {
+                .findTop8ByUserIdOrderByCreatedAtDesc(target.getId())
+                .stream().map(w -> {
                     PublicProfileDto.GuardadaSerieDto gd = new PublicProfileDto.GuardadaSerieDto();
                     gd.setSeriesId(w.getSeriesId());
                     gd.setSeriesTitle(w.getSeriesTitle());
@@ -371,6 +449,17 @@ public class PublicProfileController {
                 }).toList());
 
         return ResponseEntity.ok(dto);
+    }
+
+    // GET /api/users/{id}/adn-cinefilo-completo — separado de /profile para
+    // no bloquear el primer pintado de Mi Sala con este cálculo. El
+    // frontend lo pide en paralelo, no en cadena.
+    @GetMapping("/{id}/adn-cinefilo-completo")
+    public ResponseEntity<?> getAdnCinefiloCompleto(@PathVariable Long id) {
+        java.util.Map<String, Object> resultado = new java.util.HashMap<>();
+        resultado.put("adnCinefilo", adnCinefiloService.calcular(id));
+        resultado.put("adnCinefiloSeries", adnCinefiloSeriesService.calcular(id));
+        return ResponseEntity.ok(resultado);
     }
 
     // GET /api/users/{id}/votaciones?page=0&size=8

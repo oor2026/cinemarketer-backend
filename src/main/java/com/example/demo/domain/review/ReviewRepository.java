@@ -64,6 +64,13 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     void deleteByUser(com.example.demo.domain.user.User user);
 
+    // Últimas N votaciones de películas ya filtradas y ordenadas en la
+    // base — reemplaza el patrón de traer TODAS las reviews del usuario
+    // y filtrar/cortar en Java (que además tenía un bug: cortaba a 100
+    // en vez de 6, disparando hasta 100 queries extra de películas).
+    @Query("SELECT r FROM Review r WHERE r.user.id = :userId AND r.reviewType = 'MOVIE' AND r.vote IS NOT NULL ORDER BY r.createdAt DESC")
+    List<Review> findVotacionesRecientesByUserId(@Param("userId") Long userId, org.springframework.data.domain.Pageable pageable);
+
     // Contar votos por tipo en un período
     @Query("SELECT COUNT(r) FROM Review r WHERE r.vote = :voteType AND r.createdAt BETWEEN :start AND :end")
     long countByVoteTypeInPeriod(@Param("voteType") VoteType voteType,

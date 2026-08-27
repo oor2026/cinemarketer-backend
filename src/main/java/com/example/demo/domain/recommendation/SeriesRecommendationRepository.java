@@ -23,7 +23,7 @@ public interface SeriesRecommendationRepository extends JpaRepository<SeriesReco
             "FROM SeriesRecommendation sr WHERE sr.sender.id = :senderId " +
             "GROUP BY sr.seriesId, sr.seriesTitle, sr.seriesPosterPath " +
             "ORDER BY ultima DESC")
-    List<Object[]> findRecomendadasAgrupadasBySenderId(@Param("senderId") Long senderId);
+    List<Object[]> findRecomendadasAgrupadasBySenderId(@Param("senderId") Long senderId, Pageable pageable);
     long countBySeenAtIsNotNull();
     long countByRatingIsNotNull();
     long countByContextTypeIsNotNull();

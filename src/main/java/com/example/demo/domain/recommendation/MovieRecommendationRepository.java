@@ -25,7 +25,7 @@ public interface MovieRecommendationRepository extends JpaRepository<MovieRecomm
             "FROM MovieRecommendation mr WHERE mr.sender.id = :senderId " +
             "GROUP BY mr.movieId, mr.movieTitle, mr.moviePosterPath " +
             "ORDER BY ultima DESC")
-    List<Object[]> findRecomendadasAgrupadasBySenderId(@Param("senderId") Long senderId);
+    List<Object[]> findRecomendadasAgrupadasBySenderId(@Param("senderId") Long senderId, Pageable pageable);
     long countBySeenAtIsNotNull();
     long countByRatingIsNotNull();
     long countByContextTypeIsNotNull();
