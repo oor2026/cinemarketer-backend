@@ -522,6 +522,22 @@ public class UserController {
     }
 
     /**
+     * Elimina el banner personalizado (vuelve al banner por defecto)
+     * DELETE /api/users/me/banner
+     */
+    @DeleteMapping("/me/banner")
+    public ResponseEntity<?> removeBanner() {
+        User user = getAuthenticatedUser();
+        user.setBannerUrl(null);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Banner eliminado",
+                "success", true
+        ));
+    }
+
+    /**
      * Actualiza la biografía del perfil público
      * PATCH /api/users/me/bio
      */
