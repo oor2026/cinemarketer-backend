@@ -24,7 +24,7 @@ public class NoMeInteresa {
     @Column(name = "movie_id", nullable = false)
     private Long movieId;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
