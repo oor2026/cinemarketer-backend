@@ -185,6 +185,20 @@ public class TvService {
         return response.getBody();
     }
 
+    /**
+     * Lista completa de plataformas de streaming disponibles para
+     * series, con sus logos oficiales — no depende de ninguna serie
+     * puntual. Gemela de TmdbService.getWatchProvidersList().
+     */
+    public Object getWatchProvidersList() {
+        String path = "/watch/providers/tv";
+        String url = buildUrl(path, "watch_region", "AR");
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
     public Object getWatchProviders(Long seriesId) {
         String path = "/tv/" + seriesId + "/watch/providers";
         String url = buildUrl(path);

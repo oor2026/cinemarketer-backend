@@ -244,6 +244,21 @@ public class TmdbService {
     }
 
     /**
+     * Lista completa de plataformas de streaming disponibles (con sus
+     * logos oficiales) — a diferencia de getWatchProviders(movieId),
+     * esto NO depende de ninguna película puntual. Se usa para el
+     * selector de plataformas del buscador asistido.
+     */
+    public Object getWatchProvidersList() {
+        String path = "/watch/providers/movie";
+        String url = buildUrl(path, "watch_region", "AR");
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    /**
      * Obtener proveedores de streaming por ID de película
      */
     public Object getWatchProviders(Long movieId) {

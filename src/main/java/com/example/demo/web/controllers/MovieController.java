@@ -109,6 +109,10 @@ public class MovieController {
             @RequestParam(required = false) Integer withRuntimeGte,
             @RequestParam(required = false) Integer withRuntimeLte,
             @RequestParam(required = false) String withCrew,
+            @RequestParam(required = false) String withKeywords,
+            @RequestParam(required = false) String withWatchProviders,
+            @RequestParam(required = false) String releaseDateGte,
+            @RequestParam(required = false) String releaseDateLte,
             @RequestParam(required = false, defaultValue = "1") Integer page) {
 
         // Crear DTO con los filtros recibidos
@@ -122,6 +126,10 @@ public class MovieController {
         filter.setWithRuntimeGte(withRuntimeGte);
         filter.setWithRuntimeLte(withRuntimeLte);
         filter.setWithCrew(withCrew);
+        filter.setWithKeywords(withKeywords);
+        filter.setWithWatchProviders(withWatchProviders);
+        filter.setReleaseDateGte(releaseDateGte);
+        filter.setReleaseDateLte(releaseDateLte);
         filter.setPage(page);
         filter.setSortBy(null);
 
@@ -174,6 +182,18 @@ public class MovieController {
     @GetMapping("/{id}/similar")
     public ResponseEntity<TmdbPageResponseDto> getSimilarMovies(@PathVariable Long id) {
         TmdbPageResponseDto response = movieService.getSimilarMovies(id);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Lista completa de plataformas de streaming disponibles, con sus
+     * logos oficiales — para el selector "Por plataforma" del
+     * buscador asistido. No depende de ninguna película puntual.
+     * GET /api/movies/watch-providers/list
+     */
+    @GetMapping("/watch-providers/list")
+    public ResponseEntity<Object> getWatchProvidersList() {
+        Object response = movieService.getWatchProvidersList();
         return ResponseEntity.ok(response);
     }
 

@@ -17,7 +17,11 @@ public class SeriesFilterDto {
     private String firstAirDateGte;
     private String withCrew; // TMDb TV discover usa with_people (combina cast+crew), no with_crew como película
 
-    // No va en toParams() — TMDb no soporta filtrar /discover/tv por
+    private String withKeywords;      // IDs de keywords de TMDb, separados por | (OR) o , (AND)
+    private String withWatchProviders; // IDs de plataformas de streaming de TMDb
+    private String firstAirDateLte;   // año "hasta" — junto con firstAirDateGte arma un rango real de década
+
+    // No va en toParams()— TMDb no soporta filtrar /discover/tv por
     // cantidad de temporadas de forma nativa. Se resuelve aparte, en
     // SeriesService, pidiendo el detalle de cada resultado y filtrando
     // en memoria. Valores esperados: "todos" | "1" | "2-4" | "5+"
@@ -58,8 +62,21 @@ public class SeriesFilterDto {
             params.put("first_air_date.gte", firstAirDateGte + "-01-01");
         }
 
+        if (firstAirDateLte != null && !firstAirDateLte.trim().isEmpty()) {
+            params.put("first_air_date.lte", firstAirDateLte + "-12-31");
+        }
+
         if (withCrew != null && !withCrew.trim().isEmpty()) {
             params.put("with_people", withCrew);
+        }
+
+        if (withKeywords != null && !withKeywords.trim().isEmpty()) {
+            params.put("with_keywords", withKeywords);
+        }
+
+        if (withWatchProviders != null && !withWatchProviders.trim().isEmpty()) {
+            params.put("with_watch_providers", withWatchProviders);
+            params.put("watch_region", "AR");
         }
 
         params.put("page", page.toString());

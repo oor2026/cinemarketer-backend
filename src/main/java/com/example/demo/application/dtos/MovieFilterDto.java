@@ -14,10 +14,13 @@ public class MovieFilterDto {
     private Double voteAverageLte;
     private Integer withRuntimeGte;
     private Integer withRuntimeLte;
+    private String withKeywords;      // IDs de keywords de TMDb, separados por | (OR) o , (AND)
+    private String withWatchProviders; // IDs de plataformas de streaming de TMDb
     private Integer page = 1;
     private String withCrew;
     private String sortBy;
     private String releaseDateGte;
+    private String releaseDateLte;    // año "hasta" — junto con releaseDateGte arma un rango real de década
 
     // Método para convertir a Map para TMDb
     public Map<String, String> toParams() {
@@ -59,12 +62,25 @@ public class MovieFilterDto {
             params.put("with_crew", withCrew);
         }
 
+        if (withKeywords != null && !withKeywords.trim().isEmpty()) {
+            params.put("with_keywords", withKeywords);
+        }
+
+        if (withWatchProviders != null && !withWatchProviders.trim().isEmpty()) {
+            params.put("with_watch_providers", withWatchProviders);
+            params.put("watch_region", "AR"); // fijo — TMDb lo exige junto con with_watch_providers
+        }
+
         if (sortBy != null && !sortBy.trim().isEmpty()) {
             params.put("sort_by", sortBy);
         }
 
         if (releaseDateGte != null && !releaseDateGte.trim().isEmpty()) {
             params.put("primary_release_date.gte", releaseDateGte + "-01-01");
+        }
+
+        if (releaseDateLte != null && !releaseDateLte.trim().isEmpty()) {
+            params.put("primary_release_date.lte", releaseDateLte + "-12-31");
         }
 
         params.put("page", page.toString());
