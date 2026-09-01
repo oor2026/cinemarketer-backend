@@ -359,6 +359,14 @@ public class MovieService {
     }
 
     /**
+     * Lista completa de plataformas disponibles (logos oficiales
+     * incluidos) — no depende de ninguna película puntual.
+     */
+    public Object getWatchProvidersList() {
+        return tmdbService.getWatchProvidersList();
+    }
+
+    /**
      * Obtener proveedores de streaming por ID de película
      */
     public Object getWatchProviders(Long movieId) {

@@ -301,6 +301,10 @@ public class SeriesService {
         return resultado;
     }
 
+    public Object getWatchProvidersList() {
+        return tvService.getWatchProvidersList();
+    }
+
     public Object getWatchProviders(Long seriesId) {
         if (seriesId == null || seriesId <= 0) {
             throw new IllegalArgumentException("ID de serie inválido");

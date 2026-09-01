@@ -93,6 +93,10 @@ public class SeriesController {
             @RequestParam(required = false) Double voteAverageGte,
             @RequestParam(required = false) Double voteAverageLte,
             @RequestParam(required = false) String withCrew,
+            @RequestParam(required = false) String withKeywords,
+            @RequestParam(required = false) String withWatchProviders,
+            @RequestParam(required = false) String firstAirDateGte,
+            @RequestParam(required = false) String firstAirDateLte,
             @RequestParam(required = false) String temporadas,
             @RequestParam(required = false, defaultValue = "1") Integer page) {
 
@@ -104,6 +108,10 @@ public class SeriesController {
         filter.setVoteAverageGte(voteAverageGte);
         filter.setVoteAverageLte(voteAverageLte);
         filter.setWithCrew(withCrew);
+        filter.setWithKeywords(withKeywords);
+        filter.setWithWatchProviders(withWatchProviders);
+        filter.setFirstAirDateGte(firstAirDateGte);
+        filter.setFirstAirDateLte(firstAirDateLte);
         filter.setTemporadas(temporadas);
         filter.setPage(page);
         filter.setSortBy(null);
@@ -172,6 +180,18 @@ public class SeriesController {
      * Proveedores de streaming
      * GET /api/series/{id}/watch-providers
      */
+    /**
+     * Lista completa de plataformas de streaming disponibles para
+     * series — para el selector "Por plataforma" del buscador
+     * asistido. No depende de ninguna serie puntual.
+     * GET /api/series/watch-providers/list
+     */
+    @GetMapping("/watch-providers/list")
+    public ResponseEntity<Object> getWatchProvidersList() {
+        Object response = seriesService.getWatchProvidersList();
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/{id}/watch-providers")
     public ResponseEntity<Object> getWatchProviders(@PathVariable Long id) {
         Object response = seriesService.getWatchProviders(id);
