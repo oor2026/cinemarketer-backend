@@ -264,4 +264,15 @@ public class MovieController {
     public ResponseEntity<Object> getPersonMovieCredits(@PathVariable Long id) {
         return ResponseEntity.ok(movieService.getPersonMovieCredits(id));
     }
+
+    @PostMapping("/{id}/expectation/notify")
+    public ResponseEntity<?> activarAvisoEstreno(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            return ResponseEntity.ok(movieExpectationService.activarAvisoEstreno(id, userDetails.getUsername()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

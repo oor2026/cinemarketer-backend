@@ -28,10 +28,26 @@ public class MovieExpectationService {
             User user = userRepository.findByEmail(userEmail).orElse(null);
             if (user != null) {
                 expectationRepository.findByUserIdAndMovieId(user.getId(), movieId)
-                        .ifPresent(e -> dto.setUserRating(e.getRating()));
+                        .ifPresent(e -> {
+                            dto.setUserRating(e.getRating());
+                            dto.setNotifyOnRelease(e.isNotifyOnRelease());
+                        });
             }
         }
         return dto;
+    }
+
+    public MovieExpectationDto activarAvisoEstreno(Long movieId, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        MovieExpectation exp = expectationRepository.findByUserIdAndMovieId(user.getId(), movieId)
+                .orElseThrow(() -> new IllegalArgumentException("Primero calificá la expectativa"));
+
+        exp.setNotifyOnRelease(true);
+        expectationRepository.save(exp);
+
+        return getExpectation(movieId, userEmail);
     }
 
     public MovieExpectationDto rate(Long movieId, String userEmail, int rating) {

@@ -735,4 +735,20 @@ public class NotificationService {
             webPushService.sendToUser(receptor.getId(), titulo, mensaje, ICON);
         } catch (Exception e) {}
     }
+
+    @Transactional
+    public void crearEstrenoEsperado(User receptor, Long movieId, String movieTitle) {
+        Notification n = new Notification();
+        n.setUser(receptor);
+        n.setType(NotificationType.MOVIE_RELEASED_EXPECTED);
+        n.setMessage("¡Ya estrenó " + movieTitle + ", la película que estabas esperando!");
+        n.setMovieId(movieId);
+        n.setMovieTitle(movieTitle);
+        notificationRepository.save(n);
+
+        try {
+            webPushService.sendToUser(receptor.getId(),
+                    "🎬 Cinemarketer", n.getMessage(), ICON);
+        } catch (Exception e) {}
+    }
 }
