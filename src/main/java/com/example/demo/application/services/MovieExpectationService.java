@@ -20,16 +20,14 @@ public class MovieExpectationService {
 
     public MovieExpectationDto getExpectation(Long movieId, String userEmail) {
         MovieExpectationDto dto = new MovieExpectationDto();
-        Double avg = expectationRepository.findAverageByMovieId(movieId);
-        dto.setAverage(avg != null ? avg : 0.0);
-        dto.setCount(expectationRepository.countByMovieId(movieId));
+        dto.setCount(expectationRepository.countByMovieIdAndExpectingTrue(movieId));
 
         if (userEmail != null) {
             User user = userRepository.findByEmail(userEmail).orElse(null);
             if (user != null) {
                 expectationRepository.findByUserIdAndMovieId(user.getId(), movieId)
                         .ifPresent(e -> {
-                            dto.setUserRating(e.getRating());
+                            dto.setUserExpecting(e.isExpecting());
                             dto.setNotifyOnRelease(e.isNotifyOnRelease());
                         });
             }
@@ -37,23 +35,7 @@ public class MovieExpectationService {
         return dto;
     }
 
-    public MovieExpectationDto activarAvisoEstreno(Long movieId, String userEmail) {
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
-        MovieExpectation exp = expectationRepository.findByUserIdAndMovieId(user.getId(), movieId)
-                .orElseThrow(() -> new IllegalArgumentException("Primero calificá la expectativa"));
-
-        exp.setNotifyOnRelease(true);
-        expectationRepository.save(exp);
-
-        return getExpectation(movieId, userEmail);
-    }
-
-    public MovieExpectationDto rate(Long movieId, String userEmail, int rating) {
-        if (rating < 1 || rating > 5) {
-            throw new IllegalArgumentException("La calificación debe ser entre 1 y 5");
-        }
+    public MovieExpectationDto rate(Long movieId, String userEmail, boolean expecting) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
@@ -61,7 +43,20 @@ public class MovieExpectationService {
                 .orElseGet(MovieExpectation::new);
         exp.setUser(user);
         exp.setMovieId(movieId);
-        exp.setRating(rating);
+        exp.setExpecting(expecting);
+        expectationRepository.save(exp);
+
+        return getExpectation(movieId, userEmail);
+    }
+
+    public MovieExpectationDto activarAvisoEstreno(Long movieId, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        MovieExpectation exp = expectationRepository.findByUserIdAndMovieId(user.getId(), movieId)
+                .orElseThrow(() -> new IllegalArgumentException("Primero decí si la esperás"));
+
+        exp.setNotifyOnRelease(true);
         expectationRepository.save(exp);
 
         return getExpectation(movieId, userEmail);

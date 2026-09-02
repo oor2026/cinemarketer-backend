@@ -244,15 +244,14 @@ public class MovieController {
     @PostMapping("/{id}/expectation")
     public ResponseEntity<?> rateExpectation(
             @PathVariable Long id,
-            @RequestBody Map<String, Integer> body,
+            @RequestBody Map<String, Boolean> body,
             @AuthenticationPrincipal UserDetails userDetails) {
-        try {
-            int rating = body.get("rating");
-            MovieExpectationDto dto = movieExpectationService.rate(id, userDetails.getUsername(), rating);
-            return ResponseEntity.ok(dto);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        Boolean expecting = body.get("expecting");
+        if (expecting == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Falta el campo 'expecting'"));
         }
+        MovieExpectationDto dto = movieExpectationService.rate(id, userDetails.getUsername(), expecting);
+        return ResponseEntity.ok(dto);
     }
 
     @GetMapping("/person/{id}")

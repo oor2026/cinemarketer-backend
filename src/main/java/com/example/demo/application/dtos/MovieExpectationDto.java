@@ -4,8 +4,7 @@ import lombok.Data;
 
 @Data
 public class MovieExpectationDto {
-    private Double average;
-    private Long count;
-    private Integer userRating; // null si el usuario todavía no calificó
+    private Long count;              // cuántos dijeron que SÍ la esperan
+    private Boolean userExpecting;   // true=Sí, false=No, null=todavía no respondió
     private Boolean notifyOnRelease;
 }
