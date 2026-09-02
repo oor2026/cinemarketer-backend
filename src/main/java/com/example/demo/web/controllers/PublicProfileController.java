@@ -12,14 +12,10 @@ import com.example.demo.domain.follow.UserFollow;
 import com.example.demo.domain.follow.UserFollowRepository;
 import com.example.demo.domain.movie.Movie;
 import com.example.demo.domain.movie.MovieRepository;
-import com.example.demo.domain.series.Series;
+import com.example.demo.domain.series.*;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
 import com.example.demo.domain.user.UserBlockRepository;
-import com.example.demo.domain.series.SeriesComment;
-import com.example.demo.domain.series.SeriesCommentRepository;
-import com.example.demo.domain.series.SeriesCommentReactionRepository;
-import com.example.demo.domain.series.SeriesCommentReplyRepository;
 import com.example.demo.domain.comment.ReactionType;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -493,6 +489,51 @@ public class PublicProfileController {
                     movie.ifPresent(m -> {
                         v.setMovieTitle(m.getTitle());
                         v.setPosterPath(m.getPosterPath());
+                    });
+                    return v;
+                }).toList();
+
+        return ResponseEntity.ok(java.util.Map.of(
+                "votaciones", lote,
+                "hayMas", hayMas,
+                "page", page,
+                "total", total
+        ));
+    }
+
+    // GET /api/users/{id}/votaciones-series?page=0&size=6
+    // Faltaba este endpoint — el frontend (feed-series.js) ya le pega
+    // hace rato, pero nunca se creó del lado del backend. Por eso el
+    // mazo de votaciones-series se quedaba repitiendo el primer lote
+    // para siempre: pedía la página siguiente, recibía 404, y el
+    // catch del frontend solo logueaba el error sin avisar a nadie.
+    @GetMapping("/{id}/votaciones-series")
+    public ResponseEntity<?> getVotacionesSeries(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        List<SeriesReview> todas = seriesReviewRepository
+                .findByUserIdAndVoteIsNotNullOrderByCreatedAtDesc(id);
+
+        int total = todas.size();
+        int from  = page * size;
+        int to    = Math.min(from + size, total);
+        boolean hayMas = to < total;
+
+        List<PublicProfileDto.VotacionSerieDto> lote = todas.subList(from, to)
+                .stream().map(r -> {
+                    PublicProfileDto.VotacionSerieDto v = new PublicProfileDto.VotacionSerieDto();
+                    v.setSeriesId(r.getSeriesId());
+                    v.setVoto(r.getVote().name());
+                    Optional<com.example.demo.domain.series.Series> serie = seriesRepository.findByTmdbId(r.getSeriesId());
+                    serie.ifPresent(s -> {
+                        v.setSeriesTitle(s.getTitle());
+                        v.setPosterPath(s.getPosterPath());
                     });
                     return v;
                 }).toList();
