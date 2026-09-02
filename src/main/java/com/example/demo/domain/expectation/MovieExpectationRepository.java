@@ -11,10 +11,7 @@ public interface MovieExpectationRepository extends JpaRepository<MovieExpectati
 
     Optional<MovieExpectation> findByUserIdAndMovieId(Long userId, Long movieId);
 
-    @Query("SELECT AVG(e.rating) FROM MovieExpectation e WHERE e.movieId = :movieId")
-    Double findAverageByMovieId(@Param("movieId") Long movieId);
-
-    long countByMovieId(Long movieId);
+    long countByMovieIdAndExpectingTrue(Long movieId);
 
     List<MovieExpectation> findByNotifyOnReleaseTrueAndNotifiedFalse();
 }

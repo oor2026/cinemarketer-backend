@@ -60,4 +60,7 @@ public class MovieExpectation {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    @Column(name = "expecting", nullable = false)
+    private boolean expecting;
 }
