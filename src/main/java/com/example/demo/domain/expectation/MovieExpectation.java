@@ -44,10 +44,10 @@ public class MovieExpectation {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "notify_on_release")
+    @Column(name = "notify_on_release", nullable = false)
     private boolean notifyOnRelease = false;
 
-    @Column(name = "notified")
+    @Column(name = "notified", nullable = false)
     private boolean notified = false;
 
     @PrePersist
