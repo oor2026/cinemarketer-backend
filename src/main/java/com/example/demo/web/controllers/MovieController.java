@@ -1,19 +1,27 @@
 package com.example.demo.web.controllers;
 
+import com.example.demo.application.dtos.MovieExpectationDto;
 import com.example.demo.application.dtos.MovieFilterDto;
 import com.example.demo.application.dtos.external.tmdb.*;
+import com.example.demo.application.services.MovieExpectationService;
 import com.example.demo.application.services.MovieService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/movies")
 public class MovieController {
 
     private final MovieService movieService;
+    private final MovieExpectationService movieExpectationService;
 
-    public MovieController(MovieService movieService) {
+    public MovieController(MovieService movieService, MovieExpectationService movieExpectationService) {
         this.movieService = movieService;
+        this.movieExpectationService = movieExpectationService;
     }
 
     /**
@@ -25,6 +33,7 @@ public class MovieController {
             @RequestParam(required = false) String withCrew,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String releaseDateGte,
+            @RequestParam(required = false) String releaseDateGteExact,
             @RequestParam(required = false) String language,
             @RequestParam(required = false) Integer page) {
 
@@ -40,6 +49,7 @@ public class MovieController {
             } else {
                 filter.setSortBy(sortBy);
                 filter.setReleaseDateGte(releaseDateGte);
+                filter.setReleaseDateGteExact(releaseDateGteExact);
             }
 
             filter.setPage(page != null ? page : 1);
@@ -211,6 +221,38 @@ public class MovieController {
     public ResponseEntity<Object> getMovieCredits(@PathVariable Long id) {
         Object response = movieService.getMovieCredits(id);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Nivel de expectativa (fase "Lo que se viene") — promedio de
+     * estrellas, cantidad de votantes, y la calificación propia del
+     * usuario autenticado si ya calificó.
+     * GET /api/movies/{id}/expectation
+     */
+    @GetMapping("/{id}/expectation")
+    public ResponseEntity<MovieExpectationDto> getExpectation(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        String email = userDetails != null ? userDetails.getUsername() : null;
+        return ResponseEntity.ok(movieExpectationService.getExpectation(id, email));
+    }
+
+    /**
+     * Calificar (o recalificar) la expectativa de una película.
+     * POST /api/movies/{id}/expectation   body: { "rating": 1-5 }
+     */
+    @PostMapping("/{id}/expectation")
+    public ResponseEntity<?> rateExpectation(
+            @PathVariable Long id,
+            @RequestBody Map<String, Integer> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            int rating = body.get("rating");
+            MovieExpectationDto dto = movieExpectationService.rate(id, userDetails.getUsername(), rating);
+            return ResponseEntity.ok(dto);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @GetMapping("/person/{id}")
