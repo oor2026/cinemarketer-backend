@@ -20,6 +20,7 @@ public class MovieFilterDto {
     private String withCrew;
     private String sortBy;
     private String releaseDateGte;
+    private String releaseDateGteExact; // fecha completa (YYYY-MM-DD), sin el "-01-01" automático — para "Lo que se viene", que necesita arrancar desde HOY, no desde el 1° de enero de un año
     private String releaseDateLte;    // año "hasta" — junto con releaseDateGte arma un rango real de década
 
     // Método para convertir a Map para TMDb
@@ -75,7 +76,9 @@ public class MovieFilterDto {
             params.put("sort_by", sortBy);
         }
 
-        if (releaseDateGte != null && !releaseDateGte.trim().isEmpty()) {
+        if (releaseDateGteExact != null && !releaseDateGteExact.trim().isEmpty()) {
+            params.put("primary_release_date.gte", releaseDateGteExact);
+        } else if (releaseDateGte != null && !releaseDateGte.trim().isEmpty()) {
             params.put("primary_release_date.gte", releaseDateGte + "-01-01");
         }
 
