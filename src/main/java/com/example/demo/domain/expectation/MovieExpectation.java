@@ -44,6 +44,12 @@ public class MovieExpectation {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "notify_on_release")
+    private boolean notifyOnRelease = false;
+
+    @Column(name = "notified")
+    private boolean notified = false;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
