@@ -322,6 +322,17 @@ public class TriviaSeriesAttemptService {
         if (attempt.getEstado() == TriviaEstado.EN_CURSO) {
             response.setPregunta(aPublica(preguntas.get(attempt.getPreguntaActual())));
         }
+
+        // Mismo criterio que trivia de películas (ver TriviaAttemptService).
+        if (attempt.getUser() != null) {
+            Long userId = attempt.getUser().getId();
+            long totalIntentos = attemptRepository.countByUserId(userId);
+            response.setNuncaJugo(totalIntentos <= 1);
+            response.setJugoAyer(attemptRepository
+                    .findByUserIdAndFecha(userId, LocalDate.now().minusDays(1))
+                    .isPresent());
+        }
+
         return response;
     }
 

@@ -11,4 +11,6 @@ public class TriviaEstadoSeriesResponse {
     private int puntosGanados;
     private TriviaPreguntaSeriesPublicaDto pregunta;
     private int aciertos;
+    private boolean nuncaJugo;  // true si este es su primer intento en la vida (solo usuarios logueados)
+    private boolean jugoAyer;   // true si tiene un intento registrado con fecha = ayer
 }

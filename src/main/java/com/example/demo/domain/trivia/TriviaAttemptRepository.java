@@ -8,4 +8,5 @@ public interface TriviaAttemptRepository extends JpaRepository<TriviaAttempt, Lo
     Optional<TriviaAttempt> findByUserIdAndFecha(Long userId, LocalDate fecha);
     Optional<TriviaAttempt> findByGuestTokenAndFecha(String guestToken, LocalDate fecha);
     Optional<TriviaAttempt> findByIpInvitadoAndFecha(String ipInvitado, LocalDate fecha);
+    long countByUserId(Long userId);
 }
