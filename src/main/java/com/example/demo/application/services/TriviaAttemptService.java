@@ -352,6 +352,21 @@ public class TriviaAttemptService {
         if (attempt.getEstado() == TriviaEstado.EN_CURSO) {
             response.setPregunta(aPublica(preguntas.get(attempt.getPreguntaActual())));
         }
+
+        // "Nunca jugó" / "jugó ayer" — solo tiene sentido para usuarios
+        // logueados (un invitado no tiene racha persistente real). El
+        // intento de HOY ya existe siempre en este punto (se crea antes
+        // de llegar acá), así que "nunca jugó" se checkea contra 1 —
+        // si el único que tiene es el de hoy, es su primera vez.
+        if (attempt.getUser() != null) {
+            Long userId = attempt.getUser().getId();
+            long totalIntentos = attemptRepository.countByUserId(userId);
+            response.setNuncaJugo(totalIntentos <= 1);
+            response.setJugoAyer(attemptRepository
+                    .findByUserIdAndFecha(userId, LocalDate.now().minusDays(1))
+                    .isPresent());
+        }
+
         return response;
     }
 
