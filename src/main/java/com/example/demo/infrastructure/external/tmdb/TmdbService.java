@@ -12,6 +12,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Map;
 
+import org.springframework.cache.annotation.Cacheable;
+
 @Service
 public class TmdbService {
 
@@ -57,6 +59,7 @@ public class TmdbService {
     /**
      * Obtener películas populares
      */
+    @Cacheable(value = "tmdbListadosMovies", key = "'popular-' + #page")
     public TmdbPageResponseDto getPopularMovies(Integer page) {
         String path = "/movie/popular";
         String url = buildUrl(path, "page", page != null ? page.toString() : "1");
@@ -69,6 +72,7 @@ public class TmdbService {
     /**
      * Obtener películas en cartelera
      */
+    @Cacheable(value = "tmdbListadosMovies", key = "'now_playing-' + #page")
     public TmdbPageResponseDto getNowPlayingMovies(Integer page) {
         String path = "/movie/now_playing";
         String url = buildUrl(path, "page", page != null ? page.toString() : "1");
@@ -81,6 +85,7 @@ public class TmdbService {
     /**
      * Obtener próximos estrenos
      */
+    @Cacheable(value = "tmdbListadosMovies", key = "'upcoming-' + #page")
     public TmdbPageResponseDto getUpcomingMovies(Integer page) {
         String path = "/movie/upcoming";
         String url = buildUrl(path, "page", page != null ? page.toString() : "1");
@@ -93,6 +98,7 @@ public class TmdbService {
     /**
      * Obtener detalles de una película por ID
      */
+    @Cacheable(value = "tmdbMovieDetails", key = "#movieId")
     public TmdbMovieDto getMovieDetails(Long movieId) {
         String path = "/movie/" + movieId;
         String url = buildUrl(path);
@@ -176,6 +182,7 @@ public class TmdbService {
     /**
      * Obtener lista de géneros de películas
      */
+    @Cacheable(value = "tmdbGenresMovies")
     public TmdbGenreListResponseDto getMovieGenres() {
         String path = "/genre/movie/list";
         String url = buildUrl(path);
@@ -221,6 +228,7 @@ public class TmdbService {
      * @return TmdbVideoDto con la lista de videos
      */
 
+    @Cacheable(value = "tmdbVideosMovies", key = "#movieId + '-' + #language")
     public TmdbVideoDto getMovieVideos(Long movieId, String language) {
         String path = "/movie/" + movieId + "/videos";
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + path);
@@ -234,6 +242,7 @@ public class TmdbService {
     /**
      * Obtener películas similares por ID
      */
+    @Cacheable(value = "tmdbSimilarMovies", key = "#movieId")
     public TmdbPageResponseDto getSimilarMovies(Long movieId) {
         String path = "/movie/" + movieId + "/similar";
         String url = buildUrl(path);
@@ -249,6 +258,7 @@ public class TmdbService {
      * esto NO depende de ninguna película puntual. Se usa para el
      * selector de plataformas del buscador asistido.
      */
+    @Cacheable(value = "tmdbWatchProvidersListMovies")
     public Object getWatchProvidersList() {
         String path = "/watch/providers/movie";
         String url = buildUrl(path, "watch_region", "AR");
@@ -261,6 +271,7 @@ public class TmdbService {
     /**
      * Obtener proveedores de streaming por ID de película
      */
+    @Cacheable(value = "tmdbWatchProvidersMovies", key = "#movieId")
     public Object getWatchProviders(Long movieId) {
         String path = "/movie/" + movieId + "/watch/providers";
         String url = buildUrl(path);
@@ -270,6 +281,7 @@ public class TmdbService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbCreditsMovies", key = "'credits-' + #movieId")
     public Object getMovieCredits(Long movieId) {
         String path = "/movie/" + movieId + "/credits";
         String url = buildUrl(path);
@@ -284,6 +296,7 @@ public class TmdbService {
      * (Cuenta regresiva de estreno) para validar que la fecha elegida
      * todavía no haya pasado.
      */
+    @Cacheable(value = "tmdbCreditsMovies", key = "'release_dates-' + #movieId")
     public Object getReleaseDates(Long movieId) {
         String path = "/movie/" + movieId + "/release_dates";
         String url = buildUrl(path);
@@ -293,6 +306,7 @@ public class TmdbService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbPersonas", key = "'details-' + #personId")
     public Object getPersonDetails(Long personId) {
         String path = "/person/" + personId;
         String url = buildUrl(path);
@@ -302,6 +316,7 @@ public class TmdbService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbPersonas", key = "'movie_credits-' + #personId")
     public Object getPersonMovieCredits(Long personId) {
         String path = "/person/" + personId + "/movie_credits";
         String url = buildUrl(path);

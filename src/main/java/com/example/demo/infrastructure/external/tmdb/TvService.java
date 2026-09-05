@@ -12,6 +12,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Map;
 
+import org.springframework.cache.annotation.Cacheable;
+
 @Service
 public class TvService {
 
@@ -47,6 +49,7 @@ public class TvService {
         return builder.build().toUriString();
     }
 
+    @Cacheable(value = "tmdbListadosSeries", key = "'popular-' + #page")
     public TmdbSeriesPageResponseDto getPopularSeries(Integer page) {
         String path = "/tv/popular";
         String url = buildUrl(path, "page", page != null ? page.toString() : "1");
@@ -56,6 +59,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbListadosSeries", key = "'on_the_air-' + #page")
     public TmdbSeriesPageResponseDto getOnTheAirSeries(Integer page) {
         String path = "/tv/on_the_air";
         String url = buildUrl(path, "page", page != null ? page.toString() : "1");
@@ -65,6 +69,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbAiringToday", key = "#page")
     public TmdbSeriesPageResponseDto getAiringTodaySeries(Integer page) {
         String path = "/tv/airing_today";
         String url = buildUrl(path, "page", page != null ? page.toString() : "1");
@@ -74,6 +79,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbSeriesDetails", key = "#seriesId")
     public TmdbSeriesDto getSeriesDetails(Long seriesId) {
         String path = "/tv/" + seriesId;
         String url = buildUrl(path);
@@ -83,6 +89,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbCreditsSeries", key = "'season-' + #seriesId + '-' + #seasonNumber")
     public TmdbSeasonDetailDto getSeasonDetails(Long seriesId, Integer seasonNumber) {
         String path = "/tv/" + seriesId + "/season/" + seasonNumber;
         String url = buildUrl(path);
@@ -144,6 +151,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbGenresSeries")
     public TmdbGenreListResponseDto getSeriesGenres() {
         String path = "/genre/tv/list";
         String url = buildUrl(path);
@@ -166,6 +174,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbVideosSeries", key = "#seriesId + '-' + #language")
     public TmdbVideoDto getSeriesVideos(Long seriesId, String language) {
         String path = "/tv/" + seriesId + "/videos";
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + path);
@@ -176,6 +185,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbSimilarSeries", key = "#seriesId")
     public TmdbSeriesPageResponseDto getSimilarSeries(Long seriesId) {
         String path = "/tv/" + seriesId + "/similar";
         String url = buildUrl(path);
@@ -190,6 +200,7 @@ public class TvService {
      * series, con sus logos oficiales — no depende de ninguna serie
      * puntual. Gemela de TmdbService.getWatchProvidersList().
      */
+    @Cacheable(value = "tmdbWatchProvidersListSeries")
     public Object getWatchProvidersList() {
         String path = "/watch/providers/tv";
         String url = buildUrl(path, "watch_region", "AR");
@@ -199,6 +210,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbWatchProvidersSeries", key = "#seriesId")
     public Object getWatchProviders(Long seriesId) {
         String path = "/tv/" + seriesId + "/watch/providers";
         String url = buildUrl(path);
@@ -208,6 +220,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbCreditsSeries", key = "'credits-' + #seriesId")
     public Object getSeriesCredits(Long seriesId) {
         String path = "/tv/" + seriesId + "/credits";
         String url = buildUrl(path);
@@ -221,6 +234,7 @@ public class TvService {
     // temporada emitida), este trae el cast agregado de TODAS las
     // temporadas — necesario para que "¿Quién es?" a nivel serie completa
     // sea representativo y no dependa de qué temporada salió última.
+    @Cacheable(value = "tmdbCreditsSeries", key = "'aggregate_credits-' + #seriesId")
     public Object getSeriesAggregateCredits(Long seriesId) {
         String path = "/tv/" + seriesId + "/aggregate_credits";
         String url = buildUrl(path);
@@ -230,6 +244,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbCreditsSeries", key = "'content_ratings-' + #seriesId")
     public Object getContentRatings(Long seriesId) {
         String path = "/tv/" + seriesId + "/content_ratings";
         String url = buildUrl(path);
@@ -239,6 +254,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbPersonas", key = "'details-' + #personId")
     public Object getPersonDetails(Long personId) {
         String path = "/person/" + personId;
         String url = buildUrl(path);
@@ -248,6 +264,7 @@ public class TvService {
         return response.getBody();
     }
 
+    @Cacheable(value = "tmdbPersonas", key = "'series_credits-' + #personId")
     public Object getPersonSeriesCredits(Long personId) {
         String path = "/person/" + personId + "/tv_credits";
         String url = buildUrl(path);
