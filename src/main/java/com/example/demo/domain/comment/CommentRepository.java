@@ -117,6 +117,14 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
             "ORDER BY c.createdAt DESC")
     List<Comment> findPublicByUserId(@Param("userId") Long userId, Pageable pageable);
 
+    // Mismo filtro que findPublicByUserId — countByUserId (sin filtro)
+    // se usaba mal para la paginación de "Mi actividad", contando
+    // ocultos/reportados que findPublicByUserId ya no devolvía. Esto
+    // dejaba el mazo pidiendo páginas de más, con cards vacías al final.
+    @Query("SELECT COUNT(c) FROM Comment c WHERE c.user.id = :userId " +
+            "AND c.moderationStatus NOT IN ('HIDDEN_BY_USER', 'REMOVED', 'REJECTED')")
+    long countPublicByUserId(@Param("userId") Long userId);
+
     // Comentarios visibles en películas distintas
     @Query("SELECT COUNT(DISTINCT c.movieId) FROM Comment c WHERE c.user.id = :userId AND c.moderationStatus = 'APPROVED'")
     long countDistinctMoviesCommentedByUser(@Param("userId") Long userId);
