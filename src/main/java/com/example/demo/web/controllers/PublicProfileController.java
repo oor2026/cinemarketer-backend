@@ -227,8 +227,8 @@ public class PublicProfileController {
         dto.setSiguiendo(followRepository.countByFollowerIdAndStatus(target.getId(), "ACCEPTED"));
         dto.setTotalVotaciones(reviewRepository.countByUserId(target.getId())
                 + seriesReviewRepository.countByUserId(target.getId()));
-        dto.setTotalComentarios(commentRepository.countByUserId(target.getId())
-                + seriesCommentRepository.countByUserId(target.getId()));
+        dto.setTotalComentarios(commentRepository.countPublicByUserId(target.getId())
+                + seriesCommentRepository.countPublicByUserId(target.getId()));
         dto.setTotalRecomendadas(movieRecommendationRepository.countBySenderId(target.getId())
                 + seriesRecommendationRepository.countBySenderId(target.getId()));
         dto.setTotalGuardadas(watchlistRepository.countByUserId(target.getId())
@@ -237,8 +237,8 @@ public class PublicProfileController {
         // Conteos individuales por tipo — para los títulos "(N)" de cada mazo
         dto.setTotalVotacionesPeliculas(reviewRepository.countByUserId(target.getId()));
         dto.setTotalVotacionesSeries(seriesReviewRepository.countByUserId(target.getId()));
-        dto.setTotalComentariosPeliculas(commentRepository.countByUserId(target.getId()));
-        dto.setTotalComentariosSeries(seriesCommentRepository.countByUserId(target.getId()));
+        dto.setTotalComentariosPeliculas(commentRepository.countPublicByUserId(target.getId()));
+        dto.setTotalComentariosSeries(seriesCommentRepository.countPublicByUserId(target.getId()));
         dto.setTotalRecomendadasPeliculas(movieRecommendationRepository.countBySenderId(target.getId()));
         dto.setTotalRecomendadasSeries(seriesRecommendationRepository.countBySenderId(target.getId()));
         dto.setTotalGuardadasPeliculas(watchlistRepository.countByUserId(target.getId()));
@@ -557,7 +557,7 @@ public class PublicProfileController {
         userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        long total = commentRepository.countByUserId(id);
+        long total = commentRepository.countPublicByUserId(id);
         List<Comment> lote = commentRepository.findPublicByUserId(id, PageRequest.of(page, size));
         boolean hayMas = (long)(page + 1) * size < total;
 
@@ -578,7 +578,6 @@ public class PublicProfileController {
                     .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.BANCO));
             cd.setMerecePuntoCount((int) commentReactionRepository
                     .countByCommentIdAndTypeAndActiveTrue(c.getId(), ReactionType.MERECE_PUNTO));
-            cd.setReplyCount((int) commentRepository.countByUserId(c.getId()));
             return cd;
         }).toList();
 
@@ -601,7 +600,7 @@ public class PublicProfileController {
         userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        long total = seriesCommentRepository.countByUserId(id);
+        long total = seriesCommentRepository.countPublicByUserId(id);
         List<SeriesComment> lote = seriesCommentRepository.findPublicByUserId(id, PageRequest.of(page, size));
         boolean hayMas = (long)(page + 1) * size < total;
 

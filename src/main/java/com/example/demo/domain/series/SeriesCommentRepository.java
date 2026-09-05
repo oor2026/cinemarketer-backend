@@ -88,6 +88,12 @@ public interface SeriesCommentRepository extends JpaRepository<SeriesComment, Lo
             "ORDER BY c.createdAt DESC")
     List<SeriesComment> findPublicByUserId(@Param("userId") Long userId, Pageable pageable);
 
+    // Mismo criterio que en CommentRepository — ver ese archivo para
+    // el detalle del bug que esto corrige.
+    @Query("SELECT COUNT(c) FROM SeriesComment c WHERE c.user.id = :userId " +
+            "AND c.moderationStatus NOT IN ('HIDDEN_BY_USER', 'REMOVED', 'REJECTED')")
+    long countPublicByUserId(@Param("userId") Long userId);
+
     @Query("SELECT COUNT(DISTINCT c.seriesId) FROM SeriesComment c WHERE c.user.id = :userId AND c.moderationStatus = 'APPROVED'")
     long countDistinctSeriesCommentedByUser(@Param("userId") Long userId);
 
