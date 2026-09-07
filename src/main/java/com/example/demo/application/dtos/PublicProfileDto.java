@@ -9,6 +9,7 @@ public class PublicProfileDto {
     // Identidad
     private Long id;
     private String nombre;
+    private String sexo; // "M"/"F" — null o vacío se trata como masculino por default en el frontend
     private String avatarUrl;
     private String bannerUrl;
     private String nivel;
