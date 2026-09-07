@@ -113,6 +113,7 @@ public class PublicProfileController {
         // ── Identidad ──────────────────────────────────────────
         dto.setId(target.getId());
         dto.setNombre(target.getName());
+        dto.setSexo(target.getSexo());
         dto.setAvatarUrl(target.getEffectiveAvatarUrl());
         dto.setBannerUrl(target.getBannerUrl());
         dto.setNivel(target.getLevel() != null ? target.getLevel().name() : "AMATEUR");
