@@ -31,4 +31,6 @@ public class AdminUserDto {
     private String sexo;
     private String provincia;
     private String localidad;
+    private Boolean isDemo;
+    private java.util.Map<String, Object> demoStats;
 }

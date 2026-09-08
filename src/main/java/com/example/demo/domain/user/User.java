@@ -211,6 +211,9 @@ public class User {
     @Column(name = "sexo", length = 1)
     private String sexo;
 
+    @Column(name = "is_demo", nullable = false)
+    private boolean isDemo = false;
+
     @Column(name = "provincia", length = 100)
     private String provincia;
 

@@ -17,4 +17,16 @@ public class AdminUserUpdateRequest {
     private UserRole role;
     private Integer totalPoints;
     private Boolean active;
+
+    // Cuentas demo — para marcas del Club de Beneficios
+    private Boolean isDemo;
+    private String demoMarca;
+    private String demoNivel;
+    private Integer demoVotaciones;
+    private Integer demoComentarios;
+    private Integer demoPublicaciones;
+    private Integer demoSeguidores;
+    private Integer demoSeguidos;
+    private String demoAvatarUrl;
+    private String demoBannerUrl;
 }
