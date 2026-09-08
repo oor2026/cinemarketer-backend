@@ -17,10 +17,20 @@ public class DemoProfileStats {
 
     private String marca;
     private String nivel;
+
+    @Column(nullable = false)
     private Integer votaciones = 0;
+
+    @Column(nullable = false)
     private Integer comentarios = 0;
+
+    @Column(nullable = false)
     private Integer publicaciones = 0;
+
+    @Column(nullable = false)
     private Integer seguidores = 0;
+
+    @Column(nullable = false)
     private Integer seguidos = 0;
 
     @Column(name = "avatar_url")
