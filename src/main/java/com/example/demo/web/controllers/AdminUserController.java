@@ -69,6 +69,8 @@ public class AdminUserController {
     private final SeriesCommentRepository seriesCommentRepository;
     private final SeriesRecommendationRepository seriesRecommendationRepository;
     private final SeriesWatchlistRepository seriesWatchlistRepository;
+    private final com.example.demo.domain.user.DemoProfileStatsRepository demoProfileStatsRepository;
+    private final com.example.demo.application.services.CloudinaryService cloudinaryService;
 
     public AdminUserController(
             UserRepository userRepository,
@@ -80,7 +82,7 @@ public class AdminUserController {
             SupportTicketRepository ticketRepository,
             SupportMessageRepository messageRepository,
             UserSubscriptionRepository subscriptionRepository,
-            EmailService emailService, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, NotificationService notificationService, WatchlistRepository watchlistRepository, MovieRecommendationRepository movieRecommendationRepository, SeriesReviewRepository seriesReviewRepository, SeriesCommentRepository seriesCommentRepository, SeriesRecommendationRepository seriesRecommendationRepository, SeriesWatchlistRepository seriesWatchlistRepository) {
+            EmailService emailService, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, NotificationService notificationService, WatchlistRepository watchlistRepository, MovieRecommendationRepository movieRecommendationRepository, SeriesReviewRepository seriesReviewRepository, SeriesCommentRepository seriesCommentRepository, SeriesRecommendationRepository seriesRecommendationRepository, SeriesWatchlistRepository seriesWatchlistRepository, com.example.demo.domain.user.DemoProfileStatsRepository demoProfileStatsRepository, com.example.demo.application.services.CloudinaryService cloudinaryService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.redemptionRepository = redemptionRepository;
@@ -100,6 +102,51 @@ public class AdminUserController {
         this.seriesCommentRepository = seriesCommentRepository;
         this.seriesRecommendationRepository = seriesRecommendationRepository;
         this.seriesWatchlistRepository = seriesWatchlistRepository;
+        this.demoProfileStatsRepository = demoProfileStatsRepository;
+        this.cloudinaryService = cloudinaryService;
+    }
+
+    /**
+     * Sube una imagen a Cloudinary para usarla como avatar/banner de
+     * una cuenta demo — no la asigna a ningún usuario, solo devuelve
+     * la URL para que el formulario la guarde en demo_profile_stats.
+     * POST /api/admin/users/demo-image-upload
+     */
+    @PostMapping(value = "/demo-image-upload", consumes = "multipart/form-data")
+    public ResponseEntity<?> uploadDemoImage(@RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "El archivo no puede estar vacío"));
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Solo se permiten archivos de imagen"));
+        }
+        if (file.getSize() > 5 * 1024 * 1024) {
+            return ResponseEntity.badRequest().body(Map.of("message", "El archivo no puede superar los 5MB"));
+        }
+        try {
+            String url = cloudinaryService.uploadImage(file, "demo-accounts");
+            return ResponseEntity.ok(Map.of("url", url));
+        } catch (java.io.IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Error al subir la imagen: " + e.getMessage()));
+        }
+    }
+
+    private void guardarDemoStats(Long userId, AdminUserUpdateRequest request) {
+        com.example.demo.domain.user.DemoProfileStats stats = demoProfileStatsRepository.findByUserId(userId)
+                .orElseGet(com.example.demo.domain.user.DemoProfileStats::new);
+        stats.setUserId(userId);
+        stats.setMarca(request.getDemoMarca());
+        stats.setNivel(request.getDemoNivel());
+        stats.setVotaciones(request.getDemoVotaciones() != null ? request.getDemoVotaciones() : 0);
+        stats.setComentarios(request.getDemoComentarios() != null ? request.getDemoComentarios() : 0);
+        stats.setPublicaciones(request.getDemoPublicaciones() != null ? request.getDemoPublicaciones() : 0);
+        stats.setSeguidores(request.getDemoSeguidores() != null ? request.getDemoSeguidores() : 0);
+        stats.setSeguidos(request.getDemoSeguidos() != null ? request.getDemoSeguidos() : 0);
+        stats.setAvatarUrl(request.getDemoAvatarUrl());
+        stats.setBannerUrl(request.getDemoBannerUrl());
+        demoProfileStatsRepository.save(stats);
     }
 
     @GetMapping
@@ -160,6 +207,8 @@ public class AdminUserController {
                     .body(Map.of("error", "El DNI " + request.getDni() + " ya está registrado por otro usuario."));
         }
 
+        boolean esDemo = Boolean.TRUE.equals(request.getIsDemo());
+
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
@@ -168,17 +217,25 @@ public class AdminUserController {
         user.setPassword(passwordEncoder.encode("temporal123"));
         user.setRole(request.getRole() != null ? request.getRole() : UserRole.USER);
         user.setActive(request.getActive() != null ? request.getActive() : true);
+        user.setDemo(esDemo);
 
-        String verificationToken = UUID.randomUUID().toString();
-        user.setVerificationToken(verificationToken);
-        user.setEmailVerified(false);
+        if (esDemo) {
+            // Cuenta demo — la casilla es ficticia, así que se marca
+            // verificada de entrada y no se manda ningún mail real.
+            user.setEmailVerified(true);
+            userRepository.save(user);
+            guardarDemoStats(user.getId(), request);
+        } else {
+            String verificationToken = UUID.randomUUID().toString();
+            user.setVerificationToken(verificationToken);
+            user.setEmailVerified(false);
+            userRepository.save(user);
 
-        userRepository.save(user);
-
-        try {
-            emailService.sendVerificationEmail(user.getEmail(), verificationToken);
-        } catch (Exception e) {
-            // Silencio - no interrumpir el flujo
+            try {
+                emailService.sendVerificationEmail(user.getEmail(), verificationToken);
+            } catch (Exception e) {
+                // Silencio - no interrumpir el flujo
+            }
         }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(user));
@@ -224,6 +281,11 @@ public class AdminUserController {
         if (request.getRole() != null) user.setRole(request.getRole());
         if (request.getTotalPoints() != null) user.setAvailablePoints(request.getTotalPoints());
         if (request.getActive() != null) user.setActive(request.getActive());
+        if (request.getIsDemo() != null) user.setDemo(request.getIsDemo());
+
+        if (Boolean.TRUE.equals(request.getIsDemo())) {
+            guardarDemoStats(user.getId(), request);
+        }
 
         if (emailCambio) {
             String verificationToken = UUID.randomUUID().toString();
@@ -309,6 +371,9 @@ public class AdminUserController {
             if (!suscripciones.isEmpty()) {
                 subscriptionRepository.deleteAll(suscripciones);
             }
+
+            demoProfileStatsRepository.findByUserId(user.getId())
+                    .ifPresent(demoProfileStatsRepository::delete);
 
             userRepository.delete(user);
 
@@ -475,6 +540,22 @@ public class AdminUserController {
         dto.setEmailVerified(user.isEmailVerified());
         dto.setBlockedByCount((int) userBlockRepository.countByBlockedId(user.getId()));
         dto.setReportedByCount((int) userReportRepository.countByReportedId(user.getId()));
+        dto.setIsDemo(user.isDemo());
+        if (user.isDemo()) {
+            demoProfileStatsRepository.findByUserId(user.getId()).ifPresent(stats -> {
+                dto.setDemoStats(Map.of(
+                        "marca", stats.getMarca() != null ? stats.getMarca() : "",
+                        "nivel", stats.getNivel() != null ? stats.getNivel() : "AMATEUR",
+                        "votaciones", stats.getVotaciones(),
+                        "comentarios", stats.getComentarios(),
+                        "publicaciones", stats.getPublicaciones(),
+                        "seguidores", stats.getSeguidores(),
+                        "seguidos", stats.getSeguidos(),
+                        "avatarUrl", stats.getAvatarUrl() != null ? stats.getAvatarUrl() : "",
+                        "bannerUrl", stats.getBannerUrl() != null ? stats.getBannerUrl() : ""
+                ));
+            });
+        }
         return dto;
     }
 

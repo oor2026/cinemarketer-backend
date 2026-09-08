@@ -53,6 +53,7 @@ public class PublicProfileController {
     private final com.example.demo.domain.watchlist.WatchlistRepository watchlistRepository;
     private final com.example.demo.domain.recommendation.SeriesRecommendationRepository seriesRecommendationRepository;
     private final com.example.demo.domain.watchlist.SeriesWatchlistRepository seriesWatchlistRepository;
+    private final com.example.demo.domain.user.DemoProfileStatsRepository demoProfileStatsRepository;
 
     public PublicProfileController(UserRepository userRepository,
                                    UserFollowRepository followRepository,
@@ -66,7 +67,7 @@ public class PublicProfileController {
                                    com.example.demo.domain.series.SeriesRepository seriesRepository,
                                    SeriesCommentRepository seriesCommentRepository,
                                    SeriesCommentReactionRepository seriesCommentReactionRepository,
-                                   SeriesCommentReplyRepository seriesCommentReplyRepository, AdnCinefiloService adnCinefiloService, com.example.demo.domain.series.AdnCinefiloSeriesService adnCinefiloSeriesService, com.example.demo.domain.recommendation.MovieRecommendationRepository movieRecommendationRepository, com.example.demo.domain.watchlist.WatchlistRepository watchlistRepository, com.example.demo.domain.recommendation.SeriesRecommendationRepository seriesRecommendationRepository, com.example.demo.domain.watchlist.SeriesWatchlistRepository seriesWatchlistRepository, com.example.demo.domain.recommendation.SeriesRecommendationRepository seriesRecommendationRepository1, com.example.demo.domain.watchlist.SeriesWatchlistRepository seriesWatchlistRepository1) {
+                                   SeriesCommentReplyRepository seriesCommentReplyRepository, AdnCinefiloService adnCinefiloService, com.example.demo.domain.series.AdnCinefiloSeriesService adnCinefiloSeriesService, com.example.demo.domain.recommendation.MovieRecommendationRepository movieRecommendationRepository, com.example.demo.domain.watchlist.WatchlistRepository watchlistRepository, com.example.demo.domain.recommendation.SeriesRecommendationRepository seriesRecommendationRepository, com.example.demo.domain.watchlist.SeriesWatchlistRepository seriesWatchlistRepository, com.example.demo.domain.recommendation.SeriesRecommendationRepository seriesRecommendationRepository1, com.example.demo.domain.watchlist.SeriesWatchlistRepository seriesWatchlistRepository1, com.example.demo.domain.user.DemoProfileStatsRepository demoProfileStatsRepository) {
         this.userRepository = userRepository;
         this.followRepository = followRepository;
         this.reviewRepository = reviewRepository;
@@ -86,6 +87,7 @@ public class PublicProfileController {
         this.watchlistRepository = watchlistRepository;
         this.seriesRecommendationRepository = seriesRecommendationRepository1;
         this.seriesWatchlistRepository = seriesWatchlistRepository1;
+        this.demoProfileStatsRepository = demoProfileStatsRepository;
     }
 
     @GetMapping("/{id}/profile")
@@ -444,6 +446,38 @@ public class PublicProfileController {
                     gd.setPosterPath(w.getSeriesPosterPath());
                     return gd;
                 }).toList());
+
+        // ── Cuenta demo — pisa los números reales (que van a ser 0,
+        // ya que no puede escribir nada) con los simulados que se
+        // cargaron desde el admin. Publicaciones queda afuera a
+        // propósito — vive en un endpoint totalmente aparte
+        // (/publications/user/{id}), no en este DTO.
+        if (target.isDemo()) {
+            demoProfileStatsRepository.findByUserId(target.getId()).ifPresent(stats -> {
+                dto.setSeguidores(stats.getSeguidores());
+                dto.setSiguiendo(stats.getSeguidos());
+                dto.setTotalVotaciones(stats.getVotaciones());
+                dto.setTotalVotacionesPeliculas(stats.getVotaciones());
+                dto.setTotalComentarios(stats.getComentarios());
+                dto.setTotalComentariosPeliculas(stats.getComentarios());
+                if (stats.getNivel() != null) {
+                    try {
+                        var nivel = com.example.demo.domain.user.UserLevel.valueOf(stats.getNivel());
+                        dto.setNivel(nivel.name());
+                        dto.setNivelEmoji(nivel.getEmoji());
+                        dto.setNivelDisplayName(nivel.getDisplayName());
+                    } catch (IllegalArgumentException ignored) {
+                        // nivel guardado inválido — se deja el real (AMATEUR por default)
+                    }
+                }
+                if (stats.getAvatarUrl() != null && !stats.getAvatarUrl().isBlank()) {
+                    dto.setAvatarUrl(stats.getAvatarUrl());
+                }
+                if (stats.getBannerUrl() != null && !stats.getBannerUrl().isBlank()) {
+                    dto.setBannerUrl(stats.getBannerUrl());
+                }
+            });
+        }
 
         return ResponseEntity.ok(dto);
     }

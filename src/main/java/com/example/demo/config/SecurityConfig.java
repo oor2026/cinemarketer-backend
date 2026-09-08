@@ -27,14 +27,17 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final com.example.demo.infrastructure.security.DemoAccountWriteBlockFilter demoAccountWriteBlockFilter;
 
     @Value("${cors.allowed-origins}")
     private String allowedOrigins;
 
     public SecurityConfig(CustomUserDetailsService customUserDetailsService,
-                          JwtAuthenticationFilter jwtAuthenticationFilter) {
+                          JwtAuthenticationFilter jwtAuthenticationFilter,
+                          com.example.demo.infrastructure.security.DemoAccountWriteBlockFilter demoAccountWriteBlockFilter) {
         this.customUserDetailsService = customUserDetailsService;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.demoAccountWriteBlockFilter = demoAccountWriteBlockFilter;
     }
 
     @Bean
@@ -89,6 +92,7 @@ public class SecurityConfig {
                         })
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(demoAccountWriteBlockFilter, JwtAuthenticationFilter.class)
                 .formLogin(form -> form.disable())
                 .logout(logout -> logout.disable());
 

@@ -277,6 +277,7 @@ public class AuthController {
             response.setSuccess(true);
             response.setLevel(user.getLevel());
             response.setPremium(isPremium);
+            response.setDemo(user.isDemo());
 
             return ResponseEntity.ok(response);
 
@@ -410,7 +411,8 @@ public class AuthController {
         }
 
         // Flujo normal — siempre responder igual para no revelar si el email existe
-        if (user != null) {
+        // (ni tampoco si es una cuenta demo — mismo principio, no dar pistas).
+        if (user != null && !user.isDemo()) {
             String token = UUID.randomUUID().toString();
             user.setResetPasswordToken(token);
             userRepository.save(user);

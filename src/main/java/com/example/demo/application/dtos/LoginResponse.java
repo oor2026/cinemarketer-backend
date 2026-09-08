@@ -21,6 +21,7 @@ public class LoginResponse {
     private boolean isPremium;      // si tiene suscripción premium activa
     private boolean profileComplete;
     private String googleId;
+    private boolean isDemo;
 
     // Constructor sin mensaje ni level (compatibilidad con código existente)
     public LoginResponse(String token, String type, String email, String role, int totalPoints, boolean success) {

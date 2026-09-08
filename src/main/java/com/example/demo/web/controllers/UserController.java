@@ -72,6 +72,7 @@ public class UserController {
     private final com.example.demo.application.services.NombreReservadoService nombreReservadoService;
     private final com.example.demo.application.services.MoviePersistenceService moviePersistenceService;
     private final com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService;
+    private final com.example.demo.domain.user.DemoProfileStatsRepository demoProfileStatsRepository;
 
     public UserController(
             UserRepository userRepository,
@@ -89,7 +90,7 @@ public class UserController {
             PointBatchRepository pointBatchRepository,
             UserBlockRepository userBlockRepository,
             UserReportRepository userReportRepository,
-            UserFollowRepository userFollowRepository, com.example.demo.domain.recommendation.MovieRecommendationRepository recommendationRepository, com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, SeriesRecommendationRepository seriesRecommendationRepository, com.example.demo.application.services.NombreReservadoService nombreReservadoService, com.example.demo.application.services.MoviePersistenceService moviePersistenceService, com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService) {
+            UserFollowRepository userFollowRepository, com.example.demo.domain.recommendation.MovieRecommendationRepository recommendationRepository, com.example.demo.domain.pointtransaction.PointTransactionRepository pointTransactionRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, SeriesRecommendationRepository seriesRecommendationRepository, com.example.demo.application.services.NombreReservadoService nombreReservadoService, com.example.demo.application.services.MoviePersistenceService moviePersistenceService, com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService, DemoProfileStatsRepository demoProfileStatsRepository) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.redemptionRepository = redemptionRepository;
@@ -116,6 +117,7 @@ public class UserController {
         this.nombreReservadoService = nombreReservadoService;
         this.moviePersistenceService = moviePersistenceService;
         this.seriesPersistenceService = seriesPersistenceService;
+        this.demoProfileStatsRepository = demoProfileStatsRepository;
     }
 
     @GetMapping("/me")
@@ -209,6 +211,18 @@ public class UserController {
         // Nombre del avatar seleccionado (null si es personalizado o no encontrado en BD)
         avatarService.getAvatarNameByUrl(user.getEffectiveAvatarUrl())
                 .ifPresent(response::setAvatarName);
+
+        // Cuenta demo — pisa el avatar por el simulado, así el header
+        // (menú hamburguesa) también lo refleja, igual que ya hace el
+        // perfil público. Mismo criterio en los dos lados.
+        if (user.isDemo()) {
+            demoProfileStatsRepository.findByUserId(user.getId()).ifPresent(stats -> {
+                if (stats.getAvatarUrl() != null && !stats.getAvatarUrl().isBlank()) {
+                    response.setAvatarUrl(stats.getAvatarUrl());
+                    response.setAvatarName(null);
+                }
+            });
+        }
 
         response.setLevel(user.getLevel());
         response.setLevelDisplayName(user.getLevel().getDisplayName());
