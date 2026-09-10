@@ -60,6 +60,9 @@ public class CacheConfig {
 
         // Lista completa de plataformas — casi no cambia.
         caches.add(buildCache("tmdbWatchProvidersListMovies", 7, TimeUnit.DAYS));
+        // Sagas — prácticamente no cambian (solo cuando sale una
+        // película nueva de esa colección), vida útil bien larga.
+        caches.add(buildCache("tmdbColecciones", 30, TimeUnit.DAYS));
         caches.add(buildCache("tmdbWatchProvidersListSeries", 7, TimeUnit.DAYS));
 
         // Géneros — prácticamente estático.

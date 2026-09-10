@@ -258,6 +258,20 @@ public class TmdbService {
      * esto NO depende de ninguna película puntual. Se usa para el
      * selector de plataformas del buscador asistido.
      */
+    /**
+     * Obtener una colección/saga completa por su ID de TMDb — devuelve
+     * todas las películas de la saga en un solo pedido, sin paginación.
+     */
+    @Cacheable(value = "tmdbColecciones", key = "#collectionId")
+    public Object getCollection(Long collectionId) {
+        String path = "/collection/" + collectionId;
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
     @Cacheable(value = "tmdbWatchProvidersListMovies")
     public Object getWatchProvidersList() {
         String path = "/watch/providers/movie";
