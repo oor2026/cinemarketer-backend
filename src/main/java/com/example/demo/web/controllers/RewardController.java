@@ -182,6 +182,7 @@ public class RewardController {
                     dto.setImageUrl(full.getImageUrl());
                     dto.setPointsRequired(full.getPointsRequired());
                     dto.setTipo("COMUN");
+                    dto.setIsExpired(full.getIsExpired());
                     return ResponseEntity.ok((Object) dto);
                 })
                 .orElse(ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND)
