@@ -12,4 +12,5 @@ public class RewardPublicDto {
     private String tipo; // "COMUN" o "ESPECIAL"
     private boolean sorteo; // true solo para especiales de tipo SORTEO
     private Boolean isExpired;
+    private Boolean hasStock;
 }

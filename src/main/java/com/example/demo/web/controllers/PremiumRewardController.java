@@ -159,7 +159,8 @@ public class PremiumRewardController {
                     dto.setTipo("ESPECIAL");
                     boolean esSorteo = r.getType() == com.example.demo.domain.premium.PremiumRewardType.SORTEO;
                     dto.setSorteo(esSorteo);
-                    dto.setIsExpired(esSorteo ? r.isDrawExecuted() : false);
+                    dto.setIsExpired(esSorteo && r.isDrawExecuted());
+                    dto.setHasStock(r.hasStock());
                     return ResponseEntity.ok((Object) dto);
                 })
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
