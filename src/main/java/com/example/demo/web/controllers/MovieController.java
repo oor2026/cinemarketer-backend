@@ -208,6 +208,18 @@ public class MovieController {
     }
 
     /**
+     * Obtener una colección/saga completa por su ID de TMDb — trae
+     * todas las películas de la saga en un solo pedido. Para "Por
+     * características → Saga" del buscador asistido.
+     * GET /api/movies/collection/{id}
+     */
+    @GetMapping("/collection/{id}")
+    public ResponseEntity<Object> getCollection(@PathVariable Long id) {
+        Object response = movieService.getCollection(id);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Obtener proveedores de streaming
      * GET /api/movies/{id}/watch-providers
      */

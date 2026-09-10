@@ -367,6 +367,13 @@ public class MovieService {
     }
 
     /**
+     * Obtener una colección/saga completa por su ID de TMDb.
+     */
+    public Object getCollection(Long collectionId) {
+        return tmdbService.getCollection(collectionId);
+    }
+
+    /**
      * Obtener proveedores de streaming por ID de película
      */
     public Object getWatchProviders(Long movieId) {
