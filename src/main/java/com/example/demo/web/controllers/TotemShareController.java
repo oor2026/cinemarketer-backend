@@ -28,7 +28,11 @@ public class TotemShareController {
         String nombreSeguro = nombre.length() > 40 ? nombre.substring(0, 40) : nombre;
         String emojiSeguro  = emoji.length() > 8 ? emoji.substring(0, 8) : emoji;
 
-        String titulo = "Mi espíritu cinéfilo es " + nombreSeguro + " " + emojiSeguro + " — ¿y el tuyo?";
+        // Texto mínimo a propósito: el preview tiene que vivir de la imagen,
+        // no de una oración larga. nombreSeguro/emojiSeguro quedan tomados
+        // igual (por si más adelante arman una imagen dinámica por tótem
+        // acá mismo), pero ya no se usan en el título.
+        String titulo = "Descubrí tu espíritu cinéfilo 🎬";
         String imagen = "https://cinemarketer.com.ar/assets/images/og-default.png";
 
         String html = """
@@ -38,7 +42,8 @@ public class TotemShareController {
                 <meta charset="UTF-8">
                 <meta property="og:title" content="%s">
                 <meta property="og:image" content="%s">
-                <meta property="og:description" content="Descubrí tu espíritu cinéfilo en 3 rondas — Cinemarketer 🎬">
+                <meta property="og:image:width" content="1200">
+                <meta property="og:image:height" content="630">
                 <meta property="og:url" content="https://cinemarketer.com.ar/totem-publico">
                 <meta property="og:type" content="website">
                 <meta property="og:site_name" content="Cinemarketer">
