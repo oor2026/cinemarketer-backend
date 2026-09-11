@@ -99,12 +99,14 @@ public class TotemShareController {
         g.drawString("CINEMARKETER", -60, height - 40);
         g.rotate(Math.toRadians(8), width / 2.0, height / 2.0);
 
-        // Emoji del tótem, grande y centrado
-        g.setFont(new java.awt.Font("SansSerif", java.awt.Font.PLAIN, 160));
-        g.setColor(java.awt.Color.WHITE);
-        java.awt.FontMetrics fmEmoji = g.getFontMetrics();
-        int emojiWidth = fmEmoji.stringWidth(emoji);
-        g.drawString(emoji, (width - emojiWidth) / 2, 260);
+        // Emoji del tótem — se baja como imagen (Twemoji) en vez de dibujarse
+        // como texto: los servidores Linux no tienen fuente de emoji a color,
+        // y aunque la tuvieran, Java2D no renderiza bien glifos de color.
+        java.awt.image.BufferedImage emojiImg = cargarEmojiComoImagen(emoji);
+        int emojiSize = 160;
+        if (emojiImg != null) {
+            g.drawImage(emojiImg, (width - emojiSize) / 2, 130, emojiSize, emojiSize, null);
+        }
 
         // "Sos {nombre}"
         String titulo = "Sos " + nombreSeguro;
@@ -136,5 +138,27 @@ public class TotemShareController {
         return ResponseEntity.ok()
                 .header("Cache-Control", "public, max-age=86400")
                 .body(baos.toByteArray());
+    }
+
+    // Baja el PNG del emoji desde Twemoji según sus codepoints Unicode.
+    // Se filtra el selector de variación (U+FE0F) porque la mayoría de los
+    // archivos de Twemoji no lo incluyen en el nombre. Si falla la descarga
+    // (sin red, emoji no encontrado, etc.) devuelve null y el emoji
+    // simplemente no se dibuja — el resto de la imagen sigue andando.
+    private java.awt.image.BufferedImage cargarEmojiComoImagen(String emoji) {
+        try {
+            StringBuilder codepoints = new StringBuilder();
+            emoji.codePoints()
+                    .filter(cp -> cp != 0xFE0F)
+                    .forEach(cp -> {
+                        if (codepoints.length() > 0) codepoints.append("-");
+                        codepoints.append(Integer.toHexString(cp));
+                    });
+            String url = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/"
+                    + codepoints + ".png";
+            return javax.imageio.ImageIO.read(new java.net.URL(url));
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
