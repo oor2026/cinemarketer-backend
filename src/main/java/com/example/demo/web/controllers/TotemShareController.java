@@ -108,8 +108,8 @@ public class TotemShareController {
             g.drawImage(emojiImg, (width - emojiSize) / 2, 130, emojiSize, emojiSize, null);
         }
 
-        // "Sos {nombre}"
-        String titulo = "Sos " + nombreSeguro;
+        // "Mi tótem es {nombre}"
+        String titulo = "Mi tótem es " + nombreSeguro;
         g.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 72));
         java.awt.FontMetrics fmTitulo = g.getFontMetrics();
         int tituloWidth = fmTitulo.stringWidth(titulo);
@@ -117,7 +117,7 @@ public class TotemShareController {
         g.drawString(titulo, (width - tituloWidth) / 2, 400);
 
         // CTA en píldora roja
-        String cta = "Descubrí tu espíritu cinéfilo";
+        String cta = "¿Cuál es el tuyo?";
         g.setFont(new java.awt.Font("SansSerif", java.awt.Font.BOLD, 38));
         java.awt.FontMetrics fmCta = g.getFontMetrics();
         int ctaWidth = fmCta.stringWidth(cta);
