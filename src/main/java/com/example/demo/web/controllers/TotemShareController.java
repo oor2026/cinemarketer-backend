@@ -161,4 +161,44 @@ public class TotemShareController {
             return null;
         }
     }
+
+    // Inverso de NOMBRE_TOTEM_POR_GENERO / NOMBRE_TOTEM_GENERO_SEXO de
+    // perfil.js — nombre del tótem → emoji, para no depender del query
+    // param ?emoji= en el link corto.
+    private static final java.util.Map<String, String> EMOJI_POR_NOMBRE_TOTEM = java.util.Map.ofEntries(
+            java.util.Map.entry("Bang", "💥"),
+            java.util.Map.entry("Garabato", "🎨"),
+            java.util.Map.entry("Risitas", "😂"),
+            java.util.Map.entry("Fisgón", "🔪"),
+            java.util.Map.entry("Bitácora", "🎥"),
+            java.util.Map.entry("Lágrima", "🎭"),
+            java.util.Map.entry("Retro", "📜"),
+            java.util.Map.entry("Boo", "👻"),
+            java.util.Map.entry("Compás", "🎵"),
+            java.util.Map.entry("Enigma", "🔎"),
+            java.util.Map.entry("Astro", "🚀"),
+            java.util.Map.entry("Escalofrío", "😰"),
+            java.util.Map.entry("Trinchera", "⚔️"),
+            java.util.Map.entry("Explorador", "🗺️"),
+            java.util.Map.entry("Exploradora", "🗺️"),
+            java.util.Map.entry("Familiero", "👨‍👩‍👧"),
+            java.util.Map.entry("Familiera", "👨‍👩‍👧"),
+            java.util.Map.entry("Cupido", "💘"),
+            java.util.Map.entry("Venus", "🌹"),
+            java.util.Map.entry("Cowboy", "🤠"),
+            java.util.Map.entry("Vaquera", "🤠"),
+            java.util.Map.entry("Mago", "🧙"),
+            java.util.Map.entry("Hechicera", "🔮")
+    );
+
+    /**
+     * Versión corta del link para compartir: el emoji ya no va en la URL,
+     * se resuelve del lado del servidor a partir del nombre del tótem.
+     * GET /api/totem/og/Cowboy
+     */
+    @GetMapping("/og/{nombre}")
+    public ResponseEntity<String> ogRedirectCorto(@PathVariable String nombre) {
+        String emoji = EMOJI_POR_NOMBRE_TOTEM.getOrDefault(nombre, "🎬");
+        return ogRedirect(nombre, emoji);
+    }
 }
