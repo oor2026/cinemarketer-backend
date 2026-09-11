@@ -73,6 +73,7 @@ public class SecurityConfig {
                                 "/api/rewards/public/**",
                                 "/api/premium/rewards/public/**",
                                 "/api/premium/rewards/og/**",
+                                "/api/totem/og",
                                 "/api/webhooks/mercadopago",
                                 "/api/subscriptions/confirm",
                                 "/api/trivia/**",
