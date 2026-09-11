@@ -74,6 +74,7 @@ public class SecurityConfig {
                                 "/api/premium/rewards/public/**",
                                 "/api/premium/rewards/og/**",
                                 "/api/totem/og",
+                                "/api/totem/og/**",
                                 "/api/totem/og-image",
                                 "/api/webhooks/mercadopago",
                                 "/api/subscriptions/confirm",
