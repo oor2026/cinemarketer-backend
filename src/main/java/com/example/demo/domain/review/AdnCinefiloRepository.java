@@ -25,17 +25,17 @@ public interface AdnCinefiloRepository extends JpaRepository<Review, Long> {
             JOIN genres g ON g.id = m.genero_principal_id
             WHERE r.user_id = :userId AND r.review_type = 'MOVIE' AND r.active = true AND r.vote_type IN ('LIKE','DISLIKE')
 
-            UNION ALL
-
-            -- Comentarios quedó fuera del ADN Cinéfilo: es señal de
-            -- engagement (se detuvo a escribir algo), no de sentimiento
-            -- hacia el género — sin análisis de contenido no sabemos si
-            -- "odio esta película" debe pesar igual que "la amé".
-
-            SELECT g.id AS genre_id, g.name AS genre_name, 3 AS weight
-            FROM (SELECT DISTINCT mr.movie_id FROM movie_recommendations mr WHERE mr.sender_id = :userId) dr
-            JOIN movies m ON m.tmdb_id = dr.movie_id
-            JOIN genres g ON g.id = m.genero_principal_id
+            -- Comentarios y recomendaciones quedaron fuera del ADN Cinéfilo
+            -- a propósito: ninguna de las dos deja saber la intención real
+            -- del usuario (un comentario puede ser una crítica negativa, una
+            -- recomendación puede estar pensada para el gusto del receptor
+            -- y no del que la envía) — sin esa certeza, preferimos un
+            -- algoritmo más simple pero fiel a lo que el usuario declaró
+            -- explícitamente (el voto LIKE/DISLIKE), antes que uno más rico
+            -- pero basado en suposiciones. Si en el futuro se agrega una
+            -- forma de que el usuario confirme "esto también refleja mi
+            -- gusto" al recomendar, ahí se podría reincorporar con un JOIN
+            -- adicional filtrando por ese campo.
         ) sub
         GROUP BY genre_id, genre_name
         """, nativeQuery = true)
