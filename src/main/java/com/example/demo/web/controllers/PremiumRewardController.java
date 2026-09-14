@@ -132,6 +132,19 @@ public class PremiumRewardController {
     }
 
     /**
+     * Catálogo completo, sin auth — Club de Beneficios público.
+     * Va antes de /public/{id} para que Spring no confunda "all" con
+     * un {id} (mismo criterio que RewardController#getAllRewards vs
+     * getRewardById).
+     * GET /api/premium/rewards/public/all
+     */
+    @GetMapping("/public/all")
+    public ResponseEntity<List<PremiumRewardDto>> getCatalogPublic(
+            @RequestParam(required = false) PremiumRewardType type) {
+        return ResponseEntity.ok(premiumRewardService.getCatalogPublic(type));
+    }
+
+    /**
      * Versión pública (sin auth) de un premio especial puntual — para el
      * link compartido. No expone canRedeem/alreadyEntered ni nada personal.
      * GET /api/premium/rewards/public/{id}

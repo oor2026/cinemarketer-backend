@@ -166,6 +166,22 @@ public class RewardController {
     }
 
     /**
+     * Catálogo completo, sin auth — para la vista pública del Club de
+     * Beneficios. canRedeem sale calculado contra 0 puntos (no hay
+     * usuario): el frontend público lo ignora y muestra un CTA fijo de
+     * "iniciá sesión para canjear" en vez de basarse en ese campo.
+     * GET /api/rewards/public/all
+     */
+    @GetMapping("/public/all")
+    public ResponseEntity<List<RewardDto>> getAllRewardsPublic() {
+        List<Reward> rewards = rewardRepository.findByActiveTrueAndDeletedFalseOrderByPointsRequiredAsc();
+        List<RewardDto> dtos = rewards.stream()
+                .map(r -> toDto(r, 0))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    /**
      * Versión pública (sin auth) de un premio puntual — para el link
      * compartido. No expone canRedeem ni nada personal del usuario.
      * GET /api/public/rewards/{id}
