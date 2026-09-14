@@ -6,6 +6,8 @@ import com.example.demo.application.services.PremiumRewardService;
 import com.example.demo.application.services.SubscriptionService;
 import com.example.demo.domain.premium.PremiumDrawEntry;
 import com.example.demo.domain.premium.PremiumDrawEntryRepository;
+import com.example.demo.domain.premium.PremiumRedemption;
+import com.example.demo.domain.premium.PremiumRedemptionRepository;
 import com.example.demo.domain.premium.PremiumReward;
 import com.example.demo.domain.premium.PremiumRewardType;
 import com.example.demo.domain.user.User;
@@ -28,17 +30,20 @@ public class PremiumRewardController {
     private final SubscriptionService subscriptionService;
     private final EmailService emailService;
     private final PremiumDrawEntryRepository drawEntryRepository;
+    private final PremiumRedemptionRepository premiumRedemptionRepository;
 
     public PremiumRewardController(UserRepository userRepository,
                                    PremiumRewardService premiumRewardService,
                                    SubscriptionService subscriptionService,
                                    EmailService emailService,
-                                   PremiumDrawEntryRepository drawEntryRepository) {
+                                   PremiumDrawEntryRepository drawEntryRepository,
+                                   PremiumRedemptionRepository premiumRedemptionRepository) {
         this.userRepository = userRepository;
         this.premiumRewardService = premiumRewardService;
         this.subscriptionService = subscriptionService;
         this.emailService = emailService;
         this.drawEntryRepository = drawEntryRepository;
+        this.premiumRedemptionRepository = premiumRedemptionRepository;
     }
 
     @GetMapping
@@ -125,6 +130,34 @@ public class PremiumRewardController {
                     "drawExecuted", reward.isDrawExecuted(),
                     "won", gano,
                     "drawDate", reward.getDrawDate() != null ? reward.getDrawDate().toString() : ""
+            );
+        }).toList();
+
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Historial de canjes premium del usuario logueado. El código no
+     * existía en ningún lado — el canje se guarda bien en redeemReward(),
+     * pero nunca se expuso para leerlo de vuelta.
+     * GET /api/premium/rewards/redemptions/me
+     */
+    @GetMapping("/redemptions/me")
+    public ResponseEntity<List<Map<String, Object>>> getMyRedemptions(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = getAuthenticatedUser(userDetails);
+        List<PremiumRedemption> redemptions = premiumRedemptionRepository.findByUserIdOrderByRedeemedAtDesc(user.getId());
+
+        List<Map<String, Object>> result = redemptions.stream().map(r -> {
+            PremiumReward reward = r.getReward();
+            return Map.<String, Object>of(
+                    "id", r.getId(),
+                    "rewardName", reward.getName(),
+                    "rewardImageUrl", reward.getImageUrl() != null ? reward.getImageUrl() : "",
+                    "pointsSpent", r.getPointsSpent(),
+                    "redemptionCode", r.getRedemptionCode() != null ? r.getRedemptionCode() : "",
+                    "status", r.getStatus().name(),
+                    "redeemedAt", r.getRedeemedAt().toString()
             );
         }).toList();
 
