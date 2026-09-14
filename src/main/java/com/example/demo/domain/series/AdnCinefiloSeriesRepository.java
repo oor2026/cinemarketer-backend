@@ -20,16 +20,11 @@ public interface AdnCinefiloSeriesRepository extends JpaRepository<SeriesReview,
             JOIN genres g ON g.id = s.genero_principal_id
             WHERE sr.user_id = :userId AND sr.active = true AND sr.vote_type IN ('LIKE','DISLIKE')
 
-            -- Comentarios quedó fuera del ADN Cinéfilo (mismo criterio
-            -- que en Películas): es señal de engagement, no de
-            -- sentimiento hacia el género.
-
-            UNION ALL
-
-            SELECT g.id AS genre_id, g.name AS genre_name, 3 AS weight
-            FROM (SELECT DISTINCT sr2.series_id FROM series_recommendations sr2 WHERE sr2.sender_id = :userId) dr
-            JOIN series s ON s.tmdb_id = dr.series_id
-            JOIN genres g ON g.id = s.genero_principal_id
+            -- Comentarios y recomendaciones quedaron fuera del ADN Cinéfilo
+            -- (mismo criterio que en Películas): ninguna de las dos permite
+            -- saber la intención real del usuario hacia el género — se
+            -- prefiere un algoritmo más simple pero fiel a lo declarado
+            -- explícitamente (el voto), antes que uno que asuma intención.
         ) sub
         GROUP BY genre_id, genre_name
         """, nativeQuery = true)
