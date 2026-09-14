@@ -271,7 +271,11 @@ public class PremiumRewardService {
     // CONVERSIÓN A DTO
     // ==============================================
 
-    private PremiumRewardDto toDto(PremiumReward reward, User user, boolean isPremium) {
+    /**
+     * Campos comunes a cualquier visitante — no depende de un User.
+     * La usan toDto (usuario logueado) y toDtoPublic (catálogo público).
+     */
+    private PremiumRewardDto toDtoBase(PremiumReward reward) {
         PremiumRewardDto dto = new PremiumRewardDto();
         dto.setId(reward.getId());
         dto.setName(reward.getName());
@@ -283,7 +287,6 @@ public class PremiumRewardService {
         dto.setDrawDate(reward.getDrawDate());
         dto.setDrawExecuted(reward.isDrawExecuted());
         dto.setActive(reward.isActive());
-        dto.setUserIsPremium(isPremium);
         dto.setPartner(reward.getPartner());
         dto.setWebsite(reward.getWebsite());
         dto.setTermsConditions(reward.getTermsConditions());
@@ -330,7 +333,7 @@ public class PremiumRewardService {
             dto.setWinnerName(reward.getWinner().getName());
         }
 
-        // Resultados del sorteo (ganador + suplentes)
+        // Resultados del sorteo (ganador + suplentes) — público, no personal
         if (reward.getType() == PremiumRewardType.SORTEO && reward.isDrawExecuted()) {
             List<DrawResult> results = drawResultRepository.findByRewardIdOrderByPosition(reward.getId());
             for (DrawResult dr : results) {
@@ -347,13 +350,9 @@ public class PremiumRewardService {
             }
         }
 
-        if (reward.getType() != PremiumRewardType.SORTEO) {
-            dto.setCanRedeem(user.isActivePremium()
-                    && reward.hasStock()
-                    && user.getTotalPoints() >= reward.getPointsRequired()
-                    && !premiumRedemptionRepository.existsByRewardIdAndUserId(reward.getId(), user.getId()));
-        } else if (reward.getType() == PremiumRewardType.SORTEO) {
-            dto.setAlreadyEntered(drawEntryRepository.existsByRewardIdAndUserId(reward.getId(), user.getId()));
+        // totalEntries es un conteo global, no depende del usuario —
+        // distinto de alreadyEntered (ese sí es personal, solo en toDto).
+        if (reward.getType() == PremiumRewardType.SORTEO) {
             dto.setTotalEntries(drawEntryRepository.countByRewardId(reward.getId()));
         }
 
@@ -369,6 +368,38 @@ public class PremiumRewardService {
         }).collect(java.util.stream.Collectors.toList()));
 
         return dto;
+    }
+
+    private PremiumRewardDto toDto(PremiumReward reward, User user, boolean isPremium) {
+        PremiumRewardDto dto = toDtoBase(reward);
+        dto.setUserIsPremium(isPremium);
+
+        if (reward.getType() != PremiumRewardType.SORTEO) {
+            dto.setCanRedeem(user.isActivePremium()
+                    && reward.hasStock()
+                    && user.getTotalPoints() >= reward.getPointsRequired()
+                    && !premiumRedemptionRepository.existsByRewardIdAndUserId(reward.getId(), user.getId()));
+        } else {
+            dto.setAlreadyEntered(drawEntryRepository.existsByRewardIdAndUserId(reward.getId(), user.getId()));
+        }
+
+        return dto;
+    }
+
+    /**
+     * Catálogo público (sin auth) — Club de Beneficios público. No expone
+     * canRedeem/alreadyEntered/userIsPremium (dependen de un usuario que
+     * acá no existe); el frontend público los ignora y muestra un CTA
+     * fijo de "iniciá sesión para canjear" en su lugar.
+     */
+    public List<PremiumRewardDto> getCatalogPublic(PremiumRewardType type) {
+        List<PremiumReward> rewards = type != null
+                ? premiumRewardRepository.findByActiveTrueAndDeletedFalseAndType(type)
+                : premiumRewardRepository.findByActiveTrueAndDeletedFalse();
+
+        return rewards.stream()
+                .map(this::toDtoBase)
+                .collect(Collectors.toList());
     }
 
     public java.util.Optional<PremiumReward> getRewardEntityById(Long id) {
