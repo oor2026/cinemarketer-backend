@@ -31,11 +31,14 @@ public class AdminRedemptionController {
     private static final Logger log = LoggerFactory.getLogger(AdminRedemptionController.class);
 
     private final RedemptionRepository redemptionRepository;
+    private final com.example.demo.domain.redemption.RedemptionDeliveryPointRepository deliveryPointRepository;
     private final EmailService emailService;
 
     public AdminRedemptionController(RedemptionRepository redemptionRepository,
+                                     com.example.demo.domain.redemption.RedemptionDeliveryPointRepository deliveryPointRepository,
                                      EmailService emailService) {
         this.redemptionRepository = redemptionRepository;
+        this.deliveryPointRepository = deliveryPointRepository;
         this.emailService = emailService;
     }
 
@@ -77,7 +80,7 @@ public class AdminRedemptionController {
     public ResponseEntity<RedemptionAdminDto> getRedemptionById(@PathVariable Long id) {
         Redemption redemption = redemptionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Canje no encontrado"));
-        return ResponseEntity.ok(toDto(redemption));
+        return ResponseEntity.ok(toDto(redemption, true));
     }
 
     @PatchMapping("/{id}/status")
@@ -119,6 +122,52 @@ public class AdminRedemptionController {
         return ResponseEntity.ok(toDto(redemption));
     }
 
+    // ==============================================
+    // PUNTOS DE ENTREGA — se cargan por canje puntual,
+    // no se reutilizan entre canjes (ver diseño acordado).
+    // ==============================================
+
+    @GetMapping("/{id}/delivery-points")
+    public ResponseEntity<List<Map<String, Object>>> getDeliveryPoints(@PathVariable Long id) {
+        List<Map<String, Object>> points = deliveryPointRepository.findByRedemptionIdOrderByDisplayOrderAsc(id)
+                .stream()
+                .map(p -> Map.<String, Object>of(
+                        "id", p.getId(),
+                        "locationReference", p.getLocationReference(),
+                        "scheduleInfo", p.getScheduleInfo(),
+                        "displayOrder", p.getDisplayOrder()
+                ))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(points);
+    }
+
+    @PostMapping("/{id}/delivery-points")
+    @Transactional
+    public ResponseEntity<?> addDeliveryPoint(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        Redemption redemption = redemptionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Canje no encontrado"));
+
+        com.example.demo.domain.redemption.RedemptionDeliveryPoint point = new com.example.demo.domain.redemption.RedemptionDeliveryPoint();
+        point.setRedemption(redemption);
+        point.setLocationReference((String) body.get("locationReference"));
+        point.setScheduleInfo((String) body.get("scheduleInfo"));
+        point.setDisplayOrder(body.get("displayOrder") != null ? (Integer) body.get("displayOrder") : 0);
+        deliveryPointRepository.save(point);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "id", point.getId(),
+                "locationReference", point.getLocationReference(),
+                "scheduleInfo", point.getScheduleInfo()
+        ));
+    }
+
+    @DeleteMapping("/delivery-points/{pointId}")
+    @Transactional
+    public ResponseEntity<?> deleteDeliveryPoint(@PathVariable Long pointId) {
+        deliveryPointRepository.deleteById(pointId);
+        return ResponseEntity.ok(Map.of("message", "Punto de entrega eliminado"));
+    }
+
     @DeleteMapping("/{id}/delete")
     @Transactional
     public ResponseEntity<?> deleteRedemption(@PathVariable Long id) {
@@ -130,6 +179,13 @@ public class AdminRedemptionController {
     }
 
     private RedemptionAdminDto toDto(Redemption r) {
+        return toDto(r, false);
+    }
+
+    // includeDeliveryPoints en false para los listados (evita N+1 en
+    // la tabla del admin, que no muestra esto por fila) — true solo
+    // para el detalle puntual de un canje.
+    private RedemptionAdminDto toDto(Redemption r, boolean includeDeliveryPoints) {
         RedemptionAdminDto dto = new RedemptionAdminDto();
         dto.setId(r.getId());
         dto.setPointsSpent(r.getPointsSpent());
@@ -140,6 +196,10 @@ public class AdminRedemptionController {
         dto.setUsedAt(r.getUsedAt());
         dto.setExpired(r.isExpired());
         dto.setUsed(r.isUsed());
+        dto.setDeliveryAddress(r.getDeliveryAddress());
+        if (r.getChosenDeliveryPoint() != null) {
+            dto.setChosenDeliveryPointId(r.getChosenDeliveryPoint().getId());
+        }
 
         if (r.getUser() != null) {
             dto.setUser(new UserBasicDto(
@@ -158,8 +218,17 @@ public class AdminRedemptionController {
                     r.getReward().getPointsRequired(),
                     r.getReward().getImageUrl(),
                     r.getReward().getPartner(),
-                    r.getReward().getWebsite()
+                    r.getReward().getWebsite(),
+                    r.getReward().getDeliveryMethod()
             ));
+        }
+
+        if (includeDeliveryPoints) {
+            dto.setDeliveryPoints(deliveryPointRepository.findByRedemptionIdOrderByDisplayOrderAsc(r.getId())
+                    .stream()
+                    .map(p -> new com.example.demo.application.dtos.DeliveryPointDto(
+                            p.getId(), p.getLocationReference(), p.getScheduleInfo(), p.getDisplayOrder()))
+                    .collect(Collectors.toList()));
         }
 
         return dto;

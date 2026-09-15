@@ -21,4 +21,7 @@ public class RedemptionAdminDto {
     private LocalDateTime usedAt;
     private boolean isExpired;
     private boolean isUsed;
+    private java.util.List<DeliveryPointDto> deliveryPoints;
+    private Long chosenDeliveryPointId;
+    private String deliveryAddress;
 }

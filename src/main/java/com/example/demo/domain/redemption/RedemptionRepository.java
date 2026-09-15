@@ -35,6 +35,8 @@ public interface RedemptionRepository extends JpaRepository<Redemption, Long> {
     // eliminar visualmente el registro en el admin
     Page<Redemption> findByDeletedFalse(Pageable pageable);
 
+    List<Redemption> findByUserIdAndStatusIn(Long userId, List<RedemptionStatus> statuses);
+
     // Contar canjes por usuario
     long countByUserId(Long userId);
 

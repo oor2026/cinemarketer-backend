@@ -61,6 +61,11 @@ public class PremiumRewardDto {
     private String requirements;
     private Boolean companionAllowed;
 
+    // Entrega — mismo criterio que RewardDto (Free)
+    private String deliveryMethod;
+    private String pickupPoint;
+    private String deliveryCost;
+
     // Campos para MERCHANDISING
     private String brand;
     private String material;

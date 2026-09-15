@@ -46,6 +46,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByDni(String dni);
 
+    java.util.Optional<User> findBySelfServiceToken(String token);
+
     // ==============================================
     // NUEVOS MÉTODOS PARA FILTRAR POR NIVEL
     // ==============================================

@@ -35,6 +35,13 @@ public class PremiumRedemption {
     @Column(nullable = false, length = 20)
     private PremiumRedemptionStatus status = PremiumRedemptionStatus.PENDING;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chosen_delivery_point_id")
+    private PremiumRedemptionDeliveryPoint chosenDeliveryPoint;
+
+    @Column(name = "delivery_address", length = 300)
+    private String deliveryAddress;
+
     @Column(name = "redeemed_at", nullable = false, updatable = false)
     private LocalDateTime redeemedAt;
 

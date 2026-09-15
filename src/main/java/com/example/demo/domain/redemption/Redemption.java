@@ -46,6 +46,13 @@ public class Redemption {
     @Column(name = "used_at")
     private LocalDateTime usedAt;  // Fecha en que se usó el premio
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "chosen_delivery_point_id")
+    private RedemptionDeliveryPoint chosenDeliveryPoint;  // El punto que eligió el usuario en el centro de autogestión
+
+    @Column(name = "delivery_address", length = 300)
+    private String deliveryAddress;  // Solo si reward.deliveryMethod = ENVIO_DOMICILIO — puntual a este canje, no se guarda en el perfil
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
