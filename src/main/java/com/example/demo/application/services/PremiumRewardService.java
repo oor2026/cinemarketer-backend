@@ -311,6 +311,10 @@ public class PremiumRewardService {
         dto.setRequirements(reward.getRequirements());
         dto.setCompanionAllowed(reward.getCompanionAllowed());
 
+        dto.setDeliveryMethod(reward.getDeliveryMethod());
+        dto.setPickupPoint(reward.getPickupPoint());
+        dto.setDeliveryCost(reward.getDeliveryCost());
+
         // Merchandising
         dto.setBrand(reward.getBrand());
         dto.setMaterial(reward.getMaterial());

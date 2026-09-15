@@ -14,4 +14,5 @@ public class RewardBasicDto {
     private String imageUrl;
     private String partner;
     private String website;
+    private String deliveryMethod;
 }

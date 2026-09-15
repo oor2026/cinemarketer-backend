@@ -220,6 +220,12 @@ public class User {
     @Column(name = "localidad", length = 100)
     private String localidad;
 
+    @Column(name = "self_service_token", length = 255)
+    private String selfServiceToken;
+
+    @Column(name = "self_service_token_expires_at")
+    private LocalDateTime selfServiceTokenExpiresAt;
+
     public boolean isPrivate() {
         return "PRIVATE".equals(this.profileVisibility);
     }

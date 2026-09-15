@@ -11,4 +11,5 @@ public interface PremiumRedemptionRepository extends JpaRepository<PremiumRedemp
     List<PremiumRedemption> findByDeletedFalse();
     List<PremiumRedemption> findByStatusAndDeletedFalse(PremiumRedemptionStatus status);
     long countByStatus(PremiumRedemptionStatus status);
+    List<PremiumRedemption> findByUserIdAndStatusIn(Long userId, List<PremiumRedemptionStatus> statuses);
 }

@@ -103,6 +103,16 @@ public class EmailService {
         sendHtml(to, "Cinemarketer - Verificá tu cuenta", body);
     }
 
+    public void sendSelfServiceLoginEmail(String to, String token) {
+        String url = baseUrl + "/api/self-service/verify-redirect?token=" + token;
+        String body = "<p>Hola,</p>" +
+                "<p>Recibimos una solicitud para acceder al <strong>Centro de Autogestión de Premios</strong> de Cinemarketer.</p>" +
+                "<p>Para continuar y coordinar la entrega de tu premio, hacé clic en el siguiente botón:</p>" +
+                btn(url, "Acceder a mi premio") +
+                "<p style='font-size:13px;color:#888888;'>Este enlace es válido por 15 minutos. Si no solicitaste esto, podés ignorar este mensaje.</p>";
+        sendHtml(to, "Cinemarketer - Accedé a tu premio", body);
+    }
+
     public void sendEmailChangeVerification(String to, String token) {
         String verificationUrl = baseUrl + "/api/auth/verify?token=" + token;
         String body = "<p>Hola,</p>" +

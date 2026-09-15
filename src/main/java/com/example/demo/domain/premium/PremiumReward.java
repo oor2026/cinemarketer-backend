@@ -163,6 +163,18 @@ public class PremiumReward {
     @Column(name = "companion_allowed")
     private Boolean companionAllowed;
 
+    // --- Entrega (mismo criterio que Reward — agregado para que el
+    // centro de autogestión pueda saber si este premio se retira en
+    // persona o se envía a domicilio) ---
+    @Column(name = "delivery_method", length = 50)
+    private String deliveryMethod; // RETIRO_PRESENCIAL, ENTREGA_DIGITAL, COORDINACION_TERCERO, ENVIO_DOMICILIO
+
+    @Column(name = "pickup_point", length = 300)
+    private String pickupPoint;
+
+    @Column(name = "delivery_cost", length = 50)
+    private String deliveryCost; // GRATUITO, A_CARGO_GANADOR, COORDINAR_TERCERO
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
