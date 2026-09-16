@@ -95,14 +95,18 @@ public class SelfServiceController {
     public ResponseEntity<Void> verifyRedirect(@RequestParam String token) {
         User user = userRepository.findBySelfServiceToken(token).orElse(null);
 
+        // Sin ".html" a propósito: el hosting de Railway hace un 301
+        // automático de "URL limpia" cuando pedís el .html con query
+        // string, y ese redirect se come el ?token=/?error= en el
+        // camino. Pidiendo directo la ruta limpia evitamos ese salto.
         String redirectUrl;
         if (user == null) {
-            redirectUrl = frontendUrl + "/centro-autogestion.html?error=invalid";
+            redirectUrl = frontendUrl + "/centro-autogestion?error=invalid";
         } else if (user.getSelfServiceTokenExpiresAt() == null
                 || user.getSelfServiceTokenExpiresAt().isBefore(LocalDateTime.now())) {
-            redirectUrl = frontendUrl + "/centro-autogestion.html?error=expired";
+            redirectUrl = frontendUrl + "/centro-autogestion?error=expired";
         } else {
-            redirectUrl = frontendUrl + "/centro-autogestion.html?token=" + token;
+            redirectUrl = frontendUrl + "/centro-autogestion?token=" + token;
         }
 
         return ResponseEntity.status(HttpStatus.FOUND).header("Location", redirectUrl).build();
