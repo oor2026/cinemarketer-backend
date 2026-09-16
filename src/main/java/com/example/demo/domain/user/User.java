@@ -226,6 +226,9 @@ public class User {
     @Column(name = "self_service_token_expires_at")
     private LocalDateTime selfServiceTokenExpiresAt;
 
+    @Column(name = "self_service_last_requested_at")
+    private LocalDateTime selfServiceLastRequestedAt;
+
     public boolean isPrivate() {
         return "PRIVATE".equals(this.profileVisibility);
     }

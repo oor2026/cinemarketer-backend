@@ -83,4 +83,8 @@ public interface RedemptionRepository extends JpaRepository<Redemption, Long> {
 
     @Query(value = "SELECT COUNT(DISTINCT user_id) FROM (SELECT user_id, COUNT(*) as cnt FROM redemptions GROUP BY user_id HAVING COUNT(*) >= 2) as multi", nativeQuery = true)
     long countUsersWithMultipleRedemptions();
+
+    List<Redemption> findByUserIdAndDeletedFalseOrderByRedemptionDateDesc(Long userId);
+
+    List<Redemption> findByUserIdAndStatusInAndDeletedFalse(Long userId, List<RedemptionStatus> statuses);
 }

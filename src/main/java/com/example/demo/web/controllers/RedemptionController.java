@@ -69,7 +69,7 @@ public class RedemptionController {
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
         List<Redemption> redemptions = redemptionRepository
-                .findByUserIdOrderByRedemptionDateDesc(user.getId());
+                .findByUserIdAndDeletedFalseOrderByRedemptionDateDesc(user.getId());
 
         List<RedemptionDto> dtos = redemptions.stream()
                 .map(this::toDto)

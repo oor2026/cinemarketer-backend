@@ -64,14 +64,23 @@ public class SelfServiceController {
         // Mismo criterio que forgot-password: responder siempre igual,
         // exista o no el mail, para no permitir usar esta pantalla como
         // forma de averiguar qué mails están registrados en Cinemarketer.
+        // El límite de 5 minutos tampoco cambia la respuesta — si lo
+        // hiciera, alguien podría usar la diferencia para inferir que
+        // el mail existe (justo lo que queremos evitar).
         if (user != null && !user.isDemo()) {
-            String token = UUID.randomUUID().toString();
-            user.setSelfServiceToken(token);
-            user.setSelfServiceTokenExpiresAt(LocalDateTime.now().plusMinutes(15));
-            userRepository.save(user);
-            try {
-                emailService.sendSelfServiceLoginEmail(user.getEmail(), token);
-            } catch (Exception e) {}
+            boolean puedeReenviar = user.getSelfServiceLastRequestedAt() == null
+                    || user.getSelfServiceLastRequestedAt().isBefore(LocalDateTime.now().minusMinutes(5));
+
+            if (puedeReenviar) {
+                String token = UUID.randomUUID().toString();
+                user.setSelfServiceToken(token);
+                user.setSelfServiceTokenExpiresAt(LocalDateTime.now().plusMinutes(15));
+                user.setSelfServiceLastRequestedAt(LocalDateTime.now());
+                userRepository.save(user);
+                try {
+                    emailService.sendSelfServiceLoginEmail(user.getEmail(), token);
+                } catch (Exception e) {}
+            }
         }
 
         return ResponseEntity.ok(Map.of("message", "Si el email está registrado, recibirás el enlace en breve."));
@@ -139,7 +148,12 @@ public class SelfServiceController {
         faltantes.put("localidad", user.getLocalidad() == null || user.getLocalidad().isBlank());
 
         boolean completo = faltantes.values().stream().noneMatch(Boolean::booleanValue);
-        return ResponseEntity.ok(Map.of("completo", completo, "faltantes", faltantes));
+
+        Map<String, Object> respuesta = new java.util.HashMap<>();
+        respuesta.put("completo", completo);
+        respuesta.put("faltantes", faltantes);
+        respuesta.put("provinciaActual", user.getProvincia()); // por si falta solo localidad, para filtrarla
+        return ResponseEntity.ok(respuesta);
     }
 
     @PatchMapping("/perfil")
@@ -283,10 +297,10 @@ public class SelfServiceController {
 
         List<com.example.demo.application.dtos.SelfServiceRedemptionDto> resultado = new java.util.ArrayList<>();
 
-        for (var r : redemptionRepository.findByUserIdAndStatusIn(user.getId(), estadosFree)) {
+        for (var r : redemptionRepository.findByUserIdAndStatusInAndDeletedFalse(user.getId(), estadosFree)) {
             resultado.add(toSelfServiceDto(r));
         }
-        for (var r : premiumRedemptionRepository.findByUserIdAndStatusIn(user.getId(), estadosPremium)) {
+        for (var r : premiumRedemptionRepository.findByUserIdAndStatusInAndDeletedFalse(user.getId(), estadosPremium)) {
             resultado.add(toSelfServiceDto(r));
         }
 
