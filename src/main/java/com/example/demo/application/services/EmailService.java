@@ -173,7 +173,9 @@ public class EmailService {
                 "<p style='margin:0 0 4px;font-size:13px;color:#888888;'>Tu código de canje</p>" +
                 "<p style='margin:0;font-size:22px;font-weight:bold;color:#222222;letter-spacing:2px;'>" + code + "</p>" +
                 "</div>" +
-                "<p>Nuestro equipo se pondrá en contacto para coordinar la entrega.</p>";
+                "<p>Coordiná vos mismo cuándo y dónde retirarlo desde nuestro Centro de Autogestión de Premios:</p>" +
+                btn(frontendUrl + "/centro-autogestion.html", "Coordinar la entrega") +
+                "<p style='font-size:13px;color:#888888;'>Vas a poder identificarte con este mismo mail, sin necesidad de darnos ningún dato por otro canal.</p>";
         sendHtml(to, "Cinemarketer - ¡Canjeaste un premio premium!", body);
     }
 
@@ -192,7 +194,9 @@ public class EmailService {
                 "<p style='margin:0 0 4px;font-size:13px;color:#888888;'>Tu código de canje</p>" +
                 "<p style='margin:0;font-size:22px;font-weight:bold;color:#222222;letter-spacing:2px;'>" + code + "</p>" +
                 "</div>" +
-                "<p>Nuestro equipo procesará tu solicitud a la brevedad y te notificará cuando esté listo para retirar.</p>";
+                "<p>Coordiná vos mismo cuándo y dónde retirarlo desde nuestro Centro de Autogestión de Premios:</p>" +
+                btn(frontendUrl + "/centro-autogestion.html", "Coordinar la entrega") +
+                "<p style='font-size:13px;color:#888888;'>Vas a poder identificarte con este mismo mail, sin necesidad de darnos ningún dato por otro canal.</p>";
         sendHtml(to, "Cinemarketer - ¡Canjeaste un premio!", body);
     }
 

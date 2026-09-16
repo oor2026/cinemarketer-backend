@@ -146,7 +146,7 @@ public class PremiumRewardController {
     public ResponseEntity<List<Map<String, Object>>> getMyRedemptions(
             @AuthenticationPrincipal UserDetails userDetails) {
         User user = getAuthenticatedUser(userDetails);
-        List<PremiumRedemption> redemptions = premiumRedemptionRepository.findByUserIdOrderByRedeemedAtDesc(user.getId());
+        List<PremiumRedemption> redemptions = premiumRedemptionRepository.findByUserIdAndDeletedFalseOrderByRedeemedAtDesc(user.getId());
 
         List<Map<String, Object>> result = redemptions.stream().map(r -> {
             PremiumReward reward = r.getReward();
