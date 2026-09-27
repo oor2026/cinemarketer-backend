@@ -46,6 +46,19 @@ public class MovieController {
                 // Filtrar solo películas del año actual hacia atrás (últimos 2 años para tener volumen)
                 int anioActual = java.time.Year.now().getValue();
                 filter.setReleaseDateGte(String.valueOf(anioActual - 1));
+            } else if ("primary_release_date.asc".equals(sortBy)) {
+                // "Lo que se viene" — público comercial: ordenar por
+                // popularidad, no por fecha cruda. TMDb tiene un catálogo
+                // de "próximos estrenos" saturado de contenido indie/de
+                // nicho (confirmado con datos reales: un lote de 40
+                // candidatos en orden cronológico, TODOS con popularity
+                // por debajo de 6) — en orden 100% por fecha, un tanque
+                // conocido queda sepultado detrás de decenas de títulos
+                // desconocidos que casualmente estrenan antes. Se
+                // mantiene el piso de fecha para asegurar que sean
+                // estrenos todavía no salidos.
+                filter.setSortBy("popularity.desc");
+                filter.setReleaseDateGteExact(releaseDateGteExact);
             } else {
                 filter.setSortBy(sortBy);
                 filter.setReleaseDateGte(releaseDateGte);
