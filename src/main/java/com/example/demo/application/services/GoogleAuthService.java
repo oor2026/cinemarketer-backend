@@ -56,6 +56,8 @@ public class GoogleAuthService {
         User user = userRepository.findByGoogleId(googleId)
                 .orElseGet(() -> userRepository.findByEmail(email).orElse(null));
 
+        // lastLoginAt no se actualizaba en ningún lado de este archivo —
+        // se suma de paso, útil en general más allá del onboarding.
         if (user == null) {
             // 3a. Usuario nuevo — crear con profileComplete = false
             user = new User();
@@ -68,6 +70,7 @@ public class GoogleAuthService {
             user.setRole(UserRole.USER);
             user.setProfileComplete(false); // necesita completar DNI y teléfono
             user.setPassword(null);
+            user.setLastLoginAt(java.time.LocalDateTime.now());
             userRepository.save(user);
         } else {
             // 3b. Usuario existente — vincular googleId si no lo tenía
@@ -78,6 +81,7 @@ public class GoogleAuthService {
             if (!user.isEmailVerified()) {
                 user.setEmailVerified(true);
             }
+            user.setLastLoginAt(java.time.LocalDateTime.now());
             userRepository.save(user);
             // Verificar suspensión
             if (user.isSuspended()) {
@@ -85,6 +89,14 @@ public class GoogleAuthService {
                         "Tu cuenta ha sido suspendida. Contactá a soporte.");
             }
         }
+
+        // Onboarding de Mi Sala — mismo chequeo que el login tradicional,
+        // ya no depende de lastLoginAt: se recalcula en cada login según
+        // los datos reales, sin importar si es cuenta nueva o vieja.
+        boolean necesitaOnboardingSala = user.getPeliculaFavoritaId() == null
+                && user.getUltimaVistaCineId() == null
+                && user.getNoMeCansoDeVerId() == null
+                && user.getNoLaBancoId() == null;
 
         // 4. Generar JWT — usar el email guardado en la BD, no el de Google
         // (el usuario pudo haber cambiado su email en Mi Cuenta)
@@ -104,6 +116,7 @@ public class GoogleAuthService {
         response.setLevel(user.getLevel());
         response.setPremium(isPremium);
         response.setProfileComplete(user.isProfileComplete());
+        response.setNecesitaOnboardingSala(necesitaOnboardingSala);
         return response;
     }
 
@@ -153,6 +166,16 @@ public class GoogleAuthService {
         response.setLevel(user.getLevel());
         response.setPremium(isPremium);
         response.setProfileComplete(true);
+        // Mismo chequeo que en authenticateWithGoogle — se recalcula acá
+        // también porque este método puede correr en una sesión distinta
+        // (usuario cerró el navegador antes de terminar de completar el
+        // DNI/teléfono, y volvió más tarde).
+        response.setNecesitaOnboardingSala(
+                user.getPeliculaFavoritaId() == null
+                        && user.getUltimaVistaCineId() == null
+                        && user.getNoMeCansoDeVerId() == null
+                        && user.getNoLaBancoId() == null
+        );
         return response;
     }
 

@@ -22,6 +22,7 @@ public class LoginResponse {
     private boolean profileComplete;
     private String googleId;
     private boolean isDemo;
+    private boolean necesitaOnboardingSala; // true si las 4 preguntas de película están vacías — dispara el onboarding en CADA login, hasta que complete al menos 1
 
     // Constructor sin mensaje ni level (compatibilidad con código existente)
     public LoginResponse(String token, String type, String email, String role, int totalPoints, boolean success) {
