@@ -22,6 +22,13 @@ public class UserProfileResponse {
      */
     private String googleId;
 
+    /**
+     * true si el usuario tiene contraseña propia cargada — el criterio
+     * real para decidir qué pedirle al eliminar la cuenta. Puede ser
+     * true aunque googleId también esté seteado (cuenta híbrida).
+     */
+    private boolean tienePassword;
+
     /** Puntos disponibles para canjear (liberados, no vencidos) */
     private int availablePoints;
 

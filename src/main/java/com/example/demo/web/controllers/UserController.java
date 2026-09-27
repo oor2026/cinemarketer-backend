@@ -239,6 +239,11 @@ public class UserController {
         response.setCreatorUntil(user.getCreatorUntil());
         response.setProfileVisibility(user.getProfileVisibility());
         response.setGoogleId(user.getGoogleId());
+        // Único criterio real y confiable para "¿tiene contraseña?" — el
+        // mismo que ya usa el DELETE /me para decidir qué pedir. Antes el
+        // frontend usaba googleId como proxy de esto, lo cual falla en
+        // cuentas híbridas (Google vinculado + contraseña propia).
+        response.setTienePassword(user.getPassword() != null && !user.getPassword().isBlank());
 
         com.example.demo.domain.user.UserLevel nextLvl = user.getLevel().getNextLevel();
         if (nextLvl != null) {
@@ -341,18 +346,34 @@ public class UserController {
 
     @DeleteMapping("/me")
     public ResponseEntity<Map<String, String>> deleteCurrentUser(@RequestBody Map<String, String> body) {
-        String password = body.getOrDefault("password", "").trim();
-
-        if (password.isEmpty()) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", "La contraseña es obligatoria para confirmar la eliminación."));
-        }
-
         User user = getAuthenticatedUser();
 
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "La contraseña ingresada es incorrecta."));
+        // Cuentas de Google no tienen password propio (user.getPassword()
+        // es null) — para esas, el frontend pide escribir "ELIMINAR" en vez
+        // de una contraseña que nunca existió. La identidad ya está
+        // probada por el JWT del request; esta confirmación es solo un
+        // freno contra un click accidental, no una validación de seguridad
+        // adicional.
+        boolean esCuentaGoogle = user.getPassword() == null || user.getPassword().isBlank();
+
+        if (esCuentaGoogle) {
+            boolean confirmado = Boolean.parseBoolean(body.getOrDefault("confirmacionGoogle", "false"));
+            if (!confirmado) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "Falta confirmar la eliminación."));
+            }
+        } else {
+            String password = body.getOrDefault("password", "").trim();
+
+            if (password.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "La contraseña es obligatoria para confirmar la eliminación."));
+            }
+
+            if (!passwordEncoder.matches(password, user.getPassword())) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "La contraseña ingresada es incorrecta."));
+            }
         }
 
         // Guardar datos antes de eliminar
