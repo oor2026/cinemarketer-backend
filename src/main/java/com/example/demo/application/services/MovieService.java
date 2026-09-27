@@ -154,6 +154,10 @@ public class MovieService {
             }
 
             // Ordenar merged por: año desc → popularity desc → vote_count desc
+            // (mismo criterio para "recientes" y "próximamente" — para
+            // esta última, sortBy ya llega como "popularity.desc" desde
+            // el controller, así que este único bloque le sirve a las
+            // dos sin necesitar una rama aparte).
             merged.sort((a, b) -> {
                 // 1. Año descendente
                 int anioA = extraerAnio(a.getReleaseDate());
