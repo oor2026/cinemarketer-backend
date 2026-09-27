@@ -258,6 +258,17 @@ public class AuthController {
             user.setLastLoginAt(java.time.LocalDateTime.now());
             userRepository.save(user);
             loginAttempts.remove(clientIp);
+
+            // Onboarding de Mi Sala: se muestra en CADA login mientras las
+            // 4 preguntas de película sigan todas vacías — cubre cuentas
+            // nuevas, cuentas que salteraon todo la vez pasada, y cuentas
+            // viejas de antes de esta funcionalidad. Alcanza con 1 sola
+            // respondida para que deje de aparecer para siempre. La bio
+            // no cuenta acá — queda 100% opcional.
+            boolean necesitaOnboardingSala = user.getPeliculaFavoritaId() == null
+                    && user.getUltimaVistaCineId() == null
+                    && user.getNoMeCansoDeVerId() == null
+                    && user.getNoLaBancoId() == null;
             loginBlockedAt.remove(clientIp);
 
             // 6. Generar token JWT
@@ -278,6 +289,7 @@ public class AuthController {
             response.setLevel(user.getLevel());
             response.setPremium(isPremium);
             response.setDemo(user.isDemo());
+            response.setNecesitaOnboardingSala(necesitaOnboardingSala);
 
             return ResponseEntity.ok(response);
 
