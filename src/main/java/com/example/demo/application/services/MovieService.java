@@ -158,7 +158,24 @@ public class MovieService {
             // esta última, sortBy ya llega como "popularity.desc" desde
             // el controller, así que este único bloque le sirve a las
             // dos sin necesitar una rama aparte).
+            // "Lo que se viene" se reconoce por el piso de fecha exacta (solo
+            // ese criterio lo manda). Acá se pide por popularidad a TMDb
+            // (rápido, trae los conocidos) pero se muestra en orden
+            // cronológico: la más próxima a estrenar primero.
+            final boolean esProximamente = filter.getReleaseDateGteExact() != null
+                    && !filter.getReleaseDateGteExact().trim().isEmpty();
             merged.sort((a, b) -> {
+                if (esProximamente) {
+                    // Las fechas ISO (YYYY-MM-DD) se comparan bien como texto.
+                    // Sin fecha, al final.
+                    String fechaA = (a.getReleaseDate() != null && !a.getReleaseDate().isBlank()) ? a.getReleaseDate() : "9999-12-31";
+                    String fechaB = (b.getReleaseDate() != null && !b.getReleaseDate().isBlank()) ? b.getReleaseDate() : "9999-12-31";
+                    int cmpFecha = fechaA.compareTo(fechaB);
+                    if (cmpFecha != 0) return cmpFecha;
+                    double popProxA = a.getPopularity() != null ? a.getPopularity() : 0.0;
+                    double popProxB = b.getPopularity() != null ? b.getPopularity() : 0.0;
+                    return Double.compare(popProxB, popProxA);
+                }
                 // 1. Año descendente
                 int anioA = extraerAnio(a.getReleaseDate());
                 int anioB = extraerAnio(b.getReleaseDate());

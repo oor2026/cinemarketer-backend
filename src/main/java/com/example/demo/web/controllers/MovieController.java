@@ -5,6 +5,7 @@ import com.example.demo.application.dtos.MovieFilterDto;
 import com.example.demo.application.dtos.external.tmdb.*;
 import com.example.demo.application.services.MovieExpectationService;
 import com.example.demo.application.services.MovieService;
+import com.example.demo.application.services.ProximosEstrenosService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,10 +19,13 @@ public class MovieController {
 
     private final MovieService movieService;
     private final MovieExpectationService movieExpectationService;
+    private final ProximosEstrenosService proximosEstrenosService;
 
-    public MovieController(MovieService movieService, MovieExpectationService movieExpectationService) {
+    public MovieController(MovieService movieService, MovieExpectationService movieExpectationService,
+                           ProximosEstrenosService proximosEstrenosService) {
         this.movieService = movieService;
         this.movieExpectationService = movieExpectationService;
+        this.proximosEstrenosService = proximosEstrenosService;
     }
 
     /**
@@ -36,6 +40,12 @@ public class MovieController {
             @RequestParam(required = false) String releaseDateGteExact,
             @RequestParam(required = false) String language,
             @RequestParam(required = false) Integer page) {
+
+        // "Lo que se viene" (el frontend lo pide con primary_release_date.asc):
+        // sale del pool cacheado — las más populares, en orden cronológico.
+        if ("primary_release_date.asc".equals(sortBy)) {
+            return ResponseEntity.ok(proximosEstrenosService.obtenerPagina(page));
+        }
 
         if (sortBy != null && !sortBy.isBlank()) {
             MovieFilterDto filter = new MovieFilterDto();
