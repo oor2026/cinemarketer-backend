@@ -35,8 +35,11 @@ public class MovieExpectation {
             foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private Movie movie;
 
-    @Column(nullable = false)
-    private Integer rating; // 1 a 5 estrellas
+    // LEGACY: de cuando "¿La estás esperando?" era una calificación de 1 a 5
+    // estrellas. Hoy es un Sí/No (expecting) y este campo ya no se usa ni se
+    // completa — se deja nullable para no perder las filas históricas.
+    @Column
+    private Integer rating;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
