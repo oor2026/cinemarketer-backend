@@ -66,6 +66,11 @@ public class AdminStatsController {
     private final com.example.demo.domain.series.VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository;
     private final com.example.demo.domain.espiritu.EspirituSnapshotRepository espirituSnapshotRepository;
     private final com.example.demo.domain.gusto.GustoHistorialRepository gustoHistorialRepository;
+    private final com.example.demo.domain.expectation.MovieExpectationRepository movieExpectationRepository;
+    private final com.example.demo.application.services.MovieService movieService;
+    // Los rankings de "Lo que se viene" solo guardan el ID de TMDb, así que los
+    // títulos se piden a TMDb una sola vez y quedan en memoria.
+    private final Map<Long, String> titulosPeliculasCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     public AdminStatsController(
             UserRepository userRepository,
@@ -76,7 +81,7 @@ public class AdminStatsController {
             PointTransactionRepository pointTransactionRepository,
             SupportTicketRepository supportTicketRepository,
             PremiumRewardRepository premiumRewardRepository,
-            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, SeriesRecommendationRepository seriesRecommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SeriesWatchlistRepository seriesWatchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, com.example.demo.domain.review.VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository, com.example.demo.domain.series.VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository, com.example.demo.domain.espiritu.EspirituSnapshotRepository espirituSnapshotRepository, com.example.demo.domain.gusto.GustoHistorialRepository gustoHistorialRepository) {
+            UserSubscriptionRepository subscriptionRepository, SubscriptionPlanRepository subscriptionPlanRepository, UserBlockRepository userBlockRepository, UserReportRepository userReportRepository, MovieRecommendationRepository recommendationRepository, SeriesRecommendationRepository seriesRecommendationRepository, CommentReplyRepository commentReplyRepository, WatchlistRepository watchlistRepository, SeriesWatchlistRepository seriesWatchlistRepository, SubscriptionPaymentRepository subscriptionPaymentRepository, com.example.demo.domain.publication.PublicationRepository publicationRepository, com.example.demo.domain.review.VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository, com.example.demo.domain.series.VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository, com.example.demo.domain.espiritu.EspirituSnapshotRepository espirituSnapshotRepository, com.example.demo.domain.gusto.GustoHistorialRepository gustoHistorialRepository, com.example.demo.domain.expectation.MovieExpectationRepository movieExpectationRepository, com.example.demo.application.services.MovieService movieService) {
         this.userRepository = userRepository;
         this.reviewRepository = reviewRepository;
         this.seriesReviewRepository = seriesReviewRepository;
@@ -102,6 +107,8 @@ public class AdminStatsController {
         this.votoRelampagoOmitidaSerieRepository = votoRelampagoOmitidaSerieRepository;
         this.espirituSnapshotRepository = espirituSnapshotRepository;
         this.gustoHistorialRepository = gustoHistorialRepository;
+        this.movieExpectationRepository = movieExpectationRepository;
+        this.movieService = movieService;
     }
 
     @GetMapping
@@ -158,6 +165,7 @@ public class AdminStatsController {
         response.setWatchlist(calculateWatchlistStats());
         response.setRevenue(calculateRevenueStats(start, end));
         response.setPublications(calculatePublicationStats(start, end, prevStart, prevEnd));
+        response.setProximosEstrenos(calculateProximosEstrenosStats(start, end));
         return ResponseEntity.ok(response);
     }
 
@@ -981,6 +989,57 @@ public class AdminStatsController {
     // ==============================================
     // HELPER: Sanitizar listas de Maps (eliminar claves null)
     // ==============================================
+    private ProximosEstrenosStatsDto calculateProximosEstrenosStats(LocalDateTime start, LocalDateTime end) {
+        ProximosEstrenosStatsDto stats = new ProximosEstrenosStatsDto();
+
+        long total = movieExpectationRepository.countByCreatedAtBetween(start, end);
+        long esperan = movieExpectationRepository.countByExpectingAndCreatedAtBetween(true, start, end);
+        long noEsperan = movieExpectationRepository.countByExpectingAndCreatedAtBetween(false, start, end);
+        long avisos = movieExpectationRepository
+                .countByExpectingTrueAndNotifyOnReleaseTrueAndCreatedAtBetween(start, end);
+
+        stats.setTotalRespuestas(total);
+        stats.setEsperan(esperan);
+        stats.setNoEsperan(noEsperan);
+        stats.setPctEsperan(total > 0 ? Math.round(esperan * 1000.0 / total) / 10.0 : 0);
+        stats.setPctNoEsperan(total > 0 ? Math.round(noEsperan * 1000.0 / total) / 10.0 : 0);
+        stats.setUsuariosDistintos(movieExpectationRepository.countDistinctUsersInPeriod(start, end));
+        stats.setAvisosActivados(avisos);
+        stats.setPctAvisos(esperan > 0 ? Math.round(avisos * 1000.0 / esperan) / 10.0 : 0);
+
+        stats.setTopMasEsperadas(conTitulosDeTmdb(
+                movieExpectationRepository.findTopMasEsperadas(start, end, PageRequest.of(0, 10))));
+        stats.setTopMenosEsperadas(conTitulosDeTmdb(
+                movieExpectationRepository.findTopMenosEsperadas(start, end, PageRequest.of(0, 10))));
+        stats.setTopUsuarios(sanitizeMapList(
+                movieExpectationRepository.findTopUsuarios(start, end, PageRequest.of(0, 5))));
+        return stats;
+    }
+
+    private List<Map<String, Object>> conTitulosDeTmdb(List<Map<String, Object>> filas) {
+        List<Map<String, Object>> resultado = sanitizeMapList(filas); // copias mutables
+        for (Map<String, Object> fila : resultado) {
+            Object id = fila.get("movieId");
+            if (id != null) fila.put("titulo", resolverTituloPelicula(((Number) id).longValue()));
+        }
+        return resultado;
+    }
+
+    private String resolverTituloPelicula(Long movieId) {
+        String enCache = titulosPeliculasCache.get(movieId);
+        if (enCache != null) return enCache;
+        try {
+            var detalle = movieService.getMovieDetails(movieId);
+            if (detalle != null && detalle.getTitle() != null && !detalle.getTitle().isBlank()) {
+                titulosPeliculasCache.put(movieId, detalle.getTitle());
+                return detalle.getTitle();
+            }
+        } catch (Exception ignored) {
+            // si TMDb falla, se muestra el ID y se reintenta en la próxima carga
+        }
+        return "Película #" + movieId;
+    }
+
     private List<Map<String, Object>> sanitizeMapList(List<Map<String, Object>> list) {
         if (list == null) return new ArrayList<>();
 

@@ -25,4 +25,5 @@ public class StatsResponseDto {
     private PublicationStatsDto publications;
     private NoVistasStatsDto noVistas;
     private PreferenciasStatsDto preferencias;
+    private ProximosEstrenosStatsDto proximosEstrenos;
 }
