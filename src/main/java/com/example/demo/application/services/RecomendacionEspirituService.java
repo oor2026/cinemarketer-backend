@@ -15,8 +15,8 @@ import java.util.*;
 /**
  * "¿Alguna recomendación?" — cruza el top-3 de género del espíritu
  * cinéfilo del usuario (AdnCinefiloService) contra los géneros de las
- * películas en cartelera (CarteleraLiveScraperService, que a su vez los
- * saca de la ficha de cada película en carteleraargentina.com.ar).
+ * películas en cartelera (AgendaDeCineScraperService, que las trae de
+ * agendadecine.com/en-cartel).
  *
  * Los nombres de género de la fuente son texto editorial libre, no
  * necesariamente calcados de nuestro propio catálogo (Genre.name,
@@ -32,9 +32,8 @@ import java.util.*;
 public class RecomendacionEspirituService {
 
     private static final Logger log = LoggerFactory.getLogger(RecomendacionEspirituService.class);
-
     private final AdnCinefiloService adnCinefiloService;
-    private final CarteleraLiveScraperService carteleraLiveScraperService;
+    private final AgendaDeCineScraperService agendaDeCineScraperService;
 
     // Nuestro catálogo real (Genre.name), normalizado — para saber si un
     // término de la fuente ya es conocido tal cual, sin necesidad de
@@ -89,8 +88,8 @@ public class RecomendacionEspirituService {
             return new RecomendacionEspirituDto(List.of(), false, List.of(), cta);
         }
 
-        List<CarteleraLiveScraperService.PeliculaEnCartelera> cartelera =
-                carteleraLiveScraperService.obtenerPeliculasEnCartelera();
+        List<AgendaDeCineScraperService.PeliculaEnCartelera> cartelera =
+                agendaDeCineScraperService.obtenerPeliculasEnCartelera();
 
         List<Candidata> candidatas = new ArrayList<>();
         for (var p : cartelera) {
@@ -141,7 +140,7 @@ public class RecomendacionEspirituService {
         return new RecomendacionEspirituDto(top3, !top.isEmpty(), resultado, null);
     }
 
-    private record Candidata(CarteleraLiveScraperService.PeliculaEnCartelera pelicula, List<GenreScoreDto> matches, double score) {}
+    private record Candidata(AgendaDeCineScraperService.PeliculaEnCartelera pelicula, List<GenreScoreDto> matches, double score) {}
 
     // 3 variantes para el caso de 1 sola coincidencia — mismo dato (género
     // + %), redacción distinta según la posición en pantalla, para que no
@@ -156,7 +155,7 @@ public class RecomendacionEspirituService {
             "Acá se despierta tu lado %s (%s%%) — otra cara de lo que sos como cinéfilo."
     );
 
-    private RecomendacionItemDto construirItem(CarteleraLiveScraperService.PeliculaEnCartelera p, List<GenreScoreDto> matches, int posicion) {
+    private RecomendacionItemDto construirItem(AgendaDeCineScraperService.PeliculaEnCartelera p, List<GenreScoreDto> matches, int posicion) {
         String mensaje = switch (matches.size()) {
             case 3 -> String.format(
                     "Tu espíritu cinéfilo tiene un perfil bien marcado: %s (%s%%), %s (%s%%) y %s (%s%%) son los tres pilares que te definen como cinéfilo. "

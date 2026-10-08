@@ -20,13 +20,17 @@ public class CarteleraPreciosScheduler {
     }
 
     /**
-     * Todos los lunes a las 00:00, hora Argentina — mismo criterio que
-     * pediste. Los precios no cambian todos los días, así que semanal
-     * alcanza; evita golpear los sitios de las cadenas sin necesidad.
+     * Todos los días a las 00:00, hora Argentina. Antes era semanal, pero
+     * algunas cadenas publican aumentos programados con fecha de vigencia
+     * (ej. Cinemark, "a partir del 15/10"): con una actualización por
+     * semana, el precio nuevo se vería hasta 6 días tarde. Además, si un
+     * sitio rechaza el pedido en una corrida, se reintenta al día
+     * siguiente en vez de esperar una semana. Son unos 13 pedidos por día,
+     * una carga mínima para los sitios de las cadenas.
      */
-    @Scheduled(cron = "0 0 0 * * MON", zone = "America/Argentina/Buenos_Aires")
-    public void actualizarPreciosSemanal() {
-        log.info("🎬 Iniciando actualización semanal de precios de cartelera - {}", LocalDateTime.now());
+    @Scheduled(cron = "0 0 0 * * *", zone = "America/Argentina/Buenos_Aires")
+    public void actualizarPreciosDiario() {
+        log.info("🎬 Iniciando actualización diaria de precios de cartelera - {}", LocalDateTime.now());
         try {
             carteleraPreciosService.actualizarPrecios();
             log.info("✅ Precios de cartelera actualizados correctamente");
