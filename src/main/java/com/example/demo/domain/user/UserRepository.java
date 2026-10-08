@@ -46,6 +46,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByDni(String dni);
 
+    boolean existsByDniAndIdNot(String dni, Long id);
+
     java.util.Optional<User> findBySelfServiceToken(String token);
 
     // ==============================================

@@ -323,8 +323,23 @@ public class UserController {
         }
 
         if (fields.containsKey("dni")) {
-            String dni = fields.get("dni").trim();
-            user.setDni(dni);
+            String dniRecibido = fields.get("dni") == null ? "" : fields.get("dni").trim();
+            String dni = com.example.demo.application.services.CredencialService.normalizarDni(dniRecibido);
+            if (dni == null) {
+                // Vacío se guarda como null: con "" la restricción UNIQUE de la
+                // columna choca en cuanto dos usuarios dejan el DNI en blanco.
+                user.setDni(null);
+            } else {
+                if (!com.example.demo.application.services.CredencialService.dniValido(dni)) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("message", "El DNI debe tener 7 u 8 dígitos."));
+                }
+                if (userRepository.existsByDniAndIdNot(dni, user.getId())) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT)
+                            .body(Map.of("message", "Ese DNI ya está registrado en otra cuenta."));
+                }
+                user.setDni(dni);
+            }
         }
 
         userRepository.save(user);
