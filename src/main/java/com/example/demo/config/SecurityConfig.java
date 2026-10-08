@@ -85,7 +85,8 @@ public class SecurityConfig {
                                 "/api/trivia-series/**",
                                 "/h2-console/**",
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**"
+                                "/v3/api-docs/**",
+                                "/error"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/test/**").hasAuthority("ADMIN")
