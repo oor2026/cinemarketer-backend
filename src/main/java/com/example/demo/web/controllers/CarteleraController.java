@@ -208,26 +208,6 @@ public class CarteleraController {
         return dto;
     }
 
-    // GET /api/cartelera/diagnostico-pelicula?slug=digger&provincia=caba&localidad=Belgrano — TEMPORAL:
-    // sigue paso a paso la búsqueda de "Ya sé qué quiero ver" y dice dónde se pierden las funciones.
-    // Borrar cuando se termine la revisión.
-    @GetMapping("/diagnostico-pelicula")
-    public ResponseEntity<?> diagnosticoPelicula(@RequestParam String slug,
-                                                 @RequestParam String provincia,
-                                                 @RequestParam(required = false) String localidad) {
-        return ResponseEntity.ok(agendaDeCineScraperService.diagnosticoDePelicula(slug, provincia, localidad));
-    }
-
-    // GET /api/cartelera/precio-referencia?cine=Cinemark Palermo&formato=2D
-    // Sin fecha: devuelve siempre la tarifa regular. Para el precio de una
-    // función puntual, ver precioReferencia en /organizar-salida.
-    // GET /api/cartelera/diagnostico-funciones — TEMPORAL: de qué cines del directorio hay
-    // funciones cargadas ahora, por cadena. Borrar cuando se termine la revisión de cadenas.
-    @GetMapping("/diagnostico-funciones")
-    public ResponseEntity<?> diagnosticoFunciones() {
-        return ResponseEntity.ok(agendaDeCineScraperService.diagnosticoDeFunciones());
-    }
-
     @GetMapping("/precio-referencia")
     public ResponseEntity<?> getPrecioReferencia(@RequestParam String cine, @RequestParam String formato) {
         Double precio = carteleraPreciosService.obtenerPrecioReferencia(cine, formato);
