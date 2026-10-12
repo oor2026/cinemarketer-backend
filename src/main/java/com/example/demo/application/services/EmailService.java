@@ -227,6 +227,54 @@ public class EmailService {
         sendHtml(to, "Cinemarketer - Actualización sobre el sorteo", body);
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Aviso de estreno: "la película que estabas esperando ya está en cartelera".
+    // ---------------------------------------------------------------------------------------------
+
+    // Escapa lo que viene de afuera (el título de TMDb, el nombre de la persona) antes de meterlo en el HTML.
+    private static String esc(String texto) {
+        if (texto == null) return "";
+        return texto.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&#39;");
+    }
+
+    // Solo se acepta una dirección https para una imagen o un botón; cualquier otra cosa se descarta.
+    private static boolean esHttps(String url) {
+        return url != null && url.startsWith("https://") && url.indexOf('\'') < 0 && url.indexOf('"') < 0
+                && url.indexOf('<') < 0 && url.indexOf('>') < 0 && url.indexOf(' ') < 0;
+    }
+
+    /**
+     * Cuerpo del mail de estreno (sin el marco con logo, que le pone sendHtml).
+     *
+     * @param posterUrl  póster de la película (https); si es null o no es https, el mail sale sin imagen
+     * @param ctaUrl     a dónde lleva el botón; si es null, a Cartelera
+     * @param extraHtml  lugar reservado para sumar después promociones de esa misma película (un bloque de HTML
+     *                   ya armado y escapado por quien lo genera); null o vacío = no se agrega nada
+     */
+    String construirCuerpoEstreno(String userName, String movieTitle, String posterUrl, String ctaUrl, String extraHtml) {
+        String titulo = esc(movieTitle == null || movieTitle.isBlank() ? "esa película" : movieTitle);
+        String saludo = (userName == null || userName.isBlank()) ? "<p>Hola,</p>" : "<p>Hola <strong>" + esc(userName) + "</strong>,</p>";
+        String destino = esHttps(ctaUrl) ? ctaUrl : frontendUrl + "/dashboard.html#cartelera";
+        String poster = esHttps(posterUrl)
+                ? "<div style='text-align:center;margin:22px 0 6px;'>" +
+                "<img src='" + posterUrl + "' alt='" + titulo + "' width='180' " +
+                "style='display:inline-block;width:180px;max-width:60%;height:auto;border-radius:8px;'/></div>"
+                : "";
+        return saludo +
+                "<p style='font-size:18px;font-weight:bold;color:#e23232;'>¡Ya se estrenó lo que estabas esperando!</p>" +
+                "<p><strong>\"" + titulo + "\"</strong> ya está en cartelera.</p>" +
+                poster +
+                (extraHtml == null ? "" : extraHtml) +
+                btn(destino, "Ver en cartelera") +
+                "<p style='font-size:13px;color:#888888;'>Te escribimos porque nos pediste que te avisáramos cuando se estrenara.</p>";
+    }
+
+    public void sendMovieReleasedEmail(String to, String userName, String movieTitle, String posterUrl, String ctaUrl, String extraHtml) {
+        String asunto = "Cinemarketer - ¡Ya se estrenó " + (movieTitle == null || movieTitle.isBlank() ? "tu película" : movieTitle) + "!";
+        sendHtml(to, asunto, construirCuerpoEstreno(userName, movieTitle, posterUrl, ctaUrl, extraHtml));
+    }
+
     public void sendSubscriptionConfirmationEmail(String to, String confirmUrl, double amount) {
         String body = "<p>Hola,</p>" +
                 "<p>Recibimos un pago de <strong>$" + (int) amount + "</strong> para <strong>Cinemarketer Premium</strong> desde esta dirección de email.</p>" +
