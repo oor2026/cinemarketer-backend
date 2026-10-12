@@ -66,6 +66,17 @@ public class MovieService {
     }
 
     /**
+     * Fechas de estreno de una película, país por país, para detectar reestrenos. Usa TmdbService.getReleaseDates (que
+     * devuelve el JSON crudo y ya tiene caché) y lo convierte a un DTO. Tiene nombre propio a propósito: así no choca
+     * con ningún getReleaseDates que MovieService ya pueda tener.
+     */
+    public TmdbReleaseDatesDto getFechasDeEstreno(Long movieId) {
+        if (movieId == null || movieId <= 0) {
+            throw new IllegalArgumentException("ID de película inválido");
+        }
+        return TmdbReleaseDatesDto.desde(tmdbService.getReleaseDates(movieId));
+    }
+    /**
      * Buscar películas con filtros avanzados (Versión legacy - mantener por compatibilidad)
      */
     public TmdbPageResponseDto searchMovies(
