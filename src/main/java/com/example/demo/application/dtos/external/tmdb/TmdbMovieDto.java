@@ -1,5 +1,6 @@
 package com.example.demo.application.dtos.external.tmdb;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -52,6 +53,10 @@ public class TmdbMovieDto {
     @JsonProperty("adult")
     private Boolean adult;
 
+    // Solo lo completa la fila "Reestrenos" (ver ReestrenosService); en el resto de las respuestas no aparece.
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Reestreno reestreno;
+
     public LocalDate getReleaseDateAsLocalDate() {
         if (this.releaseDate == null || this.releaseDate.isEmpty()) {
             return null;
@@ -67,5 +72,11 @@ public class TmdbMovieDto {
     public static class TmdbGenreDto {
         private Integer id;
         private String name;
+    }
+
+    @Data
+    public static class Reestreno {
+        private String fecha;   // "AAAA-MM-DD": cuándo vuelve a cines en Argentina
+        private String nota;    // la nota que cargó TMDb ("Reestreno", "20th Anniversary"...)
     }
 }

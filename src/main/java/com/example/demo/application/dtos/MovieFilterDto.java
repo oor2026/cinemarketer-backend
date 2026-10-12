@@ -23,6 +23,13 @@ public class MovieFilterDto {
     private String releaseDateGteExact; // fecha completa (YYYY-MM-DD), sin el "-01-01" automático — para "Lo que se viene", que necesita arrancar desde HOY, no desde el 1° de enero de un año
     private String releaseDateLte;    // año "hasta" — junto con releaseDateGte arma un rango real de década
 
+    // Búsqueda por país (la usa "Reestrenos"): con `region` + `withReleaseType`, TMDb mira TODAS las fechas de estreno de
+    // ese país, no solo la principal, y así encuentra películas viejas que vuelven a cines.
+    private String region;            // código de país ISO (ej. "AR")
+    private String withReleaseType;   // tipos de fecha separados por | (OR) o , (AND): 2|3 = estreno en cines
+    private String regionDateGte;     // fecha completa (YYYY-MM-DD): estrenos del país desde...
+    private String regionDateLte;     // ...hasta
+
     // Método para convertir a Map para TMDb
     public Map<String, String> toParams() {
         Map<String, String> params = new HashMap<>();
@@ -84,6 +91,22 @@ public class MovieFilterDto {
 
         if (releaseDateLte != null && !releaseDateLte.trim().isEmpty()) {
             params.put("primary_release_date.lte", releaseDateLte + "-12-31");
+        }
+
+        if (region != null && !region.trim().isEmpty()) {
+            params.put("region", region.trim());
+        }
+
+        if (withReleaseType != null && !withReleaseType.trim().isEmpty()) {
+            params.put("with_release_type", withReleaseType.trim());
+        }
+
+        if (regionDateGte != null && !regionDateGte.trim().isEmpty()) {
+            params.put("release_date.gte", regionDateGte.trim());
+        }
+
+        if (regionDateLte != null && !regionDateLte.trim().isEmpty()) {
+            params.put("release_date.lte", regionDateLte.trim());
         }
 
         params.put("page", page.toString());

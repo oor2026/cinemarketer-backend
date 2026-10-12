@@ -6,6 +6,7 @@ import com.example.demo.application.dtos.external.tmdb.*;
 import com.example.demo.application.services.MovieExpectationService;
 import com.example.demo.application.services.MovieService;
 import com.example.demo.application.services.ProximosEstrenosService;
+import com.example.demo.application.services.ReestrenosService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,12 +21,14 @@ public class MovieController {
     private final MovieService movieService;
     private final MovieExpectationService movieExpectationService;
     private final ProximosEstrenosService proximosEstrenosService;
+    private final ReestrenosService reestrenosService;
 
     public MovieController(MovieService movieService, MovieExpectationService movieExpectationService,
-                           ProximosEstrenosService proximosEstrenosService) {
+                           ProximosEstrenosService proximosEstrenosService, ReestrenosService reestrenosService) {
         this.movieService = movieService;
         this.movieExpectationService = movieExpectationService;
         this.proximosEstrenosService = proximosEstrenosService;
+        this.reestrenosService = reestrenosService;
     }
 
     /**
@@ -104,6 +107,16 @@ public class MovieController {
             @RequestParam(required = false) Integer page) {
         TmdbPageResponseDto response = movieService.getUpcomingMovies(page);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Reestrenos: películas que ya existen y vuelven a cines en Argentina (en cartelera ahora o anunciadas).
+     * Cada una trae `reestreno: { fecha, nota }`.
+     * GET /api/movies/reestrenos
+     */
+    @GetMapping("/reestrenos")
+    public ResponseEntity<TmdbPageResponseDto> getReestrenos() {
+        return ResponseEntity.ok(reestrenosService.obtener());
     }
 
     /**
