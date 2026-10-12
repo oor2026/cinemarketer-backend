@@ -44,6 +44,9 @@ public class MovieExpectationService {
         exp.setUser(user);
         exp.setMovieId(movieId);
         exp.setExpecting(expecting);
+        // Si pasó a "No", el aviso de estreno que había pedido ya no corresponde: sin esto el job de las 09:00
+        // le seguiría avisando a alguien que ya dijo que no la espera.
+        if (!expecting) exp.setNotifyOnRelease(false);
         expectationRepository.save(exp);
 
         return getExpectation(movieId, userEmail);
@@ -55,6 +58,7 @@ public class MovieExpectationService {
 
         MovieExpectation exp = expectationRepository.findByUserIdAndMovieId(user.getId(), movieId)
                 .orElseThrow(() -> new IllegalArgumentException("Primero decí si la esperás"));
+        if (!exp.isExpecting()) throw new IllegalArgumentException("Primero decí si la esperás");
 
         exp.setNotifyOnRelease(true);
         expectationRepository.save(exp);

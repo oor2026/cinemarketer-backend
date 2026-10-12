@@ -4,6 +4,8 @@ import com.example.demo.domain.notification.Notification;
 import com.example.demo.domain.notification.NotificationRepository;
 import com.example.demo.domain.notification.NotificationType;
 import com.example.demo.domain.user.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,7 @@ public class NotificationService {
     private final WebPushService webPushService;
 
     private static final String ICON = "/assets/images/icon-192.png";
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
 
     public NotificationService(NotificationRepository notificationRepository,
                                @Lazy WebPushService webPushService) {
@@ -740,6 +743,7 @@ public class NotificationService {
     public void crearEstrenoEsperado(User receptor, Long movieId, String movieTitle) {
         Notification n = new Notification();
         n.setUser(receptor);
+        n.setActorName("Cinemarketer");   // como todos los avisos del sistema: la columna actor_name es obligatoria
         n.setType(NotificationType.MOVIE_RELEASED_EXPECTED);
         n.setMessage("¡Ya estrenó " + movieTitle + ", la película que estabas esperando!");
         n.setMovieId(movieId);
@@ -749,6 +753,10 @@ public class NotificationService {
         try {
             webPushService.sendToUser(receptor.getId(),
                     "🎬 Cinemarketer", n.getMessage(), ICON);
-        } catch (Exception e) {}
+        } catch (Exception e) {
+            // La notificación de la campanita ya quedó guardada; si el push falla (suscripción vencida, claves, etc.)
+            // se deja registrado en vez de tragarse el error en silencio.
+            log.warn("No se pudo enviar el push de estreno al usuario {}: {}", receptor.getId(), e.getMessage());
+        }
     }
 }
