@@ -21,17 +21,20 @@ public class CarteleraController {
     private final com.example.demo.application.services.CarteleraPreciosService carteleraPreciosService;
     private final RecomendacionEspirituService recomendacionEspirituService;
     private final UserRepository userRepository;
+    private final com.example.demo.application.services.NacionalidadPeliculaService nacionalidadPeliculaService;
 
     public CarteleraController(AgendaDeCineScraperService agendaDeCineScraperService,
                                AgendaDeCineBusquedaService agendaDeCineBusquedaService,
                                com.example.demo.application.services.CarteleraPreciosService carteleraPreciosService,
                                RecomendacionEspirituService recomendacionEspirituService,
-                               UserRepository userRepository) {
+                               UserRepository userRepository,
+                               com.example.demo.application.services.NacionalidadPeliculaService nacionalidadPeliculaService) {
         this.agendaDeCineScraperService = agendaDeCineScraperService;
         this.agendaDeCineBusquedaService = agendaDeCineBusquedaService;
         this.carteleraPreciosService = carteleraPreciosService;
         this.recomendacionEspirituService = recomendacionEspirituService;
         this.userRepository = userRepository;
+        this.nacionalidadPeliculaService = nacionalidadPeliculaService;
     }
 
     // GET /api/cartelera/peliculas — películas en cartelera (agendadecine.com/en-cartel).
@@ -57,13 +60,15 @@ public class CarteleraController {
     // provincia/localidad — el paso "¿Dónde estás?" que se agrega antes
     // de mostrar resultados, tanto viniendo de "Ya sé qué quiero ver"
     // como de "¿Alguna recomendación?".
+    // Con &cadena=Espacios INCAA (opcional) solo cuenta los cines de esa cadena: lo usa "Cine argentino".
     @GetMapping("/peliculas/{slug}/funciones-por-geografia")
     public ResponseEntity<?> getFuncionesPorGeografia(
             @PathVariable String slug,
             @RequestParam String provincia,
-            @RequestParam(required = false) String localidad) {
+            @RequestParam(required = false) String localidad,
+            @RequestParam(required = false) String cadena) {
         try {
-            var zona = agendaDeCineScraperService.obtenerFuncionesPorPeliculaYGeografiaConZona(slug, provincia, localidad);
+            var zona = agendaDeCineScraperService.obtenerFuncionesPorPeliculaYGeografiaConZona(slug, provincia, localidad, cadena);
             return ResponseEntity.ok(zona.funciones().stream().map(f -> conPrecio(f, zona.zonaAmpliada())).toList());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -131,6 +136,27 @@ public class CarteleraController {
                 .sorted(java.util.Comparator.comparing(CineDeCadena::nombre, java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
                 .toList();
         return ResponseEntity.ok(cines);
+    }
+
+    // GET /api/cartelera/cadenas/{cadena}/peliculas?provincia=X&localidad=Y — películas que se dan en los
+    // cines de esa cadena dentro de la zona, con póster, sinopsis y en cuántas salas están. Lo usa
+    // "Cine argentino" con la cadena "Espacios INCAA". Responde { peliculas: [...], zonaAmpliada }.
+    // Con &soloArgentinas=true deja solo las películas argentinas (coproducciones incluidas).
+    @GetMapping("/cadenas/{cadena}/peliculas")
+    public ResponseEntity<?> getPeliculasDeCadenaEnZona(
+            @PathVariable String cadena,
+            @RequestParam String provincia,
+            @RequestParam(required = false) String localidad,
+            @RequestParam(defaultValue = "false") boolean soloArgentinas) {
+        try {
+            java.util.function.Predicate<AgendaDeCineScraperService.PeliculaEnCartelera> filtro = soloArgentinas
+                    ? p -> nacionalidadPeliculaService.esArgentina(p.tmdbId(), p.paisesOrigen())
+                    : null;
+            return ResponseEntity.ok(agendaDeCineScraperService.obtenerPeliculasDeCadenaEnZona(cadena, provincia, localidad, filtro));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "No pudimos traer las películas de esa zona"));
+        }
     }
 
     // GET /api/cartelera/funciones-por-cine?cine=NombreExacto&cineId=123 — funciones de una
@@ -206,6 +232,18 @@ public class CarteleraController {
         dto.put("precioDesde", precio != null && precio.precioDesde());
         dto.put("zonaAmpliada", zonaAmpliada);
         return dto;
+    }
+
+    // DIAGNÓSTICO TEMPORAL: qué trae agendadecine de una película (para detectar si es argentina).
+    // GET /api/cartelera/diagnostico/agendadecine?slug=la-casa — se borra cuando se defina.
+    @GetMapping("/diagnostico/agendadecine")
+    public ResponseEntity<?> diagnosticoAgendaDeCine(@RequestParam String slug) {
+        try {
+            return ResponseEntity.ok(agendaDeCineScraperService.diagnosticoPelicula(slug));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", String.valueOf(e.getMessage())));
+        }
     }
 
     @GetMapping("/precio-referencia")

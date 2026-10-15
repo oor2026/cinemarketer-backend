@@ -109,6 +109,21 @@ public class TmdbService {
     }
 
     /**
+     * Países de una película (production_countries y origin_country), para saber si es
+     * argentina (ver NacionalidadPeliculaService). Devuelve la ficha como Map, sin pasar por
+     * TmdbMovieDto, así no depende de qué campos tenga ese DTO.
+     */
+    @Cacheable(value = "tmdbMovieDetails", key = "'paises-' + #movieId")
+    public Object getMovieCountries(Long movieId) {
+        String path = "/movie/" + movieId;
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    /**
      * Buscar películas por título (SOLO búsqueda por texto)
      * Usa el endpoint /search/movie
      */
