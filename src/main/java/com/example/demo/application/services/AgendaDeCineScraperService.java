@@ -305,10 +305,19 @@ public class AgendaDeCineScraperService {
     // resultado hacia afuera, bastante más liviano por dentro.
     // ===================================================================
 
-    public record PeliculaEnCartelera(String slug, String titulo, String poster, List<String> genero, String sinopsis) {
+    // tmdbId: id de la película en TMDb, tal como lo informa agendadecine (null si no lo trae).
+    // paisesOrigen: "originCountries" de agendadecine; hoy viene vacío, pero si algún día lo
+    // completan se usa antes que TMDb para saber si la película es argentina.
+    public record PeliculaEnCartelera(String slug, String titulo, String poster, List<String> genero, String sinopsis,
+                                      String tmdbId, List<String> paisesOrigen) {
         // El constructor de siempre, sin sinopsis, para quien arma la película con 4 datos.
         public PeliculaEnCartelera(String slug, String titulo, String poster, List<String> genero) {
             this(slug, titulo, poster, genero, null);
+        }
+
+        // Con sinopsis pero sin los datos de nacionalidad.
+        public PeliculaEnCartelera(String slug, String titulo, String poster, List<String> genero, String sinopsis) {
+            this(slug, titulo, poster, genero, sinopsis, null, List.of());
         }
     }
 
@@ -400,7 +409,15 @@ public class AgendaDeCineScraperService {
             if (sinopsis == null || sinopsis.isBlank()) sinopsis = textoOrNull(movie, "synopsis");
             sinopsis = (sinopsis == null || sinopsis.isBlank()) ? null : sinopsis.trim();
 
-            resultado.add(new PeliculaEnCartelera(slug, titulo, poster, generos, sinopsis));
+            // Para saber si es argentina: el id de TMDb y los países de origen que informe agendadecine.
+            String tmdbId = textoOrNull(movie, "tmdbId");
+            List<String> paisesOrigen = new ArrayList<>();
+            JsonNode paisesNodo = movie.get("originCountries");
+            if (paisesNodo != null && paisesNodo.isArray()) {
+                for (JsonNode pais : paisesNodo) paisesOrigen.add(pais.asText());
+            }
+
+            resultado.add(new PeliculaEnCartelera(slug, titulo, poster, generos, sinopsis, tmdbId, paisesOrigen));
         }
         return resultado;
     }
@@ -588,9 +605,17 @@ public class AgendaDeCineScraperService {
     // apoya solo en los cines de la provincia y de la localidad y en el cruce por complexId.
     public FuncionesDeZona obtenerFuncionesPorPeliculaYGeografiaConZona(
             String slug, String provincia, String localidad) throws Exception {
+        return obtenerFuncionesPorPeliculaYGeografiaConZona(slug, provincia, localidad, null);
+    }
+
+    // Igual que el anterior, pero si llega una cadena (ej. "Espacios INCAA", para "Cine argentino")
+    // solo cuenta los cines de esa cadena. Sin cadena, todos los cines de la zona, como siempre.
+    public FuncionesDeZona obtenerFuncionesPorPeliculaYGeografiaConZona(
+            String slug, String provincia, String localidad, String cadena) throws Exception {
 
         boolean hayLocalidad = localidad != null && !localidad.isBlank();
-        List<Cinema> delaProvincia = ZonaGeografica.cinesDeLaProvincia(cinemaRepository.findByActiveTrue(), provincia);
+        List<Cinema> delaProvincia = soloDeLaCadena(
+                ZonaGeografica.cinesDeLaProvincia(cinemaRepository.findByActiveTrue(), provincia), cadena);
 
         String titulo = slug;
         String poster = null;
@@ -680,6 +705,95 @@ public class AgendaDeCineScraperService {
     }
 
     // ===================================================================
+    // Películas de una cadena en una zona — atajo "Cine argentino"
+    // (por ahora, cadena "Espacios INCAA")
+    // ===================================================================
+
+    public record PeliculaDeZona(String slug, String titulo, String poster, String sinopsis,
+                                 List<String> generos, int salas, int funciones) {}
+
+    public record PeliculasDeZona(List<PeliculaDeZona> peliculas, boolean zonaAmpliada) {}
+
+    // Películas con funciones de hoy en adelante en los cines de esa cadena dentro de la zona,
+    // de la que está en más salas a la que está en menos. Si en la localidad pedida no hay
+    // ninguna, se amplía a toda la provincia y se avisa: mismo criterio que el resto de los atajos.
+    public PeliculasDeZona obtenerPeliculasDeCadenaEnZona(String cadena, String provincia, String localidad) {
+        return obtenerPeliculasDeCadenaEnZona(cadena, provincia, localidad, null);
+    }
+
+    // Igual, pero solo las películas que pasan el filtro (ej. "es argentina"). El filtro se aplica
+    // ANTES de decidir si hay que ampliar la zona: si la localidad solo tiene películas que no lo
+    // pasan, se busca en toda la provincia en vez de devolver vacío.
+    public PeliculasDeZona obtenerPeliculasDeCadenaEnZona(String cadena, String provincia, String localidad,
+                                                          Predicate<PeliculaEnCartelera> filtro) {
+        boolean hayLocalidad = localidad != null && !localidad.isBlank();
+        List<Cinema> delaProvincia = soloDeLaCadena(
+                ZonaGeografica.cinesDeLaProvincia(cinemaRepository.findByActiveTrue(), provincia), cadena);
+        Map<String, List<FuncionAgendaDeCine>> todas = obtenerTodasLasFuncionesCacheadas();
+
+        if (hayLocalidad) {
+            List<PeliculaDeZona> enLaLocalidad = peliculasEnCines(todas,
+                    ZonaGeografica.cinesDeLaLocalidad(delaProvincia, localidad), filtro);
+            if (!enLaLocalidad.isEmpty()) return new PeliculasDeZona(enLaLocalidad, false);
+            List<PeliculaDeZona> enLaProvincia = peliculasEnCines(todas, delaProvincia, filtro);
+            return new PeliculasDeZona(enLaProvincia, !enLaProvincia.isEmpty());
+        }
+        return new PeliculasDeZona(peliculasEnCines(todas, delaProvincia, filtro), false);
+    }
+
+    private List<PeliculaDeZona> peliculasEnCines(Map<String, List<FuncionAgendaDeCine>> todas, List<Cinema> cines,
+                                                  Predicate<PeliculaEnCartelera> filtro) {
+        Set<String> idsDeLosCines = cines.stream()
+                .map(Cinema::getAgendaDeCineComplexId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (idsDeLosCines.isEmpty()) return List.of();
+
+        Map<String, PeliculaEnCartelera> porSlug = new HashMap<>();
+        for (PeliculaEnCartelera p : obtenerPeliculasEnCartelera()) porSlug.put(p.slug(), p);
+        LocalDate hoy = hoyEnArgentina();
+
+        List<PeliculaDeZona> resultado = new ArrayList<>();
+        for (var entry : todas.entrySet()) {
+            Set<String> salas = new HashSet<>();
+            int funciones = 0;
+            for (FuncionAgendaDeCine f : entry.getValue()) {
+                if (f.fecha() == null || f.fecha().isBefore(hoy)) continue;   // de hoy en adelante
+                if (!idsDeLosCines.contains(f.complexId())) continue;         // en los cines de la zona
+                salas.add(f.complexId());
+                funciones++;
+            }
+            if (funciones == 0) continue;
+
+            PeliculaEnCartelera p = porSlug.get(entry.getKey());
+            // El filtro se evalúa recién acá, solo para películas con funciones en la zona: así,
+            // si consulta un servicio externo (TMDb), lo hace por las pocas que hacen falta.
+            if (filtro != null && (p == null || !filtro.test(p))) continue;
+            resultado.add(new PeliculaDeZona(
+                    entry.getKey(),
+                    p != null && p.titulo() != null ? p.titulo() : entry.getKey(),
+                    p != null ? p.poster() : null,
+                    p != null ? p.sinopsis() : null,
+                    p != null && p.genero() != null ? p.genero() : List.of(),
+                    salas.size(),
+                    funciones));
+        }
+        resultado.sort(Comparator.comparingInt(PeliculaDeZona::salas).reversed()
+                .thenComparing(Comparator.comparingInt(PeliculaDeZona::funciones).reversed())
+                .thenComparing(PeliculaDeZona::titulo, String.CASE_INSENSITIVE_ORDER));
+        return resultado;
+    }
+
+    // Los cines de la lista que son de esa cadena (según la cadena "de siempre", con nuestras
+    // correcciones). Sin cadena, la lista tal cual.
+    private List<Cinema> soloDeLaCadena(List<Cinema> cines, String cadena) {
+        if (cadena == null || cadena.isBlank()) return cines;
+        return cines.stream()
+                .filter(c -> cadena.equalsIgnoreCase(cadenaBaseDe(c)))
+                .toList();
+    }
+
+    // ===================================================================
     // ESPEJO de CarteleraLiveScraperService.obtenerCadenasDisponibles() /
     // obtenerCinesPorCadena() — el original tenía que DERIVAR la cadena
     // del nombre de cine a mano (mapa CADENAS_CONOCIDAS + derivarCadena())
@@ -753,6 +867,10 @@ public class AgendaDeCineScraperService {
     // que no se pudo asignar a una marca ni comprobar como Espacio INCAA, se muestra
     // junto como una sola cadena.
     private static final String CADENA_OTROS_CINES = "Otros cines";
+
+    // Los Espacios INCAA no se listan en "Por cadena de cine", que queda para el cine
+    // comercial: tienen su propio atajo, "Cine argentino".
+    public static final String CADENA_ESPACIOS_INCAA = "Espacios INCAA";
     private static final Set<String> ETIQUETAS_QUE_NO_SON_CADENA = Set.of("lumiere", "independiente", "incaa", "imax");
 
     // Cadena "de siempre" de un cine, según agendadecine y nuestras correcciones. No
@@ -889,6 +1007,7 @@ public class AgendaDeCineScraperService {
         return cinemaRepository.findByActiveTrue().stream()
                 .map(this::cadenaDe)
                 .filter(nombre -> nombre != null && !nombre.isBlank())
+                .filter(nombre -> !CADENA_ESPACIOS_INCAA.equals(nombre))   // van en "Cine argentino"
                 .distinct()
                 // "Otros cines" es el grupo de lo que no es una cadena: va al final.
                 .sorted(Comparator.comparing((String nombre) -> nombre.equals(CADENA_OTROS_CINES))
@@ -975,6 +1094,61 @@ public class AgendaDeCineScraperService {
 
         resultado.sort(Comparator.comparing(FuncionScrapeada::horario));
         return resultado;
+    }
+
+    // ===================================================================
+    // DIAGNÓSTICO TEMPORAL — ver qué trae agendadecine de una película, para
+    // saber si informa el país (y así detectar películas argentinas). Se borra
+    // cuando se defina de dónde sale la nacionalidad.
+    // ===================================================================
+    public Map<String, Object> diagnosticoPelicula(String slug) throws Exception {
+        Map<String, Object> salida = new LinkedHashMap<>();
+
+        // 1) El objeto completo de la película tal como viene en /en-cartel.
+        String textoCartel = textoDeLaPagina(BASE + "/en-cartel");
+        String marcador = "\"movies\":[";
+        int pos = textoCartel.indexOf(marcador);
+        if (pos != -1) {
+            int inicio = pos + marcador.length() - 1;
+            int fin = buscarCierreArrayDesde(textoCartel, inicio);
+            if (fin != -1) {
+                for (JsonNode movie : objectMapper.readTree(textoCartel.substring(inicio, fin + 1))) {
+                    if (slug.equals(textoOrNull(movie, "slug"))) {
+                        salida.put("enCartel", movie.toString());
+                        break;
+                    }
+                }
+            }
+        }
+        if (!salida.containsKey("enCartel")) salida.put("enCartel", "No está en /en-cartel con ese slug");
+
+        // 2) En la página de la película, el texto alrededor de palabras que suelen indicar el país.
+        String textoPagina = textoDeLaPagina(BASE + "/pelicula/" + slug);
+        String minusculas = textoPagina.toLowerCase();
+        List<String> fragmentos = new ArrayList<>();
+        for (String clave : List.of("countr", "nacional", "nationalit", "\"pais", "país")) {
+            int desde = 0;
+            int encontrados = 0;
+            int i;
+            while ((i = minusculas.indexOf(clave, desde)) != -1 && encontrados < 3) {
+                fragmentos.add(clave + "  →  " + textoPagina.substring(Math.max(0, i - 150), Math.min(textoPagina.length(), i + 250)));
+                desde = i + clave.length();
+                encontrados++;
+            }
+        }
+        salida.put("paginaPelicula", fragmentos.isEmpty() ? List.of("Ninguna de esas palabras aparece en la página") : fragmentos);
+        return salida;
+    }
+
+    private String textoDeLaPagina(String url) throws Exception {
+        Document doc = Jsoup.connect(url)
+                .userAgent("Mozilla/5.0 (compatible; CinemarketerBot/1.0)")
+                .timeout(15000)
+                .get();
+        StringBuilder texto = new StringBuilder();
+        Matcher m = CHUNK_PATTERN.matcher(doc.outerHtml());
+        while (m.find()) texto.append(desescaparComoStringJson(m.group(1)));
+        return texto.toString();
     }
 
     // Diagnóstico: formatos distintos que llegan en las funciones, por
