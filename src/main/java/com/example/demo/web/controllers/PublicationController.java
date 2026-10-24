@@ -28,19 +28,22 @@ public class PublicationController {
     private final com.example.demo.application.services.ImageModerationService imageModerationService;
     private final com.example.demo.application.services.CloudflareStreamService cloudflareStreamService;
     private final com.example.demo.application.services.HashtagService hashtagService;
+    private final tools.jackson.databind.json.JsonMapper objectMapper;
 
     public PublicationController(PublicationService publicationService,
                                  UserRepository userRepository,
                                  com.example.demo.application.services.CloudinaryService cloudinaryService,
                                  com.example.demo.application.services.ImageModerationService imageModerationService,
                                  com.example.demo.application.services.CloudflareStreamService cloudflareStreamService,
-                                 com.example.demo.application.services.HashtagService hashtagService) {
+                                 com.example.demo.application.services.HashtagService hashtagService,
+                                 tools.jackson.databind.json.JsonMapper objectMapper) {
         this.publicationService = publicationService;
         this.userRepository = userRepository;
         this.cloudinaryService = cloudinaryService;
         this.imageModerationService = imageModerationService;
         this.cloudflareStreamService = cloudflareStreamService;
         this.hashtagService = hashtagService;
+        this.objectMapper = objectMapper;
     }
 
     private User getUser(UserDetails ud) {
@@ -141,11 +144,17 @@ public class PublicationController {
     }
 
     // GET /api/publications/{id}/comments?page=0&size=20
+    // Este endpoint está abierto a visitantes: sin sesión solo se sirven los comentarios de publicaciones
+    // visibles para cualquiera (no ocultas y aprobadas), igual que /public/{id}. Con sesión no cambia.
     @GetMapping("/{id}/comments")
     public ResponseEntity<Page<PublicationComment>> getComments(
+            @AuthenticationPrincipal UserDetails ud,
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        if (ud == null && publicacionVisiblePublicamente(id) == null) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.ok(publicationService.getComments(id, page, size));
     }
 
@@ -211,13 +220,79 @@ public class PublicationController {
     }
 
     // GET /api/publications/public/{id} — sin autenticación
+    // Devuelve SOLO los campos que usa la página pública (ver PublicPublicationSanitizer): la entidad
+    // completa trae datos internos de moderación y gestión (denuncias, estado de revisión, motivos de
+    // revisión de video, puntos otorgados, fechas de ocultamiento) que un visitante no debe ver.
     @GetMapping("/public/{id}")
-    public ResponseEntity<Publication> getPublic(@PathVariable Long id) {
-        Publication pub = publicationService.getById(id);
-        if (pub.isHidden() || !"APPROVED".equals(pub.getModerationStatus().name())) {
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getPublic(@PathVariable Long id) {
+        Publication pub = publicacionVisiblePublicamente(id);
+        if (pub == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(pub);
+        Map<String, Object> completa = objectMapper.convertValue(pub, Map.class);
+        return ResponseEntity.ok(PublicPublicationSanitizer.publicacion(completa));
+    }
+
+    // Una publicación es visible para cualquiera solo si no está oculta y fue aprobada.
+    // Devuelve null si no corresponde mostrarla. La usan este endpoint y los de bloques de abajo,
+    // para que un visitante nunca pueda leer los datos de una publicación que no puede ver.
+    private Publication publicacionVisiblePublicamente(Long id) {
+        Publication pub;
+        try {
+            pub = publicationService.getById(id);
+        } catch (RuntimeException e) {
+            return null;   // no existe: se responde 404 (antes salía 500, y eso permitía distinguir ids que existen)
+        }
+        if (pub.isHidden() || !"APPROVED".equals(pub.getModerationStatus().name())) {
+            return null;
+        }
+        return pub;
+    }
+
+    // GET /api/publications/public/{id}/votacion — sin autenticación
+    // Mismas opciones que /{id}/votacion pero como visitante (sin "ya votó"), y sin porcentajes mientras
+    // la votación esté abierta.
+    @GetMapping("/public/{id}/votacion")
+    public ResponseEntity<Map<String, Object>> getVotacionPublica(@PathVariable Long id) {
+        if (publicacionVisiblePublicamente(id) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        try {
+            return ResponseEntity.ok(PublicPublicationSanitizer.votacion(
+                    publicationService.getVotacionResultado(id, (Long) null)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();   // la publicación no tiene votación
+        }
+    }
+
+    // GET /api/publications/public/{id}/trivia — sin autenticación
+    // Mismas opciones que /{id}/trivia pero como visitante. Mientras esté abierta NO se entrega cuál es
+    // la opción correcta.
+    @GetMapping("/public/{id}/trivia")
+    public ResponseEntity<Map<String, Object>> getTriviaPublica(@PathVariable Long id) {
+        if (publicacionVisiblePublicamente(id) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        try {
+            return ResponseEntity.ok(PublicPublicationSanitizer.trivia(
+                    publicationService.getTriviaResultado(id, (Long) null)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();   // la publicación no tiene trivia
+        }
+    }
+
+    // GET /api/publications/public/{id}/ranking — sin autenticación
+    @GetMapping("/public/{id}/ranking")
+    public ResponseEntity<List<Map<String, Object>>> getRankingPublico(@PathVariable Long id) {
+        if (publicacionVisiblePublicamente(id) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        try {
+            return ResponseEntity.ok(PublicPublicationSanitizer.ranking(publicationService.getRankingItems(id)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();   // la publicación no tiene ranking
+        }
     }
 
     // GET /api/publications/user/{userId}?page=0&size=20
