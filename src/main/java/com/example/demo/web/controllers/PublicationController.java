@@ -52,21 +52,25 @@ public class PublicationController {
     }
 
     // GET /api/publications?territoryGroup=&tone=&hashtag=&order=recent&page=0&size=20
+    // El usuario de cada publicación se recorta a id, nombre y avatar: la entidad lo trae completo.
     @GetMapping
-    public ResponseEntity<Page<Publication>> getFeed(
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getFeed(
             @RequestParam(required = false) String territoryGroup,
             @RequestParam(required = false) String tone,
             @RequestParam(required = false) String hashtag,
             @RequestParam(defaultValue = "recent") String order,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(
-                publicationService.getFeed(territoryGroup, tone, hashtag, order, page, size));
+        Map<String, Object> pagina = objectMapper.convertValue(
+                publicationService.getFeed(territoryGroup, tone, hashtag, order, page, size), Map.class);
+        return ResponseEntity.ok(PublicPublicationSanitizer.paginaDePublicaciones(pagina));
     }
 
     // GET /api/publications/{id}
     @GetMapping("/{id}")
-    public ResponseEntity<Publication> getById(@PathVariable Long id) {
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getById(@PathVariable Long id) {
         Publication pub = publicationService.getById(id);
         // Este es el endpoint público (usado por el modal de notificaciones y
         // cualquier link directo a una publicación). No debe devolver nada
@@ -77,7 +81,9 @@ public class PublicationController {
         if (pub.isHidden() || pub.getModerationStatus() != PublicationModerationStatus.APPROVED) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(pub);
+        // El usuario anidado se recorta a id, nombre y avatar: la entidad lo trae completo.
+        Map<String, Object> completa = objectMapper.convertValue(pub, Map.class);
+        return ResponseEntity.ok(PublicPublicationSanitizer.publicacionConAutorRecortado(completa));
     }
 
     // GET /api/publications/hashtags/suggest?q=terr
@@ -146,8 +152,10 @@ public class PublicationController {
     // GET /api/publications/{id}/comments?page=0&size=20
     // Este endpoint está abierto a visitantes: sin sesión solo se sirven los comentarios de publicaciones
     // visibles para cualquiera (no ocultas y aprobadas), igual que /public/{id}. Con sesión no cambia.
+    // El usuario de cada comentario se recorta a id, nombre y avatar: la entidad lo trae completo.
     @GetMapping("/{id}/comments")
-    public ResponseEntity<Page<PublicationComment>> getComments(
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getComments(
             @AuthenticationPrincipal UserDetails ud,
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
@@ -155,7 +163,8 @@ public class PublicationController {
         if (ud == null && publicacionVisiblePublicamente(id) == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(publicationService.getComments(id, page, size));
+        Map<String, Object> pagina = objectMapper.convertValue(publicationService.getComments(id, page, size), Map.class);
+        return ResponseEntity.ok(PublicPublicationSanitizer.paginaDeComentarios(pagina));
     }
 
     // GET /api/publications/comments/{parentId}/replies?page=0&size=3
@@ -165,8 +174,10 @@ public class PublicationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "3") int size) {
         var result = publicationService.getRepliesPaged(parentId, page, size);
+        // El usuario de cada respuesta se recorta a id, nombre y avatar: la entidad lo trae completo.
+        Object contenido = objectMapper.convertValue(result.getContent(), Object.class);
         return ResponseEntity.ok(Map.of(
-                "content", result.getContent(),
+                "content", PublicPublicationSanitizer.comentarios(contenido),
                 "hasMore", !result.isLast(),
                 "totalElements", result.getTotalElements()
         ));
@@ -297,12 +308,15 @@ public class PublicationController {
 
     // GET /api/publications/user/{userId}?page=0&size=20
     @GetMapping("/user/{userId}")
-    public ResponseEntity<Page<Publication>> getUserPublications(
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<Map<String, Object>> getUserPublications(
             @PathVariable Long userId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(
-                publicationService.getUserPublications(userId, page, size));
+        // El usuario de cada publicación se recorta a id, nombre y avatar: la entidad lo trae completo.
+        Map<String, Object> pagina = objectMapper.convertValue(
+                publicationService.getUserPublications(userId, page, size), Map.class);
+        return ResponseEntity.ok(PublicPublicationSanitizer.paginaDePublicaciones(pagina));
     }
 
     // PUT /api/publications/comments/{id}

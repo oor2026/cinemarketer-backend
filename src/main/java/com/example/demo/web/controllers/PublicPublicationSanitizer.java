@@ -82,6 +82,79 @@ public final class PublicPublicationSanitizer {
         return salida;
     }
 
+    /**
+     * Un comentario (ya convertido a Map): el usuario anidado se recorta a id, nombre y avatar.
+     * El resto del comentario no cambia. La entidad PublicationComment lleva el User completo adentro
+     * (mail, DNI, teléfono, etc.), y esto no depende de cómo estén anotadas las entidades.
+     */
+    public static Map<String, Object> comentario(Map<String, Object> original) {
+        Map<String, Object> salida = new LinkedHashMap<>(original);
+        if (salida.containsKey("user")) salida.put("user", autor(salida.get("user")));
+        // La entidad también lleva la Publication entera adentro (con denuncias, estado de moderación,
+        // motivo de revisión...). El front no la usa: se deja solo el id.
+        if (salida.containsKey("publication")) salida.put("publication", soloId(salida.get("publication")));
+        return salida;
+    }
+
+    private static Object soloId(Object valor) {
+        if (!(valor instanceof Map<?, ?> m)) return null;
+        Map<String, Object> salida = new LinkedHashMap<>();
+        if (m.containsKey("id")) salida.put("id", m.get("id"));
+        return salida;
+    }
+
+    /** Lista de comentarios (cada elemento ya convertido a Map). Lo que no sea un Map pasa tal cual. */
+    public static List<Object> comentarios(Object lista) {
+        List<Object> salida = new ArrayList<>();
+        if (!(lista instanceof List<?> l)) return salida;
+        for (Object o : l) {
+            if (o instanceof Map<?, ?> m) {
+                Map<String, Object> copia = new LinkedHashMap<>();
+                for (Map.Entry<?, ?> e : m.entrySet()) copia.put(String.valueOf(e.getKey()), e.getValue());
+                salida.add(comentario(copia));
+            } else {
+                salida.add(o);
+            }
+        }
+        return salida;
+    }
+
+    /** Página de comentarios (Page ya convertida a Map): se recorta el usuario de cada comentario de "content"; la paginación no cambia. */
+    public static Map<String, Object> paginaDeComentarios(Map<String, Object> pagina) {
+        Map<String, Object> salida = new LinkedHashMap<>(pagina);
+        if (salida.containsKey("content")) salida.put("content", comentarios(salida.get("content")));
+        return salida;
+    }
+
+    /**
+     * Una publicación del feed, del perfil o del detalle (ya convertida a Map): solo se recorta el
+     * usuario anidado a id, nombre y avatar. El resto de la publicación no cambia.
+     */
+    public static Map<String, Object> publicacionConAutorRecortado(Map<String, Object> original) {
+        Map<String, Object> salida = new LinkedHashMap<>(original);
+        if (salida.containsKey("user")) salida.put("user", autor(salida.get("user")));
+        return salida;
+    }
+
+    /** Página de publicaciones (Page ya convertida a Map): se recorta el usuario de cada una; la paginación no cambia. */
+    public static Map<String, Object> paginaDePublicaciones(Map<String, Object> pagina) {
+        Map<String, Object> salida = new LinkedHashMap<>(pagina);
+        if (salida.get("content") instanceof List<?> lista) {
+            List<Object> limpia = new ArrayList<>();
+            for (Object o : lista) {
+                if (o instanceof Map<?, ?> m) {
+                    Map<String, Object> copia = new LinkedHashMap<>();
+                    for (Map.Entry<?, ?> e : m.entrySet()) copia.put(String.valueOf(e.getKey()), e.getValue());
+                    limpia.add(publicacionConAutorRecortado(copia));
+                } else {
+                    limpia.add(o);
+                }
+            }
+            salida.put("content", limpia);
+        }
+        return salida;
+    }
+
     /** Ítems del ranking: solo orden, película y texto del autor. */
     public static List<Map<String, Object>> ranking(List<Map<String, Object>> items) {
         List<Map<String, Object>> salida = new ArrayList<>();
