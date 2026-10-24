@@ -487,8 +487,18 @@ public class AgendaDeCineScraperService {
     public record FuncionScrapeada(
             String peliculaTitulo, String provincia, String cineNombre,
             LocalDate dia, boolean esHoy, LocalTime horario, String formato, String idioma,
-            String poster
-    ) {}
+            String poster,
+            // Posición del cine (null si no se conoce o no es una coordenada válida): sirve para calcular
+            // a cuánto queda de la zona de la persona.
+            Double cineLat, Double cineLng
+    ) {
+        // El constructor de siempre, sin posición: quien arma la función con 9 datos no cambia.
+        public FuncionScrapeada(String peliculaTitulo, String provincia, String cineNombre,
+                                LocalDate dia, boolean esHoy, LocalTime horario, String formato, String idioma,
+                                String poster) {
+            this(peliculaTitulo, provincia, cineNombre, dia, esHoy, horario, formato, idioma, poster, null, null);
+        }
+    }
 
     // ===================================================================
     // ESPEJO de CarteleraLiveScraperService.organizarSalida() — mismo
@@ -530,6 +540,12 @@ public class AgendaDeCineScraperService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
+        // El cine de cada complexId de la zona: de ahí sale la posición que viaja con cada función.
+        Map<String, Cinema> cinePorComplexId = new HashMap<>();
+        for (Cinema c : cines) {
+            if (c.getAgendaDeCineComplexId() != null) cinePorComplexId.putIfAbsent(c.getAgendaDeCineComplexId(), c);
+        }
+
         Map<String, String> tituloPorSlug = new HashMap<>();
         Map<String, String> posterPorSlug = new HashMap<>();
         for (PeliculaEnCartelera p : obtenerPeliculasEnCartelera()) {
@@ -555,6 +571,11 @@ public class AgendaDeCineScraperService {
                     continue;
                 }
 
+                // La posición viaja solo si es una coordenada válida de Argentina: una corrupta (como la de
+                // un cine importado con la coma decimal corrida) se descarta y la función se muestra igual.
+                Cinema cine = cinePorComplexId.get(f.complexId());
+                boolean posicionValida = cine != null && UbicacionReferenciaService.coordenadaValida(cine.getLat(), cine.getLng());
+
                 resultado.add(new FuncionScrapeada(
                         tituloPelicula,
                         f.cine().provinciaNombre(),
@@ -564,7 +585,9 @@ public class AgendaDeCineScraperService {
                         horaParsed,
                         f.formato(),
                         f.version(),
-                        poster
+                        poster,
+                        posicionValida ? cine.getLat() : null,
+                        posicionValida ? cine.getLng() : null
                 ));
             }
         }

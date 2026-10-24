@@ -22,19 +22,21 @@ public class CarteleraController {
     private final RecomendacionEspirituService recomendacionEspirituService;
     private final UserRepository userRepository;
     private final com.example.demo.application.services.NacionalidadPeliculaService nacionalidadPeliculaService;
+    private final com.example.demo.application.services.UbicacionReferenciaService ubicacionReferenciaService;
 
     public CarteleraController(AgendaDeCineScraperService agendaDeCineScraperService,
                                AgendaDeCineBusquedaService agendaDeCineBusquedaService,
                                com.example.demo.application.services.CarteleraPreciosService carteleraPreciosService,
                                RecomendacionEspirituService recomendacionEspirituService,
                                UserRepository userRepository,
-                               com.example.demo.application.services.NacionalidadPeliculaService nacionalidadPeliculaService) {
+                               com.example.demo.application.services.NacionalidadPeliculaService nacionalidadPeliculaService, com.example.demo.application.services.UbicacionReferenciaService ubicacionReferenciaService) {
         this.agendaDeCineScraperService = agendaDeCineScraperService;
         this.agendaDeCineBusquedaService = agendaDeCineBusquedaService;
         this.carteleraPreciosService = carteleraPreciosService;
         this.recomendacionEspirituService = recomendacionEspirituService;
         this.userRepository = userRepository;
         this.nacionalidadPeliculaService = nacionalidadPeliculaService;
+        this.ubicacionReferenciaService = ubicacionReferenciaService;
     }
 
     // GET /api/cartelera/peliculas — películas en cartelera (agendadecine.com/en-cartel).
@@ -180,7 +182,25 @@ public class CarteleraController {
             java.time.LocalDate fechaParsed = java.time.LocalDate.parse(fecha);
             var zona = agendaDeCineScraperService.organizarSalidaConZona(provincia, localidad, fechaParsed, horario);
 
-            var resultado = zona.funciones().stream().map(f -> conPrecio(f, zona.zonaAmpliada())).toList();
+            // Punto de referencia de la zona que la persona cargó en su perfil: el CENTRO de su localidad o
+            // barrio. Desde ahí se mide la distancia a cada cine. No es su casa: por eso el front la muestra
+            // como "a ~2,4 km de Belgrano". Si esa localidad no tiene punto, no hay distancia y todo queda como antes.
+            var referencia = ubicacionReferenciaService.resolver(provincia, localidad);
+
+            var resultado = zona.funciones().stream().map(f -> {
+                Map<String, Object> dto = conPrecio(f, zona.zonaAmpliada());
+
+                // Distancia en línea recta, con un decimal. Null si falta el punto de la zona o la posición del cine.
+                Double distanciaKm = null;
+                if (referencia.isPresent() && f.cineLat() != null && f.cineLng() != null) {
+                    double km = com.example.demo.application.services.UbicacionReferenciaService.distanciaKm(
+                            referencia.get().lat(), referencia.get().lng(), f.cineLat(), f.cineLng());
+                    distanciaKm = Math.round(km * 10) / 10.0;
+                }
+                dto.put("distanciaKm", distanciaKm);
+                dto.put("distanciaDesde", distanciaKm == null ? null : referencia.get().localidad());
+                return dto;
+            }).toList();
 
             return ResponseEntity.ok(resultado);
         } catch (Exception e) {
