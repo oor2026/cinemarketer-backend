@@ -32,6 +32,12 @@ public class UbicacionReferenciaService {
     private static final Logger log = LoggerFactory.getLogger(UbicacionReferenciaService.class);
     private static final String RECURSO = "/localidades-referencia.csv";
 
+    /**
+     * Qué se considera "cerca tuyo": todo lo que está a este radio o menos, en línea recta, del punto de la zona
+     * que la persona cargó en su perfil. Es el único lugar donde se define: para cambiarlo, se cambia acá.
+     */
+    public static final double RADIO_CERCA_KM = 10.0;
+
     /** Centro de una localidad. "localidad" es el nombre tal cual lo eligió la persona en su perfil. */
     public record Punto(double lat, double lng, String localidad) {}
 
