@@ -34,4 +34,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // Verificar si ya existe notificación de un tipo para un usuario en un período
     boolean existsByUserIdAndTypeAndCreatedAtAfter(
             Long userId, NotificationType type, java.time.LocalDateTime after);
+
+    // La novedad de un tipo que la persona todavía NO leyó (la "viva"): sirve para actualizarla en vez de sumar otra.
+    java.util.Optional<Notification> findTopByUserIdAndTypeAndReadFalseOrderByCreatedAtDesc(
+            Long userId, NotificationType type);
+
+    // La última novedad de un tipo para una persona, leída o no: sirve para espaciar los avisos push.
+    java.util.Optional<Notification> findTopByUserIdAndTypeOrderByCreatedAtDesc(
+            Long userId, NotificationType type);
 }

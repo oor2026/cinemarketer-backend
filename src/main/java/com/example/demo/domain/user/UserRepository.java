@@ -313,4 +313,43 @@ public interface UserRepository extends JpaRepository<User, Long> {
             ") ranked WHERE id = :userId",
             nativeQuery = true)
     Optional<Long> findPosicionRankingTriviaSeries(@Param("userId") Long userId);
+
+    // ==============================================
+    // A QUIÉN SUPERÓ ALGUIEN EN EL RANKING (aviso "te superaron")
+    // Devuelve, con el ranking YA actualizado, a quienes estaban por delante de la persona antes de sumar sus
+    // aciertos y ahora quedaron por detrás: los que tienen una combinación (aciertos, tiempo) estrictamente mejor
+    // que la anterior de ella y estrictamente peor que la nueva. Las dos comparaciones son estrictas a propósito:
+    // un empate exacto no es una superación. El orden es el mismo del ranking (aciertos DESC, tiempo ASC).
+    // "tope" es el último puesto de ahora que cuenta: quien se desplaza un lugar al ser superado estaba un puesto
+    // más arriba, así que con tope = 26 quedan los que estaban entre el 1 y el 25 (los que muestra el ranking).
+    // Columnas: id, name, aciertos, tiempo, posicion (la de ahora). Mismo formato que findRankingTrivia.
+    // ==============================================
+
+    @Query(value = "SELECT id, name, aciertos, tiempo, posicion FROM (" +
+            "  SELECT id, name, trivia_aciertos_total AS aciertos, trivia_tiempo_total_segundos AS tiempo, " +
+            "    ROW_NUMBER() OVER (ORDER BY trivia_aciertos_total DESC, trivia_tiempo_total_segundos ASC) AS posicion " +
+            "  FROM users WHERE trivia_aciertos_total > 0" +
+            ") ranked WHERE posicion <= :tope AND id <> :userId " +
+            "AND (aciertos < :nuevosAciertos OR (aciertos = :nuevosAciertos AND tiempo > :nuevoTiempo)) " +
+            "AND (aciertos > :viejosAciertos OR (aciertos = :viejosAciertos AND tiempo < :viejoTiempo)) " +
+            "ORDER BY posicion",
+            nativeQuery = true)
+    List<Object[]> findSuperadosTrivia(@Param("userId") Long userId,
+                                       @Param("nuevosAciertos") int nuevosAciertos, @Param("nuevoTiempo") long nuevoTiempo,
+                                       @Param("viejosAciertos") int viejosAciertos, @Param("viejoTiempo") long viejoTiempo,
+                                       @Param("tope") int tope);
+
+    @Query(value = "SELECT id, name, aciertos, tiempo, posicion FROM (" +
+            "  SELECT id, name, trivia_series_aciertos_total AS aciertos, trivia_series_tiempo_total_segundos AS tiempo, " +
+            "    ROW_NUMBER() OVER (ORDER BY trivia_series_aciertos_total DESC, trivia_series_tiempo_total_segundos ASC) AS posicion " +
+            "  FROM users WHERE trivia_series_aciertos_total > 0" +
+            ") ranked WHERE posicion <= :tope AND id <> :userId " +
+            "AND (aciertos < :nuevosAciertos OR (aciertos = :nuevosAciertos AND tiempo > :nuevoTiempo)) " +
+            "AND (aciertos > :viejosAciertos OR (aciertos = :viejosAciertos AND tiempo < :viejoTiempo)) " +
+            "ORDER BY posicion",
+            nativeQuery = true)
+    List<Object[]> findSuperadosTriviaSeries(@Param("userId") Long userId,
+                                             @Param("nuevosAciertos") int nuevosAciertos, @Param("nuevoTiempo") long nuevoTiempo,
+                                             @Param("viejosAciertos") int viejosAciertos, @Param("viejoTiempo") long viejoTiempo,
+                                             @Param("tope") int tope);
 }

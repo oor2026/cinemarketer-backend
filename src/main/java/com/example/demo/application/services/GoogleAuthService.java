@@ -61,7 +61,10 @@ public class GoogleAuthService {
         if (user == null) {
             // 3a. Usuario nuevo — crear con profileComplete = false
             user = new User();
-            user.setName(name != null ? name : email);
+            // El nombre sale de la cuenta de Google y no se puede rechazar: se limpia con la misma regla central
+            // (solo letras, espacios, guiones y puntos; hasta 50 caracteres). Si Google no manda nombre, o no queda uno
+            // utilizable, va uno neutro: el nombre es público (rankings, comentarios) y no debe ser el email.
+            user.setName(NombreUsuario.limpiar(name, "Usuario"));
             user.setEmail(email);
             user.setGoogleId(googleId);
             user.setProfileImageUrl(picture);

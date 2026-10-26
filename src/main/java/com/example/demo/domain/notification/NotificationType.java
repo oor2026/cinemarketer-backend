@@ -31,5 +31,7 @@ public enum NotificationType {
     VIDEO_RECHAZADO,            // Admin rechazó el video (Caso B) — la publicación en sí sigue viva
     ADMIN_BROADCAST,
     NEW_RECOMMENDATION_SERIES,  // Alguien te recomendó una serie
-    MOVIE_RELEASED_EXPECTED    // Se estrenó una película que estabas esperando (expectativa 4-5)
+    MOVIE_RELEASED_EXPECTED,   // Se estrenó una película que estabas esperando (expectativa 4-5)
+    TRIVIA_SUPERADO,           // Alguien te superó en el ranking de Trivia de Películas
+    TRIVIA_SERIES_SUPERADO     // Alguien te superó en el ranking de Trivia de Series
 }
