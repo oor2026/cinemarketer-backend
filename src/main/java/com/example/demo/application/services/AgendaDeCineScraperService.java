@@ -533,6 +533,59 @@ public class AgendaDeCineScraperService {
         return new FuncionesDeZona(zona.items(), zona.ampliada());
     }
 
+    // ===================================================================
+    // "Cerca tuyo": todo lo que hay a radioKm o menos del punto de referencia de la persona (el centro de la
+    // localidad que cargó en su perfil), ordenado de la función más cercana a la más lejana.
+    //
+    //  - Entran todos los cines con posición válida a radioKm o menos, sin importar la provincia: un barrio de CABA
+    //    incluye los cines cercanos del Gran Buenos Aires. Lo que está más lejos no entra, aunque la localidad
+    //    no tenga ningún cine: no se amplía a toda la provincia (por eso zonaAmpliada es siempre false).
+    //  - Los cines de la localidad que eligió la persona y que no tienen posición válida no se pueden medir, pero
+    //    están en su localidad: entran igual (así no desaparece lo que hoy se muestra por una coordenada
+    //    faltante) y van primero.
+    //  - El orden es: distancia, después nombre del cine (así las funciones de un mismo cine quedan juntas) y
+    //    después horario. El front arma una tarjeta por película y cine en el orden en que llegan.
+    //
+    // organizarSalidaConZona() queda como estaba: lo siguen usando las pantallas que no piden "cerca".
+    // ===================================================================
+
+    public FuncionesDeZona organizarSalidaCerca(
+            String provincia, String localidad, double refLat, double refLng, double radioKm,
+            LocalDate fecha, String horario) {
+
+        List<Cinema> activos = cinemaRepository.findByActiveTrue();
+
+        Set<String> propiosSinPosicion = (localidad == null || localidad.isBlank())
+                ? Set.of()
+                : ZonaGeografica.cinesDeLaLocalidad(ZonaGeografica.cinesDeLaProvincia(activos, provincia), localidad).stream()
+                .filter(c -> !UbicacionReferenciaService.coordenadaValida(c.getLat(), c.getLng()))
+                .map(Cinema::getAgendaDeCineComplexId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<Cinema> cerca = new ArrayList<>();
+        for (Cinema c : activos) {
+            boolean propioSinPosicion = c.getAgendaDeCineComplexId() != null
+                    && propiosSinPosicion.contains(c.getAgendaDeCineComplexId());
+            boolean aRadio = UbicacionReferenciaService.coordenadaValida(c.getLat(), c.getLng())
+                    && UbicacionReferenciaService.distanciaKm(refLat, refLng, c.getLat(), c.getLng()) <= radioKm;
+            if (propioSinPosicion || aRadio) cerca.add(c);
+        }
+
+        List<FuncionScrapeada> funciones = organizarSalidaEn(cerca, fecha, horario);
+        funciones.sort(Comparator
+                .comparingDouble((FuncionScrapeada f) -> distanciaParaOrdenar(f, refLat, refLng))
+                .thenComparing(f -> String.valueOf(f.cineNombre()))
+                .thenComparing(FuncionScrapeada::horario));
+        return new FuncionesDeZona(funciones, false);
+    }
+
+    // Distancia con la que se ordena una función. Sin posición (un cine de su localidad que no se puede medir): -1, va primero.
+    private static double distanciaParaOrdenar(FuncionScrapeada f, double refLat, double refLng) {
+        if (f.cineLat() == null || f.cineLng() == null) return -1;
+        return UbicacionReferenciaService.distanciaKm(refLat, refLng, f.cineLat(), f.cineLng());
+    }
+
     private List<FuncionScrapeada> organizarSalidaEn(List<Cinema> cines, LocalDate fecha, String horario) {
 
         Set<String> complexIdsMatch = cines.stream()

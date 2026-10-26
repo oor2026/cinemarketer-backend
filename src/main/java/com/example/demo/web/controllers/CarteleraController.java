@@ -177,15 +177,25 @@ public class CarteleraController {
             @RequestParam String provincia,
             @RequestParam(required = false) String localidad,
             @RequestParam String fecha,
-            @RequestParam(required = false) String horario) {
+            @RequestParam(required = false) String horario,
+            @RequestParam(required = false, defaultValue = "false") boolean cerca) {
         try {
             java.time.LocalDate fechaParsed = java.time.LocalDate.parse(fecha);
-            var zona = agendaDeCineScraperService.organizarSalidaConZona(provincia, localidad, fechaParsed, horario);
-
             // Punto de referencia de la zona que la persona cargó en su perfil: el CENTRO de su localidad o
             // barrio. Desde ahí se mide la distancia a cada cine. No es su casa: por eso el front la muestra
             // como "a ~2,4 km de Belgrano". Si esa localidad no tiene punto, no hay distancia y todo queda como antes.
             var referencia = ubicacionReferenciaService.resolver(provincia, localidad);
+
+            // "Cerca tuyo" (cerca=true: lo manda solo Hoy cerca tuyo): todo lo que hay hasta RADIO_CERCA_KM del punto
+            // de la zona, de la función más cercana a la más lejana. Las otras pantallas que usan este endpoint (como
+            // Organizar una salida) no mandan "cerca" y siguen igual, con su zona ampliada; y si la localidad no tiene
+            // punto de referencia no se puede medir, así que tampoco hay radio.
+            var zona = (cerca && referencia.isPresent())
+                    ? agendaDeCineScraperService.organizarSalidaCerca(provincia, localidad,
+                    referencia.get().lat(), referencia.get().lng(),
+                    com.example.demo.application.services.UbicacionReferenciaService.RADIO_CERCA_KM,
+                    fechaParsed, horario)
+                    : agendaDeCineScraperService.organizarSalidaConZona(provincia, localidad, fechaParsed, horario);
 
             var resultado = zona.funciones().stream().map(f -> {
                 Map<String, Object> dto = conPrecio(f, zona.zonaAmpliada());
