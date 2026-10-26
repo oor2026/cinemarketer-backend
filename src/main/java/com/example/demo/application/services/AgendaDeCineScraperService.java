@@ -268,6 +268,20 @@ public class AgendaDeCineScraperService {
         return (v == null || v.isNull()) ? null : v.asText();
     }
 
+    // Un número entero positivo, venga como número o como texto. Null si falta o no es un número (agendadecine
+    // a veces manda "$undefined" cuando no tiene el dato).
+    private Integer enteroOrNull(JsonNode nodo, String campo) {
+        JsonNode v = nodo.get(campo);
+        if (v == null || v.isNull()) return null;
+        if (v.isNumber()) return v.asInt() > 0 ? v.asInt() : null;
+        try {
+            int n = Integer.parseInt(v.asText().trim());
+            return n > 0 ? n : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private Double dobleOrNull(JsonNode nodo, String campo) {
         JsonNode v = nodo.get(campo);
         return (v == null || v.isNull()) ? null : v.asDouble();
@@ -308,8 +322,9 @@ public class AgendaDeCineScraperService {
     // tmdbId: id de la película en TMDb, tal como lo informa agendadecine (null si no lo trae).
     // paisesOrigen: "originCountries" de agendadecine; hoy viene vacío, pero si algún día lo
     // completan se usa antes que TMDb para saber si la película es argentina.
+    // duracionMinutos: "durationMinutes" de agendadecine (null si no la trae).
     public record PeliculaEnCartelera(String slug, String titulo, String poster, List<String> genero, String sinopsis,
-                                      String tmdbId, List<String> paisesOrigen) {
+                                      String tmdbId, List<String> paisesOrigen, Integer duracionMinutos) {
         // El constructor de siempre, sin sinopsis, para quien arma la película con 4 datos.
         public PeliculaEnCartelera(String slug, String titulo, String poster, List<String> genero) {
             this(slug, titulo, poster, genero, null);
@@ -318,6 +333,12 @@ public class AgendaDeCineScraperService {
         // Con sinopsis pero sin los datos de nacionalidad.
         public PeliculaEnCartelera(String slug, String titulo, String poster, List<String> genero, String sinopsis) {
             this(slug, titulo, poster, genero, sinopsis, null, List.of());
+        }
+
+        // Con los datos de nacionalidad pero sin la duración.
+        public PeliculaEnCartelera(String slug, String titulo, String poster, List<String> genero, String sinopsis,
+                                   String tmdbId, List<String> paisesOrigen) {
+            this(slug, titulo, poster, genero, sinopsis, tmdbId, paisesOrigen, null);
         }
     }
 
@@ -417,7 +438,10 @@ public class AgendaDeCineScraperService {
                 for (JsonNode pais : paisesNodo) paisesOrigen.add(pais.asText());
             }
 
-            resultado.add(new PeliculaEnCartelera(slug, titulo, poster, generos, sinopsis, tmdbId, paisesOrigen));
+            // Duración en minutos, tal como la informa agendadecine (null si no la trae).
+            Integer duracionMinutos = enteroOrNull(movie, "durationMinutes");
+
+            resultado.add(new PeliculaEnCartelera(slug, titulo, poster, generos, sinopsis, tmdbId, paisesOrigen, duracionMinutos));
         }
         return resultado;
     }
@@ -490,13 +514,23 @@ public class AgendaDeCineScraperService {
             String poster,
             // Posición del cine (null si no se conoce o no es una coordenada válida): sirve para calcular
             // a cuánto queda de la zona de la persona.
-            Double cineLat, Double cineLng
+            Double cineLat, Double cineLng,
+            // Género y duración en minutos de la película (null si agendadecine no los trae): los muestra el
+            // modal de la función.
+            List<String> genero, Integer duracionMinutos
     ) {
-        // El constructor de siempre, sin posición: quien arma la función con 9 datos no cambia.
+        // El constructor de siempre, sin posición ni datos de la película: quien arma la función con 9 datos no cambia.
         public FuncionScrapeada(String peliculaTitulo, String provincia, String cineNombre,
                                 LocalDate dia, boolean esHoy, LocalTime horario, String formato, String idioma,
                                 String poster) {
-            this(peliculaTitulo, provincia, cineNombre, dia, esHoy, horario, formato, idioma, poster, null, null);
+            this(peliculaTitulo, provincia, cineNombre, dia, esHoy, horario, formato, idioma, poster, null, null, null, null);
+        }
+
+        // Con posición pero sin los datos de la película.
+        public FuncionScrapeada(String peliculaTitulo, String provincia, String cineNombre,
+                                LocalDate dia, boolean esHoy, LocalTime horario, String formato, String idioma,
+                                String poster, Double cineLat, Double cineLng) {
+            this(peliculaTitulo, provincia, cineNombre, dia, esHoy, horario, formato, idioma, poster, cineLat, cineLng, null, null);
         }
     }
 
@@ -601,9 +635,13 @@ public class AgendaDeCineScraperService {
 
         Map<String, String> tituloPorSlug = new HashMap<>();
         Map<String, String> posterPorSlug = new HashMap<>();
+        Map<String, List<String>> generoPorSlug = new HashMap<>();
+        Map<String, Integer> duracionPorSlug = new HashMap<>();
         for (PeliculaEnCartelera p : obtenerPeliculasEnCartelera()) {
             tituloPorSlug.put(p.slug(), p.titulo());
             posterPorSlug.put(p.slug(), p.poster());
+            generoPorSlug.put(p.slug(), p.genero());
+            if (p.duracionMinutos() != null) duracionPorSlug.put(p.slug(), p.duracionMinutos());
         }
 
         List<FuncionScrapeada> resultado = new ArrayList<>();
@@ -640,7 +678,9 @@ public class AgendaDeCineScraperService {
                         f.version(),
                         poster,
                         posicionValida ? cine.getLat() : null,
-                        posicionValida ? cine.getLng() : null
+                        posicionValida ? cine.getLng() : null,
+                        generoPorSlug.get(slug),
+                        duracionPorSlug.get(slug)
                 ));
             }
         }

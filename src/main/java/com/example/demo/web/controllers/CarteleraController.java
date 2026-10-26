@@ -251,6 +251,8 @@ public class CarteleraController {
         dto.put("formato", f.formato());
         dto.put("idioma", f.idioma());
         dto.put("poster", f.poster());
+        dto.put("genero", f.genero());
+        dto.put("duracionMinutos", f.duracionMinutos());
 
         var precio = carteleraPreciosService.obtenerPrecioDelDia(f.cineNombre(), f.formato(), f.dia(), f.horario());
         dto.put("precioReferencia", precio == null ? null : precio.precio());
