@@ -28,18 +28,21 @@ public class TriviaAttemptService {
     private final UserRepository userRepository;
     private final PointTransactionService pointTransactionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final TriviaRankingNotifier triviaRankingNotifier;
 
     public TriviaAttemptService(
             TriviaAttemptRepository attemptRepository,
             TriviaPreguntaVistaRepository vistaRepository,
             TriviaService triviaService,
             UserRepository userRepository,
-            PointTransactionService pointTransactionService) {
+            PointTransactionService pointTransactionService,
+            TriviaRankingNotifier triviaRankingNotifier) {
         this.attemptRepository = attemptRepository;
         this.vistaRepository = vistaRepository;
         this.triviaService = triviaService;
         this.userRepository = userRepository;
         this.pointTransactionService = pointTransactionService;
+        this.triviaRankingNotifier = triviaRankingNotifier;
     }
 
     /**
@@ -194,6 +197,10 @@ public class TriviaAttemptService {
             pointTransactionService.registerTriviaEarned(user, attempt.getPuntosGanados());
         }
 
+        // Cómo estaba el ranking de este usuario antes de sumarle los aciertos del invitado (ver TriviaRankingNotifier).
+        int aciertosAntes = user.getTriviaAciertosTotal();
+        long tiempoAntes = user.getTriviaTiempoTotalSegundos();
+
         try {
             Map[] arrAciertos = objectMapper.readValue(attempt.getAciertosJson(), Map[].class);
             for (Map acierto : arrAciertos) {
@@ -206,6 +213,8 @@ public class TriviaAttemptService {
                 registrarPreguntaVista(user, dto);
             }
             userRepository.save(user);
+            triviaRankingNotifier.programarAviso(false, user.getId(), user.getName(),
+                    aciertosAntes, tiempoAntes, user.getTriviaAciertosTotal(), user.getTriviaTiempoTotalSegundos());
         } catch (Exception e) {
             throw new RuntimeException("Error reconstruyendo exclusiones del invitado", e);
         }
@@ -258,8 +267,15 @@ public class TriviaAttemptService {
 
         if (acerto) {
             registrarPreguntaVista(userFresco, preguntaActual);
+            // Cómo estaba el ranking de este usuario antes de sumar el acierto: con esto se sabe a quién superó.
+            int aciertosAntes = userFresco.getTriviaAciertosTotal();
+            long tiempoAntes = userFresco.getTriviaTiempoTotalSegundos();
             userFresco.registrarAciertoTrivia(tiempoSegundos);
             userRepository.save(userFresco);
+
+            // Los avisos "te superaron" salen recién cuando la respuesta ya quedó guardada (ver TriviaRankingNotifier).
+            triviaRankingNotifier.programarAviso(false, userFresco.getId(), userFresco.getName(),
+                    aciertosAntes, tiempoAntes, userFresco.getTriviaAciertosTotal(), userFresco.getTriviaTiempoTotalSegundos());
 
             pointTransactionService.registerTriviaEarned(userFresco, PUNTOS_POR_ACIERTO);
             attempt.setPuntosGanados(attempt.getPuntosGanados() + PUNTOS_POR_ACIERTO);

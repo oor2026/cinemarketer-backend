@@ -260,7 +260,7 @@ public class UserController {
         boolean emailChanged = false;
 
         if (fields.containsKey("name")) {
-            String name = fields.get("name").trim();
+            String name = fields.get("name") == null ? "" : fields.get("name").trim();
             if (name.isEmpty()) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("message", "El nombre no puede estar vacío."));
@@ -275,6 +275,14 @@ public class UserController {
             if (nombreReservadoService.esNombreReservado(name) && !esAdmin) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(Map.of("message", "Ese nombre está reservado para el equipo de Cinemarketer."));
+            }
+            // Mismas reglas que al registrarse (2 a 50 caracteres; solo letras y espacios simples entre palabras).
+            // Sin esto el nombre se podía cambiar acá a cualquier cosa, incluso a HTML: la regla del registro se
+            // esquivaba. Al equipo (admin) se le permite además el ® de la marca.
+            String errorNombre = com.example.demo.application.services.NombreUsuario.errorDe(name, esAdmin);
+            if (errorNombre != null) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", errorNombre));
             }
             user.setName(name);
         }

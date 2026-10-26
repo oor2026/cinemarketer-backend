@@ -759,4 +759,70 @@ public class NotificationService {
             log.warn("No se pudo enviar el push de estreno al usuario {}: {}", receptor.getId(), e.getMessage());
         }
     }
+
+    // ------------------------------------------------------------------
+    // TRIVIA: alguien te superó en el ranking (Trivia de Películas o de Series)
+    //
+    // Antirruido, en tres reglas:
+    //  1) El mismo par (quien te supera -> vos) no genera otro aviso dentro de las 24 horas.
+    //  2) Una sola novedad "viva" (sin leer) por persona y por trivia: si ya hay una, se actualiza con la nueva
+    //     posición y el último nombre en lugar de sumar otra fila.
+    //  3) El push sale como mucho una vez cada 3 horas por persona y por trivia. Para eso, created_at de la
+    //     novedad viva solo se renueva cuando sale un push: es la hora del último aviso.
+    // ------------------------------------------------------------------
+    private static final long TRIVIA_PAR_HORAS = 24;
+    private static final long TRIVIA_PUSH_HORAS = 3;
+
+    @Transactional
+    public void crearTriviaSuperado(User receptor, Long actorId, String actorName, boolean series, long posicion) {
+        NotificationType tipo = series ? NotificationType.TRIVIA_SERIES_SUPERADO : NotificationType.TRIVIA_SUPERADO;
+        java.time.LocalDateTime ahora = java.time.LocalDateTime.now();
+
+        // Regla 1: el mismo par no se repite en 24 horas.
+        var delPar = notificationRepository.findTopByUserIdAndActorIdAndTypeOrderByCreatedAtDesc(receptor.getId(), actorId, tipo);
+        if (delPar.isPresent() && delPar.get().getCreatedAt().isAfter(ahora.minusHours(TRIVIA_PAR_HORAS))) {
+            return;
+        }
+
+        String nombre = (actorName == null || actorName.isBlank()) ? "Alguien" : actorName.trim();
+        // La campanita pinta el mensaje como HTML: sin "<" ni ">" el nombre no puede meter etiquetas.
+        String nombreSeguro = nombre.replace("<", "").replace(">", "").trim();
+        if (nombreSeguro.isEmpty()) nombreSeguro = "Alguien";
+        String trivia = series ? "Trivia de Series" : "Trivia de Películas";
+        String mensaje = "Bajaste a la posición " + posicion + " en el ranking de " + trivia + ". " + nombreSeguro + " te ha superado.";
+
+        boolean mandarPush;
+        var viva = notificationRepository.findTopByUserIdAndTypeAndReadFalseOrderByCreatedAtDesc(receptor.getId(), tipo);
+        if (viva.isPresent()) {
+            // Regla 2: se actualiza la novedad que todavía no leyó.
+            Notification n = viva.get();
+            n.setActorId(actorId);
+            n.setActorName(nombreSeguro);
+            n.setMessage(mensaje);
+            // Regla 3: el push sale solo si pasaron 3 horas desde el último; entonces la novedad sube al tope.
+            mandarPush = !n.getCreatedAt().isAfter(ahora.minusHours(TRIVIA_PUSH_HORAS));
+            if (mandarPush) n.setCreatedAt(ahora);
+            notificationRepository.save(n);
+        } else {
+            var ultima = notificationRepository.findTopByUserIdAndTypeOrderByCreatedAtDesc(receptor.getId(), tipo);
+            mandarPush = ultima.isEmpty() || !ultima.get().getCreatedAt().isAfter(ahora.minusHours(TRIVIA_PUSH_HORAS));
+            Notification n = new Notification();
+            n.setUser(receptor);
+            n.setActorId(actorId);
+            n.setActorName(nombreSeguro);
+            n.setType(tipo);
+            n.setMessage(mensaje);
+            notificationRepository.save(n);
+        }
+
+        if (mandarPush) {
+            try {
+                webPushService.sendToUser(receptor.getId(), "📉 Te superaron en la " + trivia,
+                        "Bajaste a la posición " + posicion + ". " + nombre + " te ha superado.", ICON);
+            } catch (Exception e) {
+                // La novedad de la campanita ya quedó guardada; si el push falla se deja registrado.
+                log.warn("No se pudo enviar el push de trivia al usuario {}: {}", receptor.getId(), e.getMessage());
+            }
+        }
+    }
 }
