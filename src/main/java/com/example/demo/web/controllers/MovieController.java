@@ -7,6 +7,7 @@ import com.example.demo.application.services.MovieExpectationService;
 import com.example.demo.application.services.MovieService;
 import com.example.demo.application.services.ProximosEstrenosService;
 import com.example.demo.application.services.ReestrenosService;
+import com.example.demo.infrastructure.external.tmdb.TmdbService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,13 +23,16 @@ public class MovieController {
     private final MovieExpectationService movieExpectationService;
     private final ProximosEstrenosService proximosEstrenosService;
     private final ReestrenosService reestrenosService;
+    private final TmdbService tmdbService;
 
     public MovieController(MovieService movieService, MovieExpectationService movieExpectationService,
-                           ProximosEstrenosService proximosEstrenosService, ReestrenosService reestrenosService) {
+                           ProximosEstrenosService proximosEstrenosService, ReestrenosService reestrenosService,
+                           TmdbService tmdbService) {
         this.movieService = movieService;
         this.movieExpectationService = movieExpectationService;
         this.proximosEstrenosService = proximosEstrenosService;
         this.reestrenosService = reestrenosService;
+        this.tmdbService = tmdbService;
     }
 
     /**
@@ -219,6 +223,18 @@ public class MovieController {
             @RequestParam(required = false, defaultValue = "es-MX") String language) {
         TmdbVideoDto response = movieService.getMovieVideos(id, language);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Imágenes de una película para el modal: los logos del título y los pósters con el idioma de su texto impreso.
+     * GET /api/movies/{id}/images
+     *
+     * Devuelve { logos: [...], posters: [...] }, reducido (ver TmdbImagenes). Siempre pide es, en y sin idioma; el
+     * parámetro include_image_language que manda el front se ignora.
+     */
+    @GetMapping("/{id}/images")
+    public ResponseEntity<Map<String, Object>> getMovieImages(@PathVariable Long id) {
+        return ResponseEntity.ok(tmdbService.getMovieImages(id));
     }
 
     /**

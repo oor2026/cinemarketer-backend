@@ -3,17 +3,22 @@ package com.example.demo.web.controllers;
 import com.example.demo.application.dtos.SeriesFilterDto;
 import com.example.demo.application.dtos.external.tmdb.*;
 import com.example.demo.application.services.SeriesService;
+import com.example.demo.infrastructure.external.tmdb.TvService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/series")
 public class SeriesController {
 
     private final SeriesService seriesService;
+    private final TvService tvService;
 
-    public SeriesController(SeriesService seriesService) {
+    public SeriesController(SeriesService seriesService, TvService tvService) {
         this.seriesService = seriesService;
+        this.tvService = tvService;
     }
 
     /**
@@ -152,6 +157,15 @@ public class SeriesController {
             @RequestParam(required = false, defaultValue = "es-MX") String language) {
         TmdbVideoDto response = seriesService.getSeriesVideos(id, language);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Imágenes de una serie para el modal: los logos del título y los pósters con el idioma de su texto impreso.
+     * GET /api/series/{id}/images
+     */
+    @GetMapping("/{id}/images")
+    public ResponseEntity<Map<String, Object>> getSeriesImages(@PathVariable Long id) {
+        return ResponseEntity.ok(tvService.getSeriesImages(id));
     }
 
     /**

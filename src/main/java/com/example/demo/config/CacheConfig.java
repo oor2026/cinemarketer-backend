@@ -73,6 +73,10 @@ public class CacheConfig {
         caches.add(buildCache("tmdbVideosMovies", 7, TimeUnit.DAYS));
         caches.add(buildCache("tmdbVideosSeries", 7, TimeUnit.DAYS));
 
+        // Logos y pósters del modal — una vez publicados casi no cambian.
+        caches.add(buildCache("tmdbImagesMovies", 7, TimeUnit.DAYS));
+        caches.add(buildCache("tmdbImagesSeries", 7, TimeUnit.DAYS));
+
         manager.setCaches(caches);
         return manager;
     }

@@ -255,6 +255,22 @@ public class TmdbService {
     }
 
     /**
+     * Imágenes de una película para el modal: los logos del título y los pósters con el idioma de su texto impreso.
+     * Se piden siempre en es, en y sin idioma, y se devuelven reducidos (ver TmdbImagenes). No se manda "language":
+     * con include_image_language alcanza.
+     */
+    @Cacheable(value = "tmdbImagesMovies", key = "#movieId")
+    public Map<String, Object> getMovieImages(Long movieId) {
+        String path = "/movie/" + movieId + "/images";
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + path);
+        builder.queryParam("include_image_language", TmdbImagenes.IDIOMAS);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                builder.build().toUriString(), HttpMethod.GET, entity, Object.class);
+        return TmdbImagenes.reducir(response.getBody());
+    }
+
+    /**
      * Obtener películas similares por ID
      */
     @Cacheable(value = "tmdbSimilarMovies", key = "#movieId")
