@@ -185,6 +185,21 @@ public class TvService {
         return response.getBody();
     }
 
+    /**
+     * Imágenes de una serie para el modal: los logos del título y los pósters con el idioma de su texto impreso.
+     * Gemela de TmdbService.getMovieImages().
+     */
+    @Cacheable(value = "tmdbImagesSeries", key = "#seriesId")
+    public Map<String, Object> getSeriesImages(Long seriesId) {
+        String path = "/tv/" + seriesId + "/images";
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + path);
+        builder.queryParam("include_image_language", TmdbImagenes.IDIOMAS);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                builder.build().toUriString(), HttpMethod.GET, entity, Object.class);
+        return TmdbImagenes.reducir(response.getBody());
+    }
+
     @Cacheable(value = "tmdbSimilarSeries", key = "#seriesId")
     public TmdbSeriesPageResponseDto getSimilarSeries(Long seriesId) {
         String path = "/tv/" + seriesId + "/similar";
