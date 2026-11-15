@@ -16,6 +16,9 @@ import com.example.demo.domain.recommendation.SeriesRecommendation;
 import com.example.demo.domain.recommendation.SeriesRecommendationRepository;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
+import com.example.demo.domain.mision.ActividadEvento;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -38,6 +41,10 @@ public class SeriesRecommendationController {
     private final PointConfigService pointConfigService;
     private final PointTransactionService pointTransactionService;
     private final com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService;
+
+    // Misiones y sellos: avisa que el usuario recomendó una serie. La lógica de misiones corre DESPUÉS de confirmar la operación y nunca la rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public SeriesRecommendationController(SeriesRecommendationRepository recommendationRepository,
                                           UserRepository userRepository,
@@ -140,6 +147,9 @@ public class SeriesRecommendationController {
                 (rec.getSeriesTitle() != null ? rec.getSeriesTitle() : "una serie"));
 
         notificationRepository.save(notif);
+
+        // Misiones y sellos: una recomendación enviada (el duplicado ya se rechazó más arriba, así que llega acá una sola vez por película y destinatario).
+        eventPublisher.publishEvent(ActividadEvento.recomendacionSerie(me.getId(), seriesId));
 
         return ResponseEntity.ok(Map.of("success", true, "sinPuntos", !otorgaPuntos, "pointsAwarded", points));
     }

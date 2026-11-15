@@ -6,6 +6,9 @@ import com.example.demo.application.dtos.external.tmdb.TmdbSeriesDto;
 import com.example.demo.application.services.SeriesService;
 import com.example.demo.application.services.PointConfigService;
 import com.example.demo.application.services.PointTransactionService;
+import com.example.demo.domain.mision.ActividadEvento;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.review.VoteType;
 import com.example.demo.domain.series.Series;
@@ -42,6 +45,10 @@ public class SeriesReviewController {
     private final SeriesRepository seriesRepository;
     private final VotoRelampagoOmitidaSerieRepository votoRelampagoOmitidaSerieRepository;
     private final GenreRepository genreRepository;
+
+    // Misiones y sellos: avisa que el usuario votó una serie. La lógica de misiones corre DESPUÉS de confirmar la operación y nunca la rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public SeriesReviewController(
             SeriesReviewRepository seriesReviewRepository,
@@ -184,6 +191,9 @@ public class SeriesReviewController {
                 seriesId,
                 "Voto en serie: " + seriesTitle
         );
+
+        // Misiones y sellos: un voto NUEVO (cambiar de opinión sobre un voto ya hecho retorna antes y no llega acá).
+        eventPublisher.publishEvent(ActividadEvento.votoSerie(user.getId(), seriesId));
 
         long likes = seriesReviewRepository.countBySeriesIdAndVote(seriesId, VoteType.LIKE);
         long dislikes = seriesReviewRepository.countBySeriesIdAndVote(seriesId, VoteType.DISLIKE);

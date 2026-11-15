@@ -12,6 +12,9 @@ import com.example.demo.domain.premium.PremiumReward;
 import com.example.demo.domain.premium.PremiumRewardType;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
+import com.example.demo.domain.mision.ActividadEvento;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,6 +34,10 @@ public class PremiumRewardController {
     private final EmailService emailService;
     private final PremiumDrawEntryRepository drawEntryRepository;
     private final PremiumRedemptionRepository premiumRedemptionRepository;
+
+    // Misiones y sellos: avisa que el usuario canjeó un premio Premium o se anotó a un sorteo. La lógica de misiones corre DESPUÉS de confirmar la operación y nunca la rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public PremiumRewardController(UserRepository userRepository,
                                    PremiumRewardService premiumRewardService,
@@ -66,6 +73,10 @@ public class PremiumRewardController {
         }
         try {
             Map<String, Object> result = premiumRewardService.redeemReward(user, id);
+
+            // Misiones y sellos: un canje Premium. El id va en NEGATIVO para no confundirse con un premio común que tenga el mismo número
+            // (así «premios distintos» los cuenta por separado).
+            eventPublisher.publishEvent(ActividadEvento.canje(user.getId(), -id));
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -83,6 +94,9 @@ public class PremiumRewardController {
         }
         try {
             premiumRewardService.enterDraw(user, id);
+
+            // Misiones y sellos: una participación en un sorteo (si el servicio la rechaza, lanza antes y no se llega acá).
+            eventPublisher.publishEvent(ActividadEvento.sorteo(user.getId(), id));
             return ResponseEntity.ok(Map.of("message", "¡Te anotaste al sorteo correctamente!"));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)

@@ -11,6 +11,9 @@ import com.example.demo.domain.movie.MovieRepository;
 import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
+import com.example.demo.domain.mision.ActividadEvento;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -45,6 +48,10 @@ public class CommentController {
     private final SpoilerAcceptedRepository spoilerAcceptedRepository;
     private final CommentReplyReportRepository commentReplyReportRepository;
     private final com.example.demo.application.services.MoviePersistenceService moviePersistenceService;
+
+    // Misiones y sellos: avisa que el usuario comentó. La lógica de misiones corre DESPUÉS de confirmar el comentario y nunca lo rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public CommentController(CommentRepository commentRepository,
                              CommentReportRepository commentReportRepository,
@@ -235,6 +242,11 @@ public class CommentController {
                     movieId, "Comentario en pelicula: " + movieTitle);
         }
         userRepository.save(user);
+
+        // Misiones y sellos: cuenta solo un comentario que se publicó de verdad (no el duplicado ni el que quedó en revisión).
+        if (!esDuplicado && moderationStatus == ModerationStatus.APPROVED) {
+            eventPublisher.publishEvent(ActividadEvento.comentarioPelicula(user.getId(), movieId));
+        }
 
         CommentResponse resp = buildResponse(comment, user.getId());
         if (esDuplicado) {

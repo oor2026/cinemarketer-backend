@@ -370,4 +370,109 @@ public class TmdbService {
                 url, HttpMethod.GET, entity, Object.class);
         return response.getBody();
     }
+
+    // =========================================================================================
+    // Catálogo automático de misiones rotativas (misiones y sellos).
+    // Se piden «crudos» (Object) para no depender de los DTO, y reutilizan cachés que YA existen en CacheConfig,
+    // con claves propias: CacheConfig tiene una lista cerrada de nombres, así que una caché nueva fallaría
+    // con «Cannot find cache named».
+    // =========================================================================================
+
+    /**
+     * Películas populares EN ARGENTINA (region=AR), crudo. Es distinto de getPopularMovies, que no manda región.
+     */
+    @Cacheable(value = "tmdbListadosMovies", key = "'popular-raw-AR-' + #page")
+    public Object getPopularMoviesRaw(Integer page) {
+        String path = "/movie/popular";
+        String url = buildUrl(path, "region", "AR", "page", page != null ? page.toString() : "1");
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    /**
+     * Detalle crudo de una película. Trae belongs_to_collection (la saga a la que pertenece), que TmdbMovieDto no incluye.
+     */
+    @Cacheable(value = "tmdbMovieDetails", key = "'raw-' + #movieId")
+    public Object getMovieRaw(Long movieId) {
+        String path = "/movie/" + movieId;
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    /**
+     * Personas populares, crudo (actores, directores, etc.: cada una trae known_for_department).
+     */
+    @Cacheable(value = "tmdbPersonas", key = "'popular-' + #page")
+    public Object getPopularPeople(Integer page) {
+        String path = "/person/popular";
+        String url = buildUrl(path, "page", page != null ? page.toString() : "1");
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    /**
+     * Lista de géneros de películas, cruda (id y nombre).
+     */
+    @Cacheable(value = "tmdbGenresMovies", key = "'raw-list'")
+    public Object getMovieGenresRaw() {
+        String path = "/genre/movie/list";
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    // =========================================================================================
+    // Buscadores del panel de admin de misiones (elegir actor, director o saga viendo su nombre).
+    // Mismo criterio que arriba: respuestas crudas y cachés que YA existen en CacheConfig, con claves propias.
+    // El texto de búsqueda lo valida quien llama (mínimo 2 letras): acá nunca llega null.
+    // =========================================================================================
+
+    /** Búsqueda de personas por nombre (actores, directores, etc.), cruda. */
+    @Cacheable(value = "tmdbPersonas", key = "'search-' + #query.toLowerCase()")
+    public Object searchPeopleRaw(String query) {
+        String path = "/search/person";
+        String url = buildUrl(path,
+                "query", query,
+                "page", "1",
+                "include_adult", "false"
+        );
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    /** Búsqueda de colecciones (sagas) por nombre, cruda. */
+    @Cacheable(value = "tmdbListadosMovies", key = "'search-collection-' + #query.toLowerCase()")
+    public Object searchCollectionsRaw(String query) {
+        String path = "/search/collection";
+        String url = buildUrl(path,
+                "query", query,
+                "page", "1"
+        );
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    /** Una persona puntual, cruda (nombre, foto y área). */
+    @Cacheable(value = "tmdbPersonas", key = "'raw-' + #personId")
+    public Object getPersonRaw(Long personId) {
+        String path = "/person/" + personId;
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
 }
