@@ -2,21 +2,20 @@ package com.example.demo.web.controllers;
 
 import com.example.demo.application.dtos.MovieStatsDto;
 import com.example.demo.application.dtos.VoteRequest;
-import com.example.demo.application.dtos.external.tmdb.TmdbMovieDto;
 import com.example.demo.application.services.MovieService;
 import com.example.demo.application.services.PointConfigService;
 import com.example.demo.application.services.PointTransactionService;
+import com.example.demo.domain.mision.ActividadEvento;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import com.example.demo.domain.movie.Movie;
 import com.example.demo.domain.movie.MovieRepository;
-import com.example.demo.domain.genre.Genre;
-import com.example.demo.domain.genre.GenreRepository;
 import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.review.*;
 import java.util.List;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,7 +23,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -40,6 +38,10 @@ public class ReviewController {
     private final MovieRepository movieRepository;
     private final VotoRelampagoOmitidaRepository votoRelampagoOmitidaRepository;
     private final com.example.demo.application.services.MoviePersistenceService moviePersistenceService;
+
+    // Misiones y sellos: avisa que el usuario votó. La lógica de misiones corre DESPUÉS de confirmar el voto y nunca lo rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public ReviewController(
             ReviewRepository reviewRepository,
@@ -146,6 +148,9 @@ public class ReviewController {
                 movieId,
                 "Voto en película: " + movieTitle
         );
+
+        // Misiones y sellos: un voto NUEVO (cambiar de opinión sobre un voto ya hecho retorna antes y no llega acá).
+        eventPublisher.publishEvent(ActividadEvento.votoPelicula(user.getId(), movieId));
 
         long likes = reviewRepository.countByReviewTypeAndTargetIdAndVote(
                 ReviewType.MOVIE, movieId, VoteType.LIKE);

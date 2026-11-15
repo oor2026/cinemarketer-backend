@@ -7,7 +7,10 @@ import com.example.demo.domain.pointtransaction.PointTransaction;
 import com.example.demo.domain.pointtransaction.PointTransactionRepository;
 import com.example.demo.domain.pointtransaction.PointTransactionType;
 import com.example.demo.domain.user.User;
+import com.example.demo.domain.mision.ActividadEvento;
 import com.example.demo.domain.user.UserLevel;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +30,10 @@ public class PointTransactionService {
     // ==============================================
     private final LevelCalculatorService levelCalculatorService;
     private final UserService userService;
+
+    // Misiones y sellos: avisa que el usuario acertó una trivia. La lógica de misiones corre DESPUÉS de confirmar y nunca la rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public PointTransactionService(
             PointTransactionRepository transactionRepository,
@@ -97,6 +104,9 @@ public class PointTransactionService {
         User updatedUser = userService.getUserById(user.getId())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         checkAndUpdateLevel(updatedUser);
+
+        // Misiones y sellos: un acierto de trivia de películas.
+        eventPublisher.publishEvent(ActividadEvento.triviaPelicula(user.getId()));
     }
 
     /**
@@ -130,6 +140,9 @@ public class PointTransactionService {
         User updatedUser = userService.getUserById(user.getId())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         checkAndUpdateLevel(updatedUser);
+
+        // Misiones y sellos: un acierto de trivia de series.
+        eventPublisher.publishEvent(ActividadEvento.triviaSerie(user.getId()));
     }
 
     /**

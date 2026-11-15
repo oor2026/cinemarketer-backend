@@ -8,6 +8,9 @@ import com.example.demo.domain.publication.PublicationReactionType;
 import com.example.demo.application.dtos.CreatePublicationRequest;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
+import com.example.demo.domain.mision.ActividadEvento;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +32,10 @@ public class PublicationController {
     private final com.example.demo.application.services.CloudflareStreamService cloudflareStreamService;
     private final com.example.demo.application.services.HashtagService hashtagService;
     private final tools.jackson.databind.json.JsonMapper objectMapper;
+
+    // Misiones y sellos: avisa que el usuario publicó. La lógica de misiones corre DESPUÉS de confirmar la operación y nunca la rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public PublicationController(PublicationService publicationService,
                                  UserRepository userRepository,
@@ -100,6 +107,12 @@ public class PublicationController {
             @RequestBody CreatePublicationRequest req) {
         User user = getUser(ud);
         Publication pub = publicationService.createPublication(user, req);
+
+        // Misiones y sellos: solo cuenta si nació aprobada. Las que nacen en PROCESSING (video) o PENDING_REVIEW se avisan más
+        // tarde, cuando se aprueban (ver PublicationService).
+        if (pub.getModerationStatus() == com.example.demo.domain.publication.PublicationModerationStatus.APPROVED) {
+            eventPublisher.publishEvent(ActividadEvento.publicacion(user.getId()));
+        }
         return ResponseEntity.ok(pub);
     }
 

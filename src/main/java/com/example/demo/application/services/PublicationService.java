@@ -3,6 +3,9 @@ package com.example.demo.application.services;
 import com.example.demo.domain.publication.*;
 import com.example.demo.application.dtos.CreatePublicationRequest;
 import com.example.demo.domain.user.User;
+import com.example.demo.domain.mision.ActividadEvento;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import com.example.demo.domain.user.UserRepository;
 import com.example.demo.domain.point.PointAction;
 import org.springframework.data.domain.Page;
@@ -43,6 +46,10 @@ public class PublicationService {
     private final com.example.demo.domain.publication.PublicationRankingItemRepository rankingItemRepository;
     private final com.example.demo.domain.publication.PublicationTriviaOpcionRepository triviaOpcionRepository;
     private final com.example.demo.domain.publication.PublicationTriviaRespuestaRepository triviaRespuestaRepository;
+
+    // Misiones y sellos: avisa que una publicación quedó aprobada. La lógica de misiones corre DESPUÉS de confirmar y nunca la rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public PublicationService(
             PublicationRepository publicationRepository,
@@ -826,6 +833,11 @@ public class PublicationService {
         comment.setParentCommentId(parentIdFinal);
         PublicationComment saved = commentRepository.save(comment);
 
+        // Misiones y sellos: una intervención en una publicación ajena (comentario o respuesta). En la propia no cuenta.
+        if (!pub.getUser().getId().equals(user.getId())) {
+            eventPublisher.publishEvent(ActividadEvento.intervencion(user.getId(), pubId));
+        }
+
         // Notificar según si es comentario o respuesta
         if (parentIdFinal == null) {
             // Comentario raíz — notificar al autor de la publicación
@@ -1355,6 +1367,9 @@ public class PublicationService {
         pub.setAdminReviewed(true);
         publicationRepository.save(pub);
 
+        // Misiones y sellos: nació pendiente de revisión, así que recién ahora cuenta como publicación.
+        eventPublisher.publishEvent(ActividadEvento.publicacion(pub.getUser().getId()));
+
         try {
             notificationService.crearPublicacionAprobada(pub.getUser(), pub.getId());
         } catch (Exception ignored) {}
@@ -1419,6 +1434,9 @@ public class PublicationService {
             pub.setVideoUrl(urlReproduccion);
             if (esPublicacionNuevaConVideo) {
                 pub.setModerationStatus(PublicationModerationStatus.APPROVED);
+
+                // Misiones y sellos: nació en PROCESSING (video), así que recién ahora cuenta como publicación.
+                eventPublisher.publishEvent(ActividadEvento.publicacion(pub.getUser().getId()));
             }
             // Caso B con video aprobado: moderationStatus ya era APPROVED, no se toca
         }

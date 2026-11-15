@@ -24,6 +24,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import com.example.demo.domain.mision.ActividadEvento;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -73,6 +76,23 @@ public class UserController {
     private final com.example.demo.application.services.MoviePersistenceService moviePersistenceService;
     private final com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService;
     private final com.example.demo.domain.user.DemoProfileStatsRepository demoProfileStatsRepository;
+
+    // Misiones y sellos: avisa que el usuario guardó un gusto de Mis gustos. La lógica de misiones corre DESPUÉS de confirmar la operación y nunca la rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
+    /**
+     * Los 8 espacios de gustos: 1 a 4 = películas (favorita, última vista en cine, no me canso de ver, no la banco);
+     * 5 a 8 = series (favorita, última maratón, no me canso de ver, no la banco). Cada espacio cuenta una sola vez para las misiones.
+     * Va aparte en try/catch: estos endpoints devuelven 500 ante cualquier excepción, y un aviso de misiones nunca debe hacer fallar un guardado que ya se hizo.
+     */
+    private void avisarGusto(User user, int espacio, boolean serie) {
+        try {
+            eventPublisher.publishEvent(ActividadEvento.gusto(user.getId(), espacio, serie));
+        } catch (Exception ignored) {
+            // las misiones no pueden afectar el guardado del gusto
+        }
+    }
 
     public UserController(
             UserRepository userRepository,
@@ -660,6 +680,7 @@ public class UserController {
 
             user.setPeliculaFavoritaId(movieId);
             userRepository.save(user);
+            avisarGusto(user, 1, false);      // Misiones y sellos: espacio 1 (película favorita)
 
             return ResponseEntity.ok(Map.of(
                     "message", "Película favorita actualizada correctamente",
@@ -686,6 +707,7 @@ public class UserController {
             } catch (Exception ignored) {}
             user.setUltimaVistaCineId(movieId);
             userRepository.save(user);
+            avisarGusto(user, 2, false);      // Misiones y sellos: espacio 2 (última vista en cine)
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "ultimaVistaCineId", movieId, "success", true));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));
@@ -703,6 +725,7 @@ public class UserController {
             } catch (Exception ignored) {}
             user.setNoMeCansoDeVerId(movieId);
             userRepository.save(user);
+            avisarGusto(user, 3, false);      // Misiones y sellos: espacio 3 (no me canso de ver)
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noMeCansoDeVerId", movieId, "success", true));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));
@@ -720,6 +743,7 @@ public class UserController {
             } catch (Exception ignored) {}
             user.setNoLaBancoId(movieId);
             userRepository.save(user);
+            avisarGusto(user, 4, false);      // Misiones y sellos: espacio 4 (no la banco)
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noLaBancoId", movieId, "success", true));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));
@@ -739,6 +763,7 @@ public class UserController {
             } catch (Exception ignored) {}
             user.setSerieFavoritaId(seriesId);
             userRepository.save(user);
+            avisarGusto(user, 5, true);      // Misiones y sellos: espacio 5 (serie favorita)
             return ResponseEntity.ok(Map.of("message", "Serie favorita actualizada correctamente", "serieFavoritaId", seriesId, "success", true));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar la serie favorita", "success", false));
@@ -756,6 +781,7 @@ public class UserController {
             } catch (Exception ignored) {}
             user.setUltimaMaratonId(seriesId);
             userRepository.save(user);
+            avisarGusto(user, 6, true);      // Misiones y sellos: espacio 6 (última maratón)
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "ultimaMaratonId", seriesId, "success", true));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));
@@ -773,6 +799,7 @@ public class UserController {
             } catch (Exception ignored) {}
             user.setNoMeCansoDeVerSerieId(seriesId);
             userRepository.save(user);
+            avisarGusto(user, 7, true);      // Misiones y sellos: espacio 7 (no me canso de ver, serie)
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noMeCansoDeVerSerieId", seriesId, "success", true));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));
@@ -790,6 +817,7 @@ public class UserController {
             } catch (Exception ignored) {}
             user.setNoLaBancoSerieId(seriesId);
             userRepository.save(user);
+            avisarGusto(user, 8, true);      // Misiones y sellos: espacio 8 (no la banco, serie)
             return ResponseEntity.ok(Map.of("message", "Actualizado correctamente", "noLaBancoSerieId", seriesId, "success", true));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Error al actualizar", "success", false));

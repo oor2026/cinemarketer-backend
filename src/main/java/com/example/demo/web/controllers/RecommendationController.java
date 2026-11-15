@@ -16,6 +16,9 @@ import com.example.demo.domain.recommendation.MovieRecommendation;
 import com.example.demo.domain.recommendation.MovieRecommendationRepository;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
+import com.example.demo.domain.mision.ActividadEvento;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -38,6 +41,10 @@ public class RecommendationController {
     private final PointConfigService pointConfigService;
     private final PointTransactionService pointTransactionService;
     private final com.example.demo.application.services.MoviePersistenceService moviePersistenceService;
+
+    // Misiones y sellos: avisa que el usuario recomendó una película. La lógica de misiones corre DESPUÉS de confirmar la operación y nunca la rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public RecommendationController(MovieRecommendationRepository recommendationRepository,
                                     UserRepository userRepository,
@@ -145,6 +152,9 @@ public class RecommendationController {
 
         // Inyectar NotificationRepository
         notificationRepository.save(notif);
+
+        // Misiones y sellos: una recomendación enviada (el duplicado ya se rechazó más arriba, así que llega acá una sola vez por película y destinatario).
+        eventPublisher.publishEvent(ActividadEvento.recomendacionPelicula(me.getId(), req.getMovieId()));
 
         return ResponseEntity.ok(Map.of("success", true, "sinPuntos", !otorgaPuntos, "pointsAwarded", points));
     }

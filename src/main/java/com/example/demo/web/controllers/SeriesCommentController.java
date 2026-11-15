@@ -11,6 +11,9 @@ import com.example.demo.domain.series.*;
 import com.example.demo.domain.point.PointAction;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserRepository;
+import com.example.demo.domain.mision.ActividadEvento;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -44,6 +47,10 @@ public class SeriesCommentController {
     private final SeriesSpoilerAcceptedRepository  seriesSpoilerAcceptedRepository;
     private final SeriesCommentReplyReportRepository seriesCommentReplyReportRepository;
     private final com.example.demo.application.services.SeriesPersistenceService seriesPersistenceService;
+
+    // Misiones y sellos: avisa que el usuario comentó una serie. La lógica de misiones corre DESPUÉS de confirmar la operación y nunca la rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public SeriesCommentController(SeriesCommentRepository seriesCommentRepository,
                                    SeriesCommentReportRepository seriesCommentReportRepository,
@@ -234,6 +241,11 @@ public class SeriesCommentController {
                     seriesId, "Comentario en serie: " + seriesTitle);
         }
         userRepository.save(user);
+
+        // Misiones y sellos: cuenta solo un comentario que se publicó de verdad (no el duplicado ni el que quedó en revisión).
+        if (!esDuplicado && moderationStatus == ModerationStatus.APPROVED) {
+            eventPublisher.publishEvent(ActividadEvento.comentarioSerie(user.getId(), seriesId));
+        }
 
         CommentResponse resp = buildResponse(comment, user.getId());
         if (esDuplicado) {

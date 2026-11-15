@@ -16,6 +16,9 @@ import com.example.demo.domain.reward.RewardRepository;
 import com.example.demo.domain.user.User;
 import com.example.demo.domain.user.UserLevel;
 import com.example.demo.domain.user.UserRepository;
+import com.example.demo.domain.mision.ActividadEvento;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -44,6 +47,10 @@ public class RedemptionController {
     private final LevelCalculatorService levelCalculatorService;
     private final EmailService emailService;
     private final PointBatchRepository pointBatchRepository;
+
+    // Misiones y sellos: avisa que el usuario canjeó un premio. La lógica de misiones corre DESPUÉS de confirmar la operación y nunca la rompe.
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     public RedemptionController(RedemptionRepository redemptionRepository,
                                 RewardRepository rewardRepository,
@@ -154,6 +161,9 @@ public class RedemptionController {
                 reward.getId(),
                 "Canje: " + reward.getName()
         );
+
+        // Misiones y sellos: un canje de un premio común (si algo falla más abajo y la operación se revierte, este aviso se descarta solo).
+        eventPublisher.publishEvent(ActividadEvento.canje(user.getId(), reward.getId()));
 
         // Verificar si el canje disparó una subida de nivel
         // (updateLevelBasedOnPoints usa totalRedeemedPoints — solo sube, nunca baja)
