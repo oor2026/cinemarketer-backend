@@ -3,14 +3,15 @@ package com.example.demo.domain.mision;
 /**
  * Todo el SQL de «Reclamar» (PostgreSQL). Cada constante se prueba contra una base real.
  *
- * Tablas del resto de la aplicación que se leen (solo lectura): reviews, series_reviews, comments, series_comments. Los nombres salen de
+ * Tablas del resto de la aplicación que se leen (solo lectura): reviews, series_reviews, comments, series_comments, publications, trivia_attempts, trivia_series_attempts, publication_comments, redemptions, users. Los nombres salen de
  * las entidades Review, SeriesReview, Comment y SeriesComment.
  */
 final class HistorialSql {
     private HistorialSql() {}
 
     /**
-     * Votos y comentarios del usuario. Un voto cuenta si tiene tipo de voto (como en vivo: solo los votos nuevos disparan el aviso).
+     * Votos, comentarios, publicaciones aciertos de trivia e intervenciones del usuario (un comentario o respuesta en la publicación de OTRA persona, visible y aprobado; el id es el de la publicación). Cada acierto de trivia vale 5 puntos, así que un intento con N aciertos
+     * suma N (puntos_ganados / 5), todos con la hora de la última respuesta (un intento todavía en curso suma los que lleva). Una publicación cuenta si está aprobada y no oculta (como se ve en la comunidad). Un voto cuenta si tiene tipo de voto (como en vivo: solo los votos nuevos disparan el aviso).
      * Un comentario cuenta si todavía se ve: no eliminado, no rechazado, no ocultado por el usuario ni oculto automáticamente.
      */
     static final String EVENTOS = """
@@ -29,6 +30,32 @@ final class HistorialSql {
             SELECT 'COMENTARIO', 'SERIE', series_id, created_at
               FROM series_comments
              WHERE user_id = ? AND COALESCE(moderation_status, 'APPROVED') NOT IN ('REMOVED', 'REJECTED', 'HIDDEN_BY_USER', 'AUTO_HIDDEN')
+            UNION ALL
+            SELECT 'PUBLICACION', 'PELICULA', id, created_at
+              FROM publications
+             WHERE user_id = ? AND NOT hidden AND moderation_status = 'APPROVED'
+            UNION ALL
+            SELECT 'TRIVIA', 'PELICULA', t.id, t.updated_at
+              FROM trivia_attempts t CROSS JOIN LATERAL generate_series(1, t.puntos_ganados / 5) g
+             WHERE t.user_id = ? AND t.puntos_ganados >= 5
+            UNION ALL
+            SELECT 'TRIVIA', 'SERIE', t.id, t.updated_at
+              FROM trivia_series_attempts t CROSS JOIN LATERAL generate_series(1, t.puntos_ganados / 5) g
+             WHERE t.user_id = ? AND t.puntos_ganados >= 5
+            UNION ALL
+            SELECT 'INTERVENCION', 'PELICULA', c.publication_id, c.created_at
+              FROM publication_comments c JOIN publications p ON p.id = c.publication_id
+             WHERE c.user_id = ? AND p.user_id <> c.user_id AND NOT c.hidden AND c.moderation_status = 'APPROVED'
+            UNION ALL
+            SELECT 'CANJE', 'PELICULA', reward_id, redemption_date
+              FROM redemptions
+             WHERE user_id = ? AND status <> 'CANCELLED'
+            UNION ALL
+            SELECT 'GUSTO', CASE WHEN g.espacio >= 5 THEN 'SERIE' ELSE 'PELICULA' END, g.espacio, TIMESTAMP '2000-01-01 00:00:00'
+              FROM users u
+             CROSS JOIN LATERAL (VALUES (1, u.pelicula_favorita_id), (2, u.ultima_vista_cine_id), (3, u.no_me_canso_de_ver_id), (4, u.no_la_banco_id),
+                                        (5, u.serie_favorita_id), (6, u.ultima_maraton_id), (7, u.no_me_canso_de_ver_serie_id), (8, u.no_la_banco_serie_id)) g(espacio, contenido_id)
+             WHERE u.id = ? AND g.contenido_id IS NOT NULL
             """;
 
     static final String REGISTROS = "SELECT mision_id, estado, base, calculado_at FROM usuario_historial WHERE user_id = ?";
