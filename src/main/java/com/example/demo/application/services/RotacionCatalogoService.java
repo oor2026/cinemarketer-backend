@@ -27,6 +27,7 @@ import java.util.function.Supplier;
  *   · ACTOR/ACTRIZ: de las personas populares que actúan, las que tienen al menos 8 películas estrenadas (para que la meta de 5 sea
  *     alcanzable). Sin personas para adultos. Meta 5.
  *   · DIRECTOR: los que más aparecen entre las películas populares, con al menos 8 películas dirigidas. Meta 5.
+ *   · SERIE: las series más populares de TMDB (hasta 100), de más a menos populares. Meta 3: votarla, comentarla y recomendarla, en cualquier orden.
  *
  * El catálogo SOLO CRECE: no desactiva ni borra nada (eso rompería la misión de quien la tiene en juego). Lo que el admin excluyó
  * o desactivó no se vuelve a tocar. Cada familia se arma por separado: si una falla, las otras igual se completan.
@@ -41,6 +42,7 @@ public class RotacionCatalogoService {
     static final int MAX_ACTORES = 60, MAX_DIRECTORES = 40;
     static final int MIN_SAGA_ESTRENADAS = 2, MIN_PELICULAS_PERSONA = 8;
     static final long ID_GENERO_PELICULA_DE_TV = 10770;
+    static final int PAGINAS_SERIES = 5, MAX_SERIES = 100;       // 5 páginas de 20 = las 100 series más populares
     static final long PAUSA_MS = 80;                 // un respiro entre pedido y pedido a TMDB
 
     /** Lo que pasó en una corrida. porFamilia = qué se creó / actualizó / omitió; errores = lo que no se pudo hacer. */
@@ -91,6 +93,7 @@ public class RotacionCatalogoService {
         familia("SAGA", porFamilia, errores, this::sagas);
         familia("ACTOR", porFamilia, errores, this::actores);
         familia("DIRECTOR", porFamilia, errores, () -> directores(pop));
+        familia("SERIE", porFamilia, errores, this::series);
         completarFotos("ACTOR");
         completarFotos("DIRECTOR");
         return new Resumen(porFamilia, errores);
@@ -104,6 +107,17 @@ public class RotacionCatalogoService {
         Map<String, Resultado> porFamilia = new LinkedHashMap<>();
         List<String> errores = new ArrayList<>();
         familia("SAGA", porFamilia, errores, this::sagas);
+        return new Resumen(porFamilia, errores);
+    }
+
+    /**
+     * Solo las series. Es barato (5 pedidos a TMDB, con caché) y se corre en cada arranque del servidor, así las series nuevas aparecen sin esperar
+     * al día 1 del mes.
+     */
+    public Resumen refrescarSeries() {
+        Map<String, Resultado> porFamilia = new LinkedHashMap<>();
+        List<String> errores = new ArrayList<>();
+        familia("SERIE", porFamilia, errores, this::series);
         return new Resumen(porFamilia, errores);
     }
 
@@ -158,6 +172,19 @@ public class RotacionCatalogoService {
             pausa();
             if (s == null || s.estrenadas() < MIN_SAGA_ESTRENADAS) continue;
             r.add(new Objetivo("SAGA", fija.id(), RotacionTextos.nombre(fija.nombre()), s.estrenadas(), 0, s.posterUrl(), s.fondoUrl()));       // la meta es la cantidad de estrenadas, sin tope
+        }
+        return r;
+    }
+
+    // ------------------------------------------------------------------------------------------------ series
+    /** Las series más populares, tal como las ordena TMDB. La popularidad se guarda: es el orden en que se le ofrecen a cada usuario. */
+    private List<Objetivo> series() {
+        List<Objetivo> r = new ArrayList<>();
+        Set<Long> vistas = new HashSet<>();
+        for (SeriePopular s : tmdb.seriesPopulares(PAGINAS_SERIES)) {
+            if (r.size() >= MAX_SERIES) break;
+            if (vacio(s.nombre()) || !vistas.add(s.id())) continue;
+            r.add(new Objetivo("SERIE", s.id(), RotacionTextos.nombre(s.nombre()), RotacionTextos.META_SERIE, s.popularidad(), s.posterUrl(), s.fondoUrl()));
         }
         return r;
     }

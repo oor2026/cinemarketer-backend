@@ -21,6 +21,9 @@ public interface CatalogoTmdb {
         public Persona(long id, String nombre, double popularidad) { this(id, nombre, popularidad, null); }
     }
 
+    /** Una serie popular: su póster (para el sello) y su imagen de fondo (para el detalle), o null si no tiene. */
+    record SeriePopular(long id, String nombre, double popularidad, String posterUrl, String fondoUrl) {}
+
     /** Los géneros de películas. */
     List<Genero> generos();
 
@@ -47,4 +50,7 @@ public interface CatalogoTmdb {
 
     /** Cuántas películas ya estrenadas dirigió esa persona. */
     int peliculasComoDirector(long personaId);
+
+    /** Las series más populares de TMDB, de las primeras {@code paginas} páginas, de más a menos populares. Sin repetidas. */
+    default List<SeriePopular> seriesPopulares(int paginas) { return List.of(); }
 }

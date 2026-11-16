@@ -32,7 +32,7 @@ public class MisionRepositorio implements MisionDatos {
             rs.getInt("nivel_sello"), rs.getDouble("esfuerzo_por_paso"), largo(rs, "prerrequisito_mision_id"), entero(rs, "sellos_necesarios"),
             rs.getString("visibilidad"), fecha(rs.getTimestamp("desde")), fecha(rs.getTimestamp("hasta")),
             rs.getString("accion_texto"), rs.getString("accion_destino"), rs.getInt("orden"),
-            MisionLogica.parseEscalera(rs.getString("escalera")), entero(rs, "escalera_paso"), rs.getString("escalera_sobre"), rs.getString("familia_rotacion"), rs.getString("audiencia"));
+            MisionLogica.parseEscalera(rs.getString("escalera")), entero(rs, "escalera_paso"), rs.getString("escalera_sobre"), rs.getString("familia_rotacion"), rs.getString("audiencia"), largo(rs, "serie_id"));
 
     private static final RowMapper<Fila> FILA = (rs, n) -> new Fila(rs.getLong("id"), rs.getLong("mision_id"), rs.getString("ciclo"), rs.getInt("progreso"), rs.getString("estado"), rs.getInt("nivel"), rs.getInt("veces"));
 

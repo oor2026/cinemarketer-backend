@@ -45,6 +45,11 @@ public class RotacionCatalogoScheduler {
             log.error("[rotación] no se pudieron revisar las sagas al arrancar: {}", e.getMessage());
         }
         try {
+            log.info("[rotación] series al arrancar: {}", servicio.refrescarSeries().texto());
+        } catch (Exception e) {
+            log.error("[rotación] no se pudieron revisar las series al arrancar: {}", e.getMessage());
+        }
+        try {
             int objetivos = servicio.cantidadObjetivos();
             if (objetivos >= UMBRAL_ARRANQUE) {
                 log.info("[rotación] el catálogo ya tiene {} objetivos: no hace falta completarlo al arrancar", objetivos);

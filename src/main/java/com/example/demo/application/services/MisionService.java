@@ -124,7 +124,10 @@ public class MisionService {
     /** El avance que deja esta actividad en esa fila; -1 si no suma (un título que ya estaba contado). */
     private int siguienteAvance(ActividadEvento e, Mision m, Fila f, Contexto ctx) {
         if ("RACHA_DIAS".equals(m.metrica())) return MisionLogica.racha(ctx.diasActivos(), ctx.hoy());
-        if (m.cuentaDistintos() && (e.targetId() == null || !datos.contarTitulo(f.id(), e.targetId()))) return -1;   // ese título ya estaba contado
+        if (m.cuentaDistintos()) {          // un título (o, en una misión de serie, un paso) que ya estaba contado no suma otra vez
+            Long clave = MisionLogica.claveDistinta(m, e);
+            if (clave == null || !datos.contarTitulo(f.id(), clave)) return -1;
+        }
         return f.progreso() + 1;
     }
 
@@ -247,11 +250,15 @@ public class MisionService {
         return n != null && n >= m.nivelSello() ? siCompleto : null;
     }
 
-    /** Sortea al azar un objetivo que todavía no se le ofreció (sin repetir hasta agotar la lista). false si ya no queda ninguno. */
+    /**
+     * Sortea al azar un objetivo que todavía no se le ofreció (sin repetir hasta agotar la lista). false si ya no queda ninguno.
+     * Las series no se sortean: se ofrecen de la más popular a la menos popular (los candidatos ya vienen en ese orden).
+     */
     private boolean sortear(long userId, String familia, String estado, LocalDateTime ahora) {
         List<Candidato> candidatos = datos.candidatos(userId, familia);
         if (candidatos.isEmpty()) return false;
-        datos.asignar(userId, familia, candidatos.get(azar.nextInt(candidatos.size())).objetivoId(), estado, ahora);
+        int elegido = "SERIE".equals(familia) ? 0 : azar.nextInt(candidatos.size());
+        datos.asignar(userId, familia, candidatos.get(elegido).objetivoId(), estado, ahora);
         return true;
     }
 

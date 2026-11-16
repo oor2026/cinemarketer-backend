@@ -39,6 +39,7 @@ public final class HistorialLogica {
     public static boolean elegible(Mision m) {
         return ("VOTOS".equals(m.metrica()) || "COMENTARIOS".equals(m.metrica()) || "PUBLICACIONES".equals(m.metrica()) || "TRIVIAS".equals(m.metrica()) || "INTERVENCIONES".equals(m.metrica())
                 || "CANJES".equals(m.metrica()) || "GUSTOS".equals(m.metrica()))
+                && !m.esDeSerie()                                  // las misiones de una serie puntual (votar + comentar + recomendar) todavía no miran el historial
                 && "PERMANENTE".equals(m.vigencia())
                 && !m.escaleraSobreVeces()
                 && m.desde() == null && m.hasta() == null;

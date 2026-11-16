@@ -35,6 +35,16 @@ public class TmdbCatalogoRotacion implements CatalogoTmdb {
         return new ArrayList<>(r.values());
     }
 
+    @Override public List<SeriePopular> seriesPopulares(int paginas) {
+        Map<Long, SeriePopular> r = new LinkedHashMap<>();
+        for (int p = 1; p <= paginas; p++) {
+            List<SeriePopular> pagina = parseSeriesPopulares(tmdb.getPopularSeriesRaw(p));
+            if (pagina.isEmpty()) break;
+            pagina.forEach(x -> r.putIfAbsent(x.id(), x));
+        }
+        return new ArrayList<>(r.values());
+    }
+
     @Override public Long sagaDe(long movieId) { return parseSagaDe(tmdb.getMovieRaw(movieId)); }
 
     @Override public Saga saga(long collectionId) { return parseSaga(collectionId, tmdb.getCollection(collectionId), hoy()); }
@@ -76,6 +86,18 @@ public class TmdbCatalogoRotacion implements CatalogoTmdb {
             Long id = largo(m.get("id"));
             if (id == null || Boolean.TRUE.equals(m.get("adult"))) continue;
             r.add(new PeliculaPopular(id, numero(m.get("popularity"))));
+        }
+        return r;
+    }
+
+    /** Las series populares: id, nombre, popularidad y las imágenes (póster para el sello, fondo para el detalle). Sin nombre o sin id, se ignoran. */
+    static List<SeriePopular> parseSeriesPopulares(Object json) {
+        List<SeriePopular> r = new ArrayList<>();
+        for (Map<?, ?> m : lista(json, "results")) {
+            Long id = largo(m.get("id"));
+            if (id == null || Boolean.TRUE.equals(m.get("adult"))) continue;
+            if (m.get("name") instanceof String n && !n.isBlank())
+                r.add(new SeriePopular(id, n, numero(m.get("popularity")), imagen(m.get("poster_path"), "w342"), imagen(m.get("backdrop_path"), "w780")));
         }
         return r;
     }
