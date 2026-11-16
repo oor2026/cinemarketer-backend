@@ -37,6 +37,7 @@ public class MisionService {
     private Random azar = new Random();          // el sorteo de objetivos; las pruebas lo reemplazan por uno fijo
 
     private final PerfilUsuario perfil;
+    private HistorialService historial;          // «Reclamar»: lo que el usuario ya hizo antes de las misiones (null = sin historial; las pruebas viejas no lo usan)
 
     @Autowired
     public MisionService(MisionDatos datos, CatalogoPeliculas catalogo, PerfilUsuario perfil) {
@@ -44,6 +45,9 @@ public class MisionService {
         this.catalogo = catalogo;
         this.perfil = perfil;
     }
+
+    @Autowired(required = false)
+    void usarHistorial(HistorialService historial) { this.historial = historial; }
 
     /** Sin datos del usuario: nadie es Premium. Para las pruebas. */
     public MisionService(MisionDatos datos, CatalogoPeliculas catalogo) { this(datos, catalogo, id -> false); }
@@ -270,11 +274,14 @@ public class MisionService {
 
     Map<String, Object> resumen(long userId, LocalDateTime ahora) {
         Preparado p = preparar(userId, ahora);
-        Contexto ctx = contexto(userId, p, ahora);
-        List<Vista> vistas = MisionLogica.vistas(p.misiones(), ctx);
+        Contexto previo = contexto(userId, p, ahora);
+        HistorialService.Revision rev = revisarHistorial(userId, p, previo, ahora);
+        Contexto ctx = rev.cambio() ? contexto(userId, p, ahora) : previo;          // si el historial sumó avance, se vuelve a leer
+        List<Vista> vistas = sinReclamables(MisionLogica.vistas(p.misiones(), ctx), rev);
         Optional<Vista> destacada = MisionLogica.destacada(vistas);
         Map<String, Object> r = new LinkedHashMap<>();
         destacada.ifPresent(v -> r.put("destacada", MisionLogica.dto(v, ctx, false)));
+        if (!rev.reclamables().isEmpty()) r.put("porReclamar", rev.reclamables().size());
         List<Map<String, Object>> sinVer = new ArrayList<>(), avisos = new ArrayList<>();
         for (Cumplida cu : datos.cumplidasSinVer(userId)) {
             Mision m = ctx.misiones().get(cu.misionId());
@@ -292,9 +299,12 @@ public class MisionService {
 
     Map<String, Object> completo(long userId, LocalDateTime ahora) {
         Preparado p = preparar(userId, ahora);
-        Contexto ctx = contexto(userId, p, ahora);
-        List<Vista> vistas = MisionLogica.vistas(p.misiones(), ctx);
+        Contexto previo = contexto(userId, p, ahora);
+        HistorialService.Revision rev = revisarHistorial(userId, p, previo, ahora);
+        Contexto ctx = rev.cambio() ? contexto(userId, p, ahora) : previo;          // si el historial sumó avance, se vuelve a leer
+        List<Vista> vistas = sinReclamables(MisionLogica.vistas(p.misiones(), ctx), rev);
         Map<String, Object> r = new LinkedHashMap<>();
+        if (!rev.reclamables().isEmpty()) r.put("porReclamar", rev.reclamables().stream().map(rc -> reclamableDto(rc, ctx)).toList());
         MisionLogica.destacada(vistas).ifPresent(v -> r.put("destacada", MisionLogica.dto(v, ctx, false)));
         r.put("enCurso", MisionLogica.enCurso(vistas).stream().map(v -> MisionLogica.dto(v, ctx, false)).toList());
         r.put("proximas", MisionLogica.proximas(vistas).stream().map(v -> MisionLogica.dto(v, ctx, true)).toList());
@@ -361,6 +371,50 @@ public class MisionService {
         datos.cambiarEstadoObjetivo(userId, a.objetivoId(), "ACTUAL", ahora);
         preparar(userId, ahora);
         return true;
+    }
+
+    /**
+     * «Reclamar»: el usuario ya cumplía esa misión antes de que existieran las misiones y los sellos. Pasa lo mismo que si la hubiera cumplido
+     * recién (sello y pantalla de «Misión cumplida»). false si no tenía nada para reclamar ahí o ya lo había reclamado.
+     */
+    @Transactional
+    public boolean reclamar(long userId, long misionId) { return reclamar(userId, misionId, LocalDateTime.now(AR)); }
+
+    boolean reclamar(long userId, long misionId, LocalDateTime ahora) {
+        if (historial == null) return false;
+        preparar(userId, ahora);
+        boolean ok = historial.reclamar(userId, misionId, ahora);
+        if (ok) preparar(userId, ahora);                          // si era la misión actual de una familia, pasa la siguiente
+        return ok;
+    }
+
+    /** Lo que el historial del usuario aporta al abrir sus misiones. Si falla, las misiones funcionan igual, solo que sin «Reclamar». */
+    private HistorialService.Revision revisarHistorial(long userId, Preparado p, Contexto ctx, LocalDateTime ahora) {
+        if (historial == null) return HistorialService.Revision.NADA;
+        try {
+            return historial.alAbrir(userId, p.misiones(), ctx, ahora);
+        } catch (Exception e) {
+            log.warn("[misiones] no se pudo revisar el historial del usuario {}: {}", userId, e.toString());
+            return HistorialService.Revision.NADA;
+        }
+    }
+
+    /** Lo que se puede reclamar se muestra aparte, con su botón: no se repite entre las misiones en curso ni se destaca con el avance en cero. */
+    private static List<Vista> sinReclamables(List<Vista> vistas, HistorialService.Revision rev) {
+        if (rev.reclamables().isEmpty()) return vistas;
+        Set<Long> ids = rev.ids();
+        return vistas.stream().filter(v -> !ids.contains(v.mision().id())).toList();
+    }
+
+    /** Una misión para reclamar, tal como la espera el front: completa (meta cumplida) y marcada como reclamable. */
+    private static Map<String, Object> reclamableDto(HistorialService.Reclamable rc, Contexto ctx) {
+        Mision m = rc.mision();
+        int meta = MisionLogica.metaActual(m, ctx);
+        int nivel = m.esEscalera() ? MisionLogica.nivelLogrado(m, ctx) + 1 : 0;
+        Map<String, Object> d = MisionLogica.dto(new Vista(m, Estado.EN_CURSO, meta, meta, nivel, 0, 0), ctx, false);
+        d.remove("descartable");                                  // no se descarta: se reclama
+        d.put("reclamable", true);
+        return d;
     }
 
     /** Marca la celebración como vista. false si no existe, no es de ese usuario o ya estaba vista. */

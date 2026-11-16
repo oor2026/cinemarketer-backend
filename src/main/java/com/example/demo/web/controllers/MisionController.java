@@ -81,6 +81,14 @@ public class MisionController {
         return misionService.restaurar(u.getId(), id) ? ResponseEntity.noContent().build() : ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
 
+    /** «Reclamar»: el usuario ya cumplía esta misión antes de que existieran los sellos. */
+    @PostMapping("/missions/me/{id}/reclamar")
+    public ResponseEntity<Void> reclamar(@PathVariable Long id, @AuthenticationPrincipal UserDetails ud) {
+        User u = usuario(ud);
+        if (u == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return misionService.reclamar(u.getId(), id) ? ResponseEntity.noContent().build() : ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+
     /** Mi Sala › Mis logros (el perfil de cualquier usuario es visible para un usuario logueado). */
     @GetMapping("/users/{id}/logros")
     public ResponseEntity<Map<String, Object>> logros(@PathVariable Long id, @AuthenticationPrincipal UserDetails ud) {
