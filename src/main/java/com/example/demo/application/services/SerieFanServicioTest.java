@@ -107,7 +107,7 @@ public class SerieFanServicioTest {
         chk(MisionLogica.claveDistinta(alf, ActividadEvento.votoSerie(1, 3000L)) == 1L && MisionLogica.claveDistinta(alf, ActividadEvento.comentarioSerie(1, 3000L)) == 2L
                 && MisionLogica.claveDistinta(alf, ActividadEvento.recomendacionSerie(1, 3000L)) == 3L, "voto = paso 1, comentario = paso 2, recomendación = paso 3");
         chk(MisionLogica.claveDistinta(alf, ActividadEvento.publicacion(1)) == null, "una publicación no es un paso");
-        chk(!HistorialLogica.elegible(alf), "las misiones de serie todavía no miran el historial (no se regala nada con los votos de series en general)");
+        chk(HistorialLogica.elegible(alf) && !alf.necesitaTmdb(), "las misiones de serie miran el historial y no necesitan TMDB");
         Mision comun = new Mision(2, "Votador", "v", "v", "votos", "VOTOS", 5, "votos", "PERMANENTE", null, null, null, null, null, false, new Sello(900, "V", "votos", "v"), 1, 1.0, null, null, "VISIBLE", null, null, null, null, 1);
         chk(!comun.esDeSerie() && MisionLogica.claveDistinta(comun, ActividadEvento.votoPelicula(1, 77L)) == 77L, "una misión común sigue contando por el id de la película");
         chk(MisionLogica.FAMILIAS.contains("SERIE"), "SERIE es una de las familias que rotan");

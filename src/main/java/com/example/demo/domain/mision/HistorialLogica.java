@@ -33,13 +33,12 @@ public final class HistorialLogica {
     public record Conteo(int total, Set<Long> titulos) {}
 
     /**
-     * ¿Esta misión mira el historial? Solo las permanentes de votos, comentarios, publicaciones, trivias, intervenciones, canjes o gustos, sin fechas: las del día, de la semana, de evento y de racha
+     * ¿Esta misión mira el historial? Solo las permanentes de votos, comentarios, publicaciones, trivias, intervenciones, canjes, gustos o series puntuales, sin fechas: las del día, de la semana, de evento y de racha
      * no (una campaña de «votá una película esta semana» no puede regalarse con votos de hace un año), y las demás métricas todavía no.
      */
     public static boolean elegible(Mision m) {
         return ("VOTOS".equals(m.metrica()) || "COMENTARIOS".equals(m.metrica()) || "PUBLICACIONES".equals(m.metrica()) || "TRIVIAS".equals(m.metrica()) || "INTERVENCIONES".equals(m.metrica())
-                || "CANJES".equals(m.metrica()) || "GUSTOS".equals(m.metrica()))
-                && !m.esDeSerie()                                  // las misiones de una serie puntual (votar + comentar + recomendar) todavía no miran el historial
+                || "CANJES".equals(m.metrica()) || "GUSTOS".equals(m.metrica()) || m.esDeSerie())      // la misión de una serie puntual: votar + comentar + recomendar
                 && "PERMANENTE".equals(m.vigencia())
                 && !m.escaleraSobreVeces()
                 && m.desde() == null && m.hasta() == null;
@@ -61,6 +60,7 @@ public final class HistorialLogica {
      * Los filtros de TMDB solo existen para películas: una serie nunca cumple una misión con filtro, igual que en vivo.
      */
     public static Conteo contar(Mision m, List<Evento> eventos, LocalDateTime corte, Function<Long, Atributos> atributos) {
+        if (m.esDeSerie()) return contarSerie(m, eventos, corte);
         String tipo = switch (m.metrica()) { case "VOTOS" -> "VOTO"; case "COMENTARIOS" -> "COMENTARIO"; case "PUBLICACIONES" -> "PUBLICACION"; case "INTERVENCIONES" -> "INTERVENCION"; case "CANJES" -> "CANJE"; case "GUSTOS" -> "GUSTO"; default -> "TRIVIA"; };
         boolean sobreTitulos = "VOTO".equals(tipo) || "COMENTARIO".equals(tipo);       // publicaciones y trivias no son de un título: los filtros de TMDB nunca coinciden (igual que en vivo, donde su targetId es null)
         Set<Long> ids = new LinkedHashSet<>();
@@ -81,5 +81,24 @@ public final class HistorialLogica {
             ids.add(e.targetId());
         }
         return new Conteo(m.cuentaDistintos() ? ids.size() : total, ids);
+    }
+
+    /**
+     * La misión de una serie puntual: cuáles de los 3 pasos (votó, comentó, recomendó) ya dio el usuario sobre ESA serie. Mismo criterio que en vivo
+     * (MisionLogica.coincide): solo cuentan los eventos de esa serie, y cada paso vale una sola vez, sin importar cuántas veces lo hizo.
+     * titulos = los pasos (1, 2 o 3), que son lo que después se anota para no contar dos veces lo que el sistema ya contó en vivo.
+     */
+    private static Conteo contarSerie(Mision m, List<Evento> eventos, LocalDateTime corte) {
+        Set<Long> pasos = new LinkedHashSet<>();
+        for (Evento e : eventos) {
+            if (!"SERIE".equals(e.contenido()) || !m.serieId().equals(e.targetId()) || !e.cuando().isBefore(corte)) continue;
+            switch (e.tipo()) {
+                case "VOTO" -> pasos.add(1L);
+                case "COMENTARIO" -> pasos.add(2L);
+                case "RECOMENDACION" -> pasos.add(3L);
+                default -> { }
+            }
+        }
+        return new Conteo(pasos.size(), pasos);
     }
 }
