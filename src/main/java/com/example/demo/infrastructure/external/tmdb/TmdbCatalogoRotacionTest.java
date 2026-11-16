@@ -71,6 +71,11 @@ public class TmdbCatalogoRotacionTest {
         System.out.println("=== respuestas vacías o basura");
         chk(TmdbCatalogoRotacion.parseGeneros(null).isEmpty() && TmdbCatalogoRotacion.parsePopulares("x").isEmpty() && TmdbCatalogoRotacion.parseActoresPopulares(m("results", "no-es-lista")).isEmpty() && TmdbCatalogoRotacion.parseDirectores(m()).isEmpty(), "ninguna lectura se rompe con null, texto o campos con otra forma: devuelven vacío");
 
+        System.out.println("=== detalle de una serie");
+        SeriePopular sd = TmdbCatalogoRotacion.parseSerie(m("id", 777, "name", "El verano en el que me enamoré", "popularity", 12.5, "poster_path", "/p.jpg", "backdrop_path", "/b.jpg"));
+        chk(sd != null && sd.id() == 777 && sd.nombre().startsWith("El verano") && sd.popularidad() == 12.5 && sd.posterUrl().equals("https://image.tmdb.org/t/p/w342/p.jpg") && sd.fondoUrl().equals("https://image.tmdb.org/t/p/w780/b.jpg"), "se lee id, nombre, popularidad y las dos imágenes");
+        chk(TmdbCatalogoRotacion.parseSerie(null) == null && TmdbCatalogoRotacion.parseSerie(m("id", 1)) == null && TmdbCatalogoRotacion.parseSerie(m("name", "x")) == null && TmdbCatalogoRotacion.parseSerie(m("id", 1, "name", " ")) == null, "sin respuesta, sin nombre o sin id: null (se saltea)");
+
         System.out.println("\n" + ok + " verificaciones correctas, " + fal + " fallas");
         if (fal > 0) System.exit(1);
     }

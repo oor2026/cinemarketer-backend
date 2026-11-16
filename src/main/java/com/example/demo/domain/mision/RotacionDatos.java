@@ -30,4 +30,10 @@ public interface RotacionDatos {
 
     /** Le pone la foto al sello de ese actor/director, solo si todavía no tiene imagen (no pisa la que haya subido el admin). */
     void ponerFoto(String familia, long tmdbId, String url);
+
+    /**
+     * Los ids de TMDB de las series que los usuarios de Cinemarketer votaron, comentaron o recomendaron y que todavía no están en el catálogo
+     * (ni siquiera excluidas por el admin), las más movidas primero. Como mucho {@code max}.
+     */
+    default List<Long> seriesDeLaComunidad(int max) { return List.of(); }
 }

@@ -23,6 +23,8 @@ public class RotacionCatalogoServiceTest {
         int llamadas = 0;
         void ver(String k) { llamadas++; if (falla.contains(k)) throw new RuntimeException("TMDB no responde (" + k + ")"); }
         public List<SeriePopular> seriesPopulares(int p) { ver("series"); return series; }
+        Map<Long, SeriePopular> detalleSeries = new HashMap<>();
+        public SeriePopular serie(long id) { ver("serie:" + id); return detalleSeries.get(id); }
         public List<Genero> generos() { ver("generos"); return generos; }
         public List<PeliculaPopular> peliculasPopulares(int p) { ver("populares"); return populares; }
         public Long sagaDe(long id) { ver("sagaDe:" + id); return sagaDe.get(id); }
@@ -51,6 +53,11 @@ public class RotacionCatalogoServiceTest {
                 else { objs.put(k(x.familia(), x.tmdbId()), new Obj(x.nombre(), x.meta(), x.popularidad(), true, false)); a++; }
             }
             return Optional.of(new Resultado(c, a, s, o));
+        }
+        List<Long> comunidad = new ArrayList<>(); boolean comunidadFalla = false;
+        public List<Long> seriesDeLaComunidad(int max) {
+            if (comunidadFalla) throw new RuntimeException("base caída");
+            List<Long> r = new ArrayList<>(); for (Long id : comunidad) if (!objs.containsKey(k("SERIE", id)) && r.size() < max) r.add(id); return r;
         }
         public int cantidadObjetivos() { return objs.size(); }
         public List<Long> personasSinFoto(String f) { List<Long> r = new ArrayList<>(); objs.forEach((k, v) -> { if (k.startsWith(f + ":") && v.activo() && !v.excluido() && !img.containsKey(k)) r.add(Long.parseLong(k.substring(f.length() + 1))); }); return r; }
@@ -202,6 +209,29 @@ public class RotacionCatalogoServiceTest {
         Falso fy = catalogo(); Mem my = new Mem(); fy.falla.add("series");
         RotacionCatalogoService.Resumen rf = svc(fy, my).refrescar();
         chk(rf.errores().size() == 1 && rf.errores().get(0).startsWith("SERIE") && my.de("SAGA") == 3, "si TMDB no responde las series, falla solo esa familia: las otras se arman igual");
+
+        System.out.println("=== SERIES DE LA COMUNIDAD) Las que votaron, comentaron o recomendaron los usuarios entran aunque no sean populares");
+        Falso fc = catalogo(); Mem mcm = new Mem();
+        fc.series.add(new CatalogoTmdb.SeriePopular(3000, "ALF", 90.5, null, null));
+        fc.detalleSeries.put(777L, new CatalogoTmdb.SeriePopular(777, "El verano en el que mce enamoré", 12.0, "https://img/verano.jpg", "https://img/verano-f.jpg"));
+        fc.detalleSeries.put(3000L, new CatalogoTmdb.SeriePopular(3000, "ALF", 90.5, null, null));
+        mcm.comunidad.addAll(List.of(777L, 3000L, 888L));          // 3000 ya viene del top; 888 TMDB no la conoce
+        RotacionCatalogoService.Resumen rcm = svc(fc, mcm).refrescarSeries();
+        chk(mcm.objs.containsKey("SERIE:777") && mcm.objs.get("SERIE:777").nombre().equals("El verano en el que mce enamoré") && mcm.objs.get("SERIE:777").meta() == 3, "la serie de la comunidad que no está en el top entra al catálogo con meta 3");
+        chk(mcm.img.get("SERIE:777") != null && mcm.img.get("SERIE:777").equals("https://img/verano.jpg"), "con su póster como imagen del sello");
+        chk(mcm.de("SERIE") == 2 && !mcm.objs.containsKey("SERIE:888"), "la que está en el top no se duplica y la que TMDB no conoce se salta sin romper nada");
+        chk(!fc.falla.contains("serie:3000") && rcm.errores().isEmpty(), "la corrida no informa errores");
+        chk(svc(fc, mcm).refrescarSeries().porFamilia().get("SERIE").creados() == 0, "en la corrida siguiente no se duplica nada");
+        Falso fd = catalogo(); Mem mcd = new Mem(); fd.series.add(new CatalogoTmdb.SeriePopular(3000, "ALF", 90.5, null, null)); mcd.comunidad.addAll(List.of(777L, 778L));
+        fd.detalleSeries.put(778L, new CatalogoTmdb.SeriePopular(778, "Otra serie", 5, null, null)); fd.falla.add("serie:777");
+        svc(fd, mcd).refrescarSeries();
+        chk(mcd.objs.containsKey("SERIE:778") && !mcd.objs.containsKey("SERIE:777") && mcd.objs.containsKey("SERIE:3000"), "si TMDB falla con una serie de la comunidad, las otras igual entran (y la fallida se reintenta en la próxima corrida)");
+        Falso fe = catalogo(); Mem mce = new Mem(); fe.falla.add("series"); mce.comunidad.add(777L); fe.detalleSeries.put(777L, new CatalogoTmdb.SeriePopular(777, "Solo comunidad", 1, null, null));
+        svc(fe, mce).refrescarSeries();
+        chk(mce.objs.containsKey("SERIE:777"), "si el top de TMDB no responde, las de la comunidad se arman igual");
+        Falso ff2 = catalogo(); Mem mcg = new Mem(); ff2.series.add(new CatalogoTmdb.SeriePopular(3000, "ALF", 90.5, null, null)); mcg.comunidadFalla = true;
+        svc(ff2, mcg).refrescarSeries();
+        chk(mcg.objs.containsKey("SERIE:3000"), "si la base de la comunidad falla, el top de TMDB igual se arma");
         System.out.println("\n" + ok + " verificaciones correctas, " + fal + " fallas");
         if (fal > 0) System.exit(1);
     }

@@ -53,4 +53,24 @@ final class RotacionSql {
             """;
 
     static final String CONTAR_OBJETIVOS = "SELECT count(*) FROM rotacion_objetivo";
+
+    /**
+     * Series con actividad de los usuarios (votos, comentarios visibles y recomendaciones enviadas) que no están en el catálogo. Mismos criterios que
+     * el conteo de «Reclamar», para que lo que se ofrece sea lo que de verdad se puede cumplir.
+     */
+    static final String SERIES_DE_LA_COMUNIDAD = """
+            SELECT a.series_id, count(*) AS movimientos
+            FROM (
+                SELECT series_id FROM series_reviews WHERE vote_type IS NOT NULL AND COALESCE(active, TRUE)
+                UNION ALL
+                SELECT series_id FROM series_comments WHERE COALESCE(moderation_status, 'APPROVED') NOT IN ('REMOVED', 'REJECTED', 'HIDDEN_BY_USER', 'AUTO_HIDDEN')
+                UNION ALL
+                SELECT series_id FROM series_recommendations
+            ) a
+            WHERE a.series_id IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM rotacion_objetivo o WHERE o.familia = 'SERIE' AND o.tmdb_id = a.series_id)
+            GROUP BY a.series_id
+            ORDER BY movimientos DESC, a.series_id
+            LIMIT ?
+            """;
 }

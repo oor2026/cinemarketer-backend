@@ -404,6 +404,15 @@ public class TmdbService {
         return response.getBody();
     }
 
+    /** Detalle de una serie (nombre, popularidad, póster y fondo) como Map, sin DTO. Lo usa el catálogo de rotación. */
+    @Cacheable(value = "tmdbMovieDetails", key = "'serie-' + #seriesId")
+    public Object getSeriesRaw(Long seriesId) {
+        String url = buildUrl("/tv/" + seriesId);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
     /**
      * Detalle crudo de una película. Trae belongs_to_collection (la saga a la que pertenece), que TmdbMovieDto no incluye.
      */
