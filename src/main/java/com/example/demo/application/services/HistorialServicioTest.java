@@ -28,6 +28,11 @@ public class HistorialServicioTest {
         HMem(Memoria mem) { this.mem = mem; }
         void f() { if (fallar) throw new IllegalStateException("la base se cayó"); }
         void voto(long u, String contenido, long id, LocalDateTime t) { eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento("VOTO", contenido, id, t)); }
+        void publicacion(long u, long id, LocalDateTime t) { eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento("PUBLICACION", "PELICULA", id, t)); }
+        void trivia(long u, String contenido, long intento, int aciertos, LocalDateTime t) { for (int i = 0; i < aciertos; i++) eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento("TRIVIA", contenido, intento, t)); }
+        void intervencion(long u, long publicacion, LocalDateTime t) { eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento("INTERVENCION", "PELICULA", publicacion, t)); }
+        void canje(long u, long premio, LocalDateTime t) { eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento("CANJE", "PELICULA", premio, t)); }
+        void gusto(long u, int espacio) { eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento("GUSTO", espacio >= 5 ? "SERIE" : "PELICULA", espacio, LocalDateTime.of(2000, 1, 1, 0, 0))); }
         void comentario(long u, String contenido, long id, LocalDateTime t) { eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento("COMENTARIO", contenido, id, t)); }
         public List<Evento> eventos(long u) { f(); return eventos.getOrDefault(u, List.of()); }
         public Map<Long, Registro> registros(long u) { f(); Map<Long, Registro> r = new HashMap<>(); for (var e : regs.entrySet()) if (e.getKey().startsWith(u + ":")) r.put(e.getValue().misionId(), e.getValue()); return r; }
@@ -101,7 +106,12 @@ public class HistorialServicioTest {
         chk(!HistorialLogica.elegible(evento), "una misión de evento NO mira el historial (una campaña no se regala con votos viejos)");
         chk(!HistorialLogica.elegible(hoy), "la del día no");
         chk(!HistorialLogica.elegible(racha), "la de racha no");
-        chk(!HistorialLogica.elegible(trivias), "una métrica que todavía no tiene historial (trivias) no");
+        chk(HistorialLogica.elegible(trivias), "una permanente de trivias sí mira el historial");
+        chk(HistorialLogica.elegible(mision(9, "Canjes", "CANJES", 3, null, null, null, null, null, false, null, null)), "los canjes también");
+        chk(HistorialLogica.elegible(mision(10, "Gustos", "GUSTOS", 8, null, null, null, null, null, true, null, null)), "y los gustos");
+        chk(!HistorialLogica.elegible(mision(11, "Sorteos", "SORTEOS", 3, null, null, null, null, null, false, null, null)), "una métrica que todavía no tiene historial (sorteos) no");
+        chk(HistorialLogica.elegible(mision(7, "Publicador", "PUBLICACIONES", 1, null, null, null, null, null, false, null, null)), "una permanente de publicaciones sí mira el historial");
+        chk(HistorialLogica.elegible(mision(8, "Participador", "INTERVENCIONES", 10, null, null, null, null, null, false, null, null)), "las intervenciones en publicaciones también");
         chk(!HistorialLogica.elegible(conFechas), "una permanente con fecha de inicio no");
 
         List<Evento> ev = List.of(new Evento("VOTO", "PELICULA", 1, hace(30)), new Evento("VOTO", "PELICULA", 2, hace(20)), new Evento("VOTO", "SERIE", 9, hace(10)),
@@ -327,6 +337,116 @@ public class HistorialServicioTest {
         chk(!viejo.reclamar(1, 1, AHORA), "y reclamar responde que no hay nada");
     }
 
+    static void publicaciones() {
+        System.out.println("-- publicaciones");
+        Mundo w = new Mundo();
+        Mision pub = w.agregar(mision(1, "Publicador", "PUBLICACIONES", 1, null, null, null, null, null, false, "1,5,10", null));
+        w.hm.publicacion(1, 900, hace(40)); w.hm.publicacion(1, 901, hace(30)); w.hm.voto(1, "PELICULA", 5, hace(20)); w.hm.comentario(1, "PELICULA", 5, hace(19));
+        Map<String, Object> r = w.svc.completo(1, AHORA);
+        chk(contiene(lista(r, "porReclamar"), "Publicador"), "con 2 publicaciones de antes, la escalera de publicaciones se puede reclamar");
+        chk(w.svc.reclamar(1, pub.id(), AHORA), "la reclama");
+        chk(w.mem.nivelesDeSellos(1).get(pub.sello().id()) == 1, "recibe el nivel 1 (2 publicaciones: pasa el escalón de 1, no el de 5)");
+        chk(new FilaM_(w.mem, 1, pub.id()).progreso == 2, "y queda en 2 publicaciones: los votos y comentarios no se mezclan");
+        w.svc.procesar(ActividadEvento.publicacion(1), AHORA.plusMinutes(5));
+        chk(new FilaM_(w.mem, 1, pub.id()).progreso == 3, "una publicación nueva en vivo suma (3)");
+        Mundo v = new Mundo();
+        Mision otra = v.agregar(mision(2, "Publicá 3", "PUBLICACIONES", 3, null, null, null, null, null, false, null, null));
+        v.hm.publicacion(1, 900, hace(10)); v.hm.publicacion(1, 901, hace(9));
+        Map<String, Object> q = v.svc.completo(1, AHORA);
+        chk(lista(q, "porReclamar").isEmpty() && new FilaM_(v.mem, 1, 2).progreso == 2, "con 2 de 3, el avance se suma y no hay Reclamar");
+    }
+
+    static void intervenciones() {
+        System.out.println("-- intervenciones en publicaciones");
+        Mundo w = new Mundo();
+        Mision part = w.agregar(mision(1, "Participador", "INTERVENCIONES", 3, null, null, null, null, null, false, "3,10", null));
+        Mision muchas = w.agregar(mision(2, "En muchas conversaciones", "INTERVENCIONES", 3, null, null, null, null, null, true, null, null));
+        w.hm.intervencion(1, 500, hace(9)); w.hm.intervencion(1, 500, hace(8)); w.hm.intervencion(1, 501, hace(7)); w.hm.intervencion(1, 501, hace(6));
+        w.hm.publicacion(1, 900, hace(5)); w.hm.voto(1, "PELICULA", 1, hace(4));
+        Map<String, Object> r = w.svc.completo(1, AHORA);
+        chk(contiene(lista(r, "porReclamar"), "Participador"), "4 intervenciones: Participador (3) se puede reclamar");
+        chk(!contiene(lista(r, "porReclamar"), "En muchas conversaciones"), "pero en 2 publicaciones distintas no alcanza para «En muchas conversaciones» (3)");
+        chk(new FilaM_(w.mem, 1, 2).progreso == 2, "y suma 2 de 3 publicaciones distintas");
+        chk(w.svc.reclamar(1, part.id(), AHORA) && new FilaM_(w.mem, 1, 1).progreso == 4, "reclama Participador y queda en 4 (las publicaciones y los votos no se mezclan)");
+        w.svc.procesar(ActividadEvento.intervencion(1, 502L), AHORA.plusMinutes(1));
+        chk(w.mem.nivelesDeSellos(1).get(muchas.sello().id()) != null, "una intervención en una tercera publicación distinta la completa en vivo");
+    }
+
+    static void canjes() {
+        System.out.println("-- canjes");
+        Mundo w = new Mundo();
+        Mision cant = w.agregar(mision(1, "Canjeador", "CANJES", 3, null, null, null, null, null, false, null, null));
+        Mision dist = w.agregar(mision(2, "Premios distintos", "CANJES", 3, null, null, null, null, null, true, null, null));
+        Mision serie = w.agregar(mision(3, "Canje de series", "CANJES", 1, "SERIE", null, null, null, null, false, null, null));
+        w.hm.canje(1, 10, hace(9)); w.hm.canje(1, 10, hace(8)); w.hm.canje(1, 11, hace(7)); w.hm.canje(1, 12, hace(6)); w.hm.canje(1, -5, hace(5));
+        w.hm.voto(1, "PELICULA", 1, hace(4));
+        Map<String, Object> r = w.svc.completo(1, AHORA);
+        chk(contiene(lista(r, "porReclamar"), "Canjeador"), "5 canjes: Canjeador (3) se puede reclamar");
+        chk(contiene(lista(r, "porReclamar"), "Premios distintos"), "4 premios distintos (10, 11, 12 y el premium): Premios distintos (3) se puede reclamar");
+        chk(!contiene(lista(r, "porReclamar"), "Canje de series"), "un canje nunca es de series: la misión de series no se reclama (igual que en vivo)");
+        chk(w.svc.reclamar(1, cant.id(), AHORA) && w.mem.nivelesDeSellos(1).get(cant.sello().id()) != null, "reclama Canjeador y recibe el sello");
+        chk(w.hm.regs.get("1:1").estado().equals("RECLAMADO"), "queda marcada como reclamada");
+        chk(!w.svc.reclamar(1, cant.id(), AHORA), "reclamar dos veces no da dos sellos");
+        // un premio que el sistema ya contó en vivo no se cuenta otra vez
+        Mundo v = new Mundo();
+        v.agregar(mision(1, "Premios distintos", "CANJES", 3, null, null, null, null, null, true, null, null));
+        v.hm.canje(2, 10, hace(9)); v.hm.canje(2, 11, hace(8));
+        v.svc.procesar(ActividadEvento.canje(2, 10L), hace(1));        // el sistema ya contó el premio 10 en vivo
+        Map<String, Object> r2 = v.svc.completo(2, AHORA);
+        chk(!contiene(lista(r2, "porReclamar"), "Premios distintos"), "2 premios distintos (uno ya contado en vivo): no alcanza para reclamar");
+        chk(new FilaM_(v.mem, 2, 1).progreso == 2, "el progreso queda en 2, sin contar dos veces el premio 10");
+    }
+
+    static void gustos() {
+        System.out.println("-- gustos");
+        Mundo w = new Mundo();
+        Mision todos = w.agregar(mision(1, "Perfil completo", "GUSTOS", 8, null, null, null, null, null, true, null, null));
+        Mision pelis = w.agregar(mision(2, "Gustos de películas", "GUSTOS", 4, "PELICULA", null, null, null, null, true, null, null));
+        Mision series = w.agregar(mision(3, "Gustos de series", "GUSTOS", 4, "SERIE", null, null, null, null, true, null, null));
+        for (int e = 1; e <= 4; e++) w.hm.gusto(1, e);
+        w.hm.gusto(1, 5); w.hm.gusto(1, 6);
+        Map<String, Object> r = w.svc.completo(1, AHORA);
+        chk(contiene(lista(r, "porReclamar"), "Gustos de películas"), "4 espacios de películas llenos: se puede reclamar");
+        chk(!contiene(lista(r, "porReclamar"), "Perfil completo"), "6 de 8 espacios: Perfil completo todavía no se puede reclamar");
+        chk(!contiene(lista(r, "porReclamar"), "Gustos de series"), "2 de 4 espacios de series: tampoco");
+        chk(new FilaM_(w.mem, 1, 1).progreso == 6, "Perfil completo suma 6 de 8 como avance parcial");
+        chk(new FilaM_(w.mem, 1, 3).progreso == 2, "Gustos de series suma 2 de 4");
+        w.svc.procesar(ActividadEvento.gusto(1, 7, true), AHORA.plusMinutes(1));
+        w.svc.procesar(ActividadEvento.gusto(1, 8, true), AHORA.plusMinutes(2));
+        chk(w.mem.nivelesDeSellos(1).get(todos.sello().id()) != null, "guardar los 2 espacios que faltan completa Perfil completo en vivo");
+        chk(w.mem.nivelesDeSellos(1).get(series.sello().id()) != null, "y también Gustos de series");
+        chk(w.svc.reclamar(1, pelis.id(), AHORA) && w.mem.nivelesDeSellos(1).get(pelis.sello().id()) != null, "reclama Gustos de películas");
+        // un espacio ya contado en vivo no se cuenta otra vez
+        Mundo v = new Mundo();
+        v.agregar(mision(1, "Gustos de películas", "GUSTOS", 4, "PELICULA", null, null, null, null, true, null, null));
+        for (int e = 1; e <= 4; e++) v.hm.gusto(2, e);
+        v.svc.procesar(ActividadEvento.gusto(2, 1, false), hace(1));
+        Map<String, Object> r2 = v.svc.completo(2, AHORA);
+        chk(contiene(lista(r2, "porReclamar"), "Gustos de películas"), "un espacio contado en vivo + los 4 guardados = 4 espacios (no 5): alcanza justo");
+        chk(v.svc.reclamar(2, 1, AHORA) && new FilaM_(v.mem, 2, 1).progreso >= 4, "y reclamar deja exactamente 4");
+    }
+
+    static void trivias() {
+        System.out.println("-- trivias");
+        Mundo w = new Mundo();
+        Mision tp = w.agregar(mision(1, "Adivinador", "TRIVIAS", 5, "PELICULA", null, null, null, null, false, "5,20", null));
+        Mision ts = w.agregar(mision(2, "Serieadivinador", "TRIVIAS", 4, "SERIE", null, null, null, null, false, null, null));
+        w.hm.trivia(1, "PELICULA", 10, 4, hace(9)); w.hm.trivia(1, "PELICULA", 11, 3, hace(8)); w.hm.trivia(1, "SERIE", 20, 2, hace(7));
+        Map<String, Object> r = w.svc.completo(1, AHORA);
+        chk(contiene(lista(r, "porReclamar"), "Adivinador"), "7 aciertos en películas: la escalera de trivias se puede reclamar (el escalón es 5)");
+        chk(!contiene(lista(r, "porReclamar"), "Serieadivinador") && new FilaM_(w.mem, 1, 2).progreso == 2, "2 aciertos de serie: la misión de series suma 2 y no se reclama");
+        chk(w.svc.reclamar(1, tp.id(), AHORA), "la reclama");
+        chk(new FilaM_(w.mem, 1, 1).progreso == 7 && w.mem.nivelesDeSellos(1).get(tp.sello().id()) == 1, "queda en 7 aciertos, nivel 1");
+        w.svc.procesar(ActividadEvento.triviaSerie(1), AHORA.plusMinutes(1)); w.svc.procesar(ActividadEvento.triviaSerie(1), AHORA.plusMinutes(2));
+        chk(w.mem.nivelesDeSellos(1).get(ts.sello().id()) != null, "con 2 aciertos de serie en vivo completa la de series (4)");
+        Mundo v = new Mundo();
+        Mision con = v.agregar(mision(3, "Trivia de terror", "TRIVIAS", 1, null, 27L, null, null, null, false, null, "GENERO"));
+        v.objetivo(con, "GENERO");
+        v.hm.trivia(1, "PELICULA", 10, 9, hace(5));
+        v.svc.completo(1, AHORA);
+        chk(v.hm.regs.get("1:3") == null || !v.hm.regs.get("1:3").estado().equals("PENDIENTE"), "una trivia con filtro de género nunca se cumple por historial (como en vivo)");
+    }
+
     static void sinTmdbSiNoHaceFalta() {
         System.out.println("-- no se consulta a TMDB si ninguna misión lo necesita");
         Mundo w = new Mundo();
@@ -338,7 +458,7 @@ public class HistorialServicioTest {
 
     public static void main(String[] args) {
         logica(); escaleraCompleta(); parcialYNoDoble(); sinDobleConteo(); noMiraLoQueNoDebe(); rotativas(); rotativaAsignadaCompleta();
-        titulosDistintos(); reclamarCasosBorde(); aislamiento(); sinTmdbSiNoHaceFalta();
+        titulosDistintos(); publicaciones(); trivias(); intervenciones(); canjes(); gustos(); reclamarCasosBorde(); aislamiento(); sinTmdbSiNoHaceFalta();
         System.out.println("\nRESULTADO: " + ok + " ok, " + fal + " fallas");
         System.exit(fal == 0 ? 0 : 1);
     }

@@ -23,7 +23,7 @@ public class HistorialRepositorio implements HistorialDatos {
     @Override public List<Evento> eventos(long userId) {
         return jdbc.query(HistorialSql.EVENTOS,
                 (rs, n) -> new Evento(rs.getString("tipo"), rs.getString("contenido"), rs.getLong("id"), fecha(rs.getTimestamp("cuando"))),
-                userId, userId, userId, userId);
+                userId, userId, userId, userId, userId, userId, userId, userId, userId, userId);
     }
 
     @Override public Map<Long, Registro> registros(long userId) {

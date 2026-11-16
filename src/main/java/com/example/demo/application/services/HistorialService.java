@@ -160,7 +160,7 @@ public class HistorialService {
 
         // las películas del usuario, las más recientes primero y hasta el tope
         Map<Long, LocalDateTime> ultima = new HashMap<>();
-        for (Evento e : eventos) if ("PELICULA".equals(e.contenido())) ultima.merge(e.targetId(), e.cuando(), (a, b) -> a.isAfter(b) ? a : b);
+        for (Evento e : eventos) if ("PELICULA".equals(e.contenido()) && ("VOTO".equals(e.tipo()) || "COMENTARIO".equals(e.tipo()))) ultima.merge(e.targetId(), e.cuando(), (a, b) -> a.isAfter(b) ? a : b);
         List<Long> titulos = ultima.entrySet().stream().sorted(Map.Entry.<Long, LocalDateTime>comparingByValue().reversed())
                 .limit(MAX_TITULOS).map(Map.Entry::getKey).toList();
 

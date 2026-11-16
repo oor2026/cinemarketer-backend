@@ -33,11 +33,12 @@ public final class HistorialLogica {
     public record Conteo(int total, Set<Long> titulos) {}
 
     /**
-     * ¿Esta misión mira el historial? Solo las permanentes de votos o comentarios, sin fechas: las del día, de la semana, de evento y de racha
+     * ¿Esta misión mira el historial? Solo las permanentes de votos, comentarios, publicaciones, trivias, intervenciones, canjes o gustos, sin fechas: las del día, de la semana, de evento y de racha
      * no (una campaña de «votá una película esta semana» no puede regalarse con votos de hace un año), y las demás métricas todavía no.
      */
     public static boolean elegible(Mision m) {
-        return ("VOTOS".equals(m.metrica()) || "COMENTARIOS".equals(m.metrica()))
+        return ("VOTOS".equals(m.metrica()) || "COMENTARIOS".equals(m.metrica()) || "PUBLICACIONES".equals(m.metrica()) || "TRIVIAS".equals(m.metrica()) || "INTERVENCIONES".equals(m.metrica())
+                || "CANJES".equals(m.metrica()) || "GUSTOS".equals(m.metrica()))
                 && "PERMANENTE".equals(m.vigencia())
                 && !m.escaleraSobreVeces()
                 && m.desde() == null && m.hasta() == null;
@@ -59,7 +60,8 @@ public final class HistorialLogica {
      * Los filtros de TMDB solo existen para películas: una serie nunca cumple una misión con filtro, igual que en vivo.
      */
     public static Conteo contar(Mision m, List<Evento> eventos, LocalDateTime corte, Function<Long, Atributos> atributos) {
-        String tipo = "VOTOS".equals(m.metrica()) ? "VOTO" : "COMENTARIO";
+        String tipo = switch (m.metrica()) { case "VOTOS" -> "VOTO"; case "COMENTARIOS" -> "COMENTARIO"; case "PUBLICACIONES" -> "PUBLICACION"; case "INTERVENCIONES" -> "INTERVENCION"; case "CANJES" -> "CANJE"; case "GUSTOS" -> "GUSTO"; default -> "TRIVIA"; };
+        boolean sobreTitulos = "VOTO".equals(tipo) || "COMENTARIO".equals(tipo);       // publicaciones y trivias no son de un título: los filtros de TMDB nunca coinciden (igual que en vivo, donde su targetId es null)
         Set<Long> ids = new LinkedHashSet<>();
         int total = 0;
         for (Evento e : eventos) {
@@ -67,6 +69,7 @@ public final class HistorialLogica {
             if (!e.cuando().isBefore(corte)) continue;
             if (m.tipoContenido() != null && !m.tipoContenido().equals(e.contenido())) continue;
             if (m.necesitaTmdb()) {
+                if (!sobreTitulos) continue;
                 Atributos a = "PELICULA".equals(e.contenido()) ? atributos.apply(e.targetId()) : Atributos.VACIO;
                 if (m.generoId() != null && !a.generos().contains(m.generoId())) continue;
                 if (m.directorId() != null && !a.directores().contains(m.directorId())) continue;
