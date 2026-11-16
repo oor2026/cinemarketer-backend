@@ -24,7 +24,7 @@ public class MisionRepositorio implements MisionDatos {
     private static Long largo(ResultSet rs, String col) throws SQLException { long v = rs.getLong(col); return rs.wasNull() ? null : v; }
     private static Integer entero(ResultSet rs, String col) throws SQLException { int v = rs.getInt(col); return rs.wasNull() ? null : v; }
 
-    private static final RowMapper<Mision> MISION = (rs, n) -> new Mision(
+    static final RowMapper<Mision> MISION = (rs, n) -> new Mision(
             rs.getLong("id"), rs.getString("titulo"), rs.getString("descripcion"), rs.getString("descripcion_cumplida"),
             rs.getString("categoria"), rs.getString("metrica"), rs.getInt("meta"), rs.getString("unidad"), rs.getString("vigencia"),
             rs.getString("tipo_contenido"), largo(rs, "genero_id"), largo(rs, "director_id"), largo(rs, "saga_id"), largo(rs, "actor_id"), rs.getBoolean("distintas"),
