@@ -73,8 +73,10 @@ public class RotacionRepositorio implements RotacionDatos {
         }
         Long genero = "GENERO".equals(o.familia()) ? o.tmdbId() : null, saga = "SAGA".equals(o.familia()) ? o.tmdbId() : null;
         Long actor = "ACTOR".equals(o.familia()) ? o.tmdbId() : null, director = "DIRECTOR".equals(o.familia()) ? o.tmdbId() : null;
+        boolean serie = "SERIE".equals(o.familia());
         long misionId = jdbc.queryForObject(RotacionSql.INSERTAR_MISION, Long.class, titulo, descripcion, cumplida, categoria, o.meta(),
-                genero, saga, actor, director, selloId, o.familia());
+                serie ? "pasos" : "votos", serie ? "SERIE" : "PELICULA",
+                genero, saga, actor, director, selloId, o.familia(), serie ? o.tmdbId() : null);
         jdbc.update(RotacionSql.INSERTAR_OBJETIVO, o.familia(), o.tmdbId(), o.nombre(), o.meta(), misionId, o.popularidad());
     }
 

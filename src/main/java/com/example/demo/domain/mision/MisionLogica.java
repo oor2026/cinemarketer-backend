@@ -34,7 +34,18 @@ public final class MisionLogica {
                          int meta, String unidad, String vigencia, String tipoContenido, Long generoId, Long directorId, Long sagaId, Long actorId,
                          boolean distintas, Sello sello, int nivelSello, double esfuerzoPorPaso, Long prerrequisitoId, Integer sellosNecesarios,
                          String visibilidad, LocalDateTime desde, LocalDateTime hasta, String accionTexto, String accionDestino, int orden,
-                         int[] escalera, Integer escaleraPaso, String escaleraSobre, String familia, String audiencia) {
+                         int[] escalera, Integer escaleraPaso, String escaleraSobre, String familia, String audiencia, Long serieId) {
+
+        /** Misión que no es de una serie puntual (así se creaban hasta ahora). */
+        public Mision(long id, String titulo, String descripcion, String descripcionCumplida, String categoria, String metrica,
+                      int meta, String unidad, String vigencia, String tipoContenido, Long generoId, Long directorId, Long sagaId, Long actorId,
+                      boolean distintas, Sello sello, int nivelSello, double esfuerzoPorPaso, Long prerrequisitoId, Integer sellosNecesarios,
+                      String visibilidad, LocalDateTime desde, LocalDateTime hasta, String accionTexto, String accionDestino, int orden,
+                      int[] escalera, Integer escaleraPaso, String escaleraSobre, String familia, String audiencia) {
+            this(id, titulo, descripcion, descripcionCumplida, categoria, metrica, meta, unidad, vigencia, tipoContenido, generoId, directorId, sagaId, actorId,
+                    distintas, sello, nivelSello, esfuerzoPorPaso, prerrequisitoId, sellosNecesarios, visibilidad, desde, hasta, accionTexto, accionDestino, orden,
+                    escalera, escaleraPaso, escaleraSobre, familia, audiencia, null);
+        }
 
         /** Misión para todos los usuarios (así se creaban hasta ahora). */
         public Mision(long id, String titulo, String descripcion, String descripcionCumplida, String categoria, String metrica, int meta, String unidad, String vigencia, String tipoContenido, Long generoId, Long directorId, Long sagaId, Long actorId, boolean distintas, Sello sello, int nivelSello, double esfuerzoPorPaso, Long prerrequisitoId, Integer sellosNecesarios, String visibilidad, LocalDateTime desde, LocalDateTime hasta, String accionTexto, String accionDestino, int orden, int[] escalera, Integer escaleraPaso, String escaleraSobre, String familia) {
@@ -74,7 +85,13 @@ public final class MisionLogica {
         public boolean necesitaTmdb() { return generoId != null || directorId != null || sagaId != null || actorId != null; }
 
         /** Las misiones de gustos siempre cuentan espacios distintos: guardar dos veces el mismo no suma. */
-        public boolean cuentaDistintos() { return distintas || "GUSTOS".equals(metrica); }
+        public boolean cuentaDistintos() { return distintas || "GUSTOS".equals(metrica) || esDeSerie(); }
+
+        /**
+         * Misión de una serie puntual (familia SERIE): pide 3 pasos sobre ESA serie, en cualquier orden: votarla, comentarla y recomendarla.
+         * Cada paso cuenta una sola vez (ver claveDistinta), así que la misión avanza de 0 a 3 pasos distintos.
+         */
+        public boolean esDeSerie() { return serieId != null; }
 
         /** Misión de una familia que rota (saga, actor/actriz, director o género): cada usuario tiene la suya y puede descartarla. */
         public boolean esRotativa() { return familia != null; }
@@ -122,8 +139,8 @@ public final class MisionLogica {
 
     public enum Estado { OCULTA, GANADA, EXPIRADA, EN_CURSO, CUMPLIDA_CICLO, BLOQUEADA, PROGRAMADA, SIGUIENTE, MISTERIOSA }
 
-    /** Las cuatro familias que rotan. */
-    public static final List<String> FAMILIAS = List.of("SAGA", "ACTOR", "DIRECTOR", "GENERO");
+    /** Las cinco familias que rotan. */
+    public static final List<String> FAMILIAS = List.of("SAGA", "ACTOR", "DIRECTOR", "GENERO", "SERIE");
 
     /**
      * El objetivo de un usuario en una familia. estado: ACTUAL (la misión que se muestra) · SIGUIENTE (la que viene, ya sorteada) ·
@@ -136,7 +153,7 @@ public final class MisionLogica {
 
     /** «saga», «actor o actriz»... para los textos. */
     public static String etiquetaFamilia(String familia) {
-        return switch (familia == null ? "" : familia) { case "SAGA" -> "saga"; case "ACTOR" -> "actor o actriz"; case "DIRECTOR" -> "director"; case "GENERO" -> "género"; default -> ""; };
+        return switch (familia == null ? "" : familia) { case "SAGA" -> "saga"; case "ACTOR" -> "actor o actriz"; case "DIRECTOR" -> "director"; case "GENERO" -> "género"; case "SERIE" -> "serie"; default -> ""; };
     }
 
     /**
@@ -331,6 +348,7 @@ public final class MisionLogica {
     }
 
     public static boolean coincide(Mision m, ActividadEvento e, Set<Long> generos, Set<Long> directores, Set<Long> sagas, Set<Long> elenco) {
+        if (m.esDeSerie()) return coincideSerie(m, e);
         switch (m.metrica()) {
             case "VOTOS" -> { if (e.tipo() != ActividadEvento.Tipo.VOTO) return false; }
             case "COMENTARIOS" -> { if (e.tipo() != ActividadEvento.Tipo.COMENTARIO) return false; }
@@ -350,6 +368,24 @@ public final class MisionLogica {
         if (m.sagaId() != null && !sagas.contains(m.sagaId())) return false;
         if (m.actorId() != null && !elenco.contains(m.actorId())) return false;
         return true;
+    }
+
+    /** Los tres pasos de una misión de serie, y el número con que se cuenta cada uno (siempre 1, 2 o 3: son los «títulos distintos» de la misión). */
+    public static Long pasoDeSerie(ActividadEvento.Tipo tipo) {
+        return switch (tipo) { case VOTO -> 1L; case COMENTARIO -> 2L; case RECOMENDACION -> 3L; default -> null; };
+    }
+
+    /** Votar, comentar o recomendar ESA serie. Las películas y las demás series no cuentan. */
+    private static boolean coincideSerie(Mision m, ActividadEvento e) {
+        return pasoDeSerie(e.tipo()) != null && e.contenido() == ActividadEvento.Contenido.SERIE && m.serieId().equals(e.targetId());
+    }
+
+    /**
+     * Lo que se anota para no contar dos veces lo mismo en una misión de «distintos»: normalmente el id de la película o serie; en una misión de
+     * serie, el paso (votó, comentó, recomendó). null si el evento no tiene con qué contarse.
+     */
+    public static Long claveDistinta(Mision m, ActividadEvento e) {
+        return m.esDeSerie() ? pasoDeSerie(e.tipo()) : e.targetId();
     }
 
     // ------------------------------------------------------------------------------------------------ JSON (mapas, para no depender de la versión de Jackson)

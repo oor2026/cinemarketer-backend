@@ -392,6 +392,19 @@ public class TmdbService {
     }
 
     /**
+     * Series populares, crudo (TMDB no filtra /tv/popular por región).
+     */
+    @Cacheable(value = "tmdbListadosMovies", key = "'popular-tv-raw-' + #page")
+    public Object getPopularSeriesRaw(Integer page) {
+        String path = "/tv/popular";
+        String url = buildUrl(path, "page", page != null ? page.toString() : "1");
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    /**
      * Detalle crudo de una película. Trae belongs_to_collection (la saga a la que pertenece), que TmdbMovieDto no incluye.
      */
     @Cacheable(value = "tmdbMovieDetails", key = "'raw-' + #movieId")
@@ -464,6 +477,8 @@ public class TmdbService {
                 url, HttpMethod.GET, entity, Object.class);
         return response.getBody();
     }
+
+
 
     /** Una persona puntual, cruda (nombre, foto y área). */
     @Cacheable(value = "tmdbPersonas", key = "'raw-' + #personId")

@@ -8,7 +8,7 @@ final class MisionSql {
             SELECT m.id, m.titulo, m.descripcion, m.descripcion_cumplida, m.categoria, m.metrica, m.meta, m.unidad, m.vigencia,
                    m.tipo_contenido, m.genero_id, m.director_id, m.saga_id, m.actor_id, m.distintas, m.sello_id, m.nivel_sello, m.esfuerzo_por_paso,
                    m.prerrequisito_mision_id, m.sellos_necesarios, m.visibilidad, m.desde, m.hasta, m.accion_texto, m.accion_destino,
-                   m.orden, m.escalera, m.escalera_paso, m.escalera_sobre, m.familia_rotacion, m.audiencia,
+                   m.orden, m.escalera, m.escalera_paso, m.escalera_sobre, m.familia_rotacion, m.audiencia, m.serie_id,
                    s.nombre AS sello_nombre, s.categoria AS sello_categoria, s.descripcion AS sello_descripcion, s.imagen_url AS sello_imagen, s.imagen_fondo_url AS sello_fondo
             FROM mision m JOIN sello s ON s.id = m.sello_id
             WHERE m.activa AND s.activo
@@ -110,6 +110,7 @@ final class MisionSql {
             WHERE o.familia = ? AND o.activo AND NOT o.excluido AND m.activa AND s.activo
               AND NOT EXISTS (SELECT 1 FROM usuario_objetivo uo WHERE uo.user_id = ? AND uo.objetivo_id = o.id)
               AND NOT EXISTS (SELECT 1 FROM usuario_sello us WHERE us.user_id = ? AND us.sello_id = m.sello_id)
+            ORDER BY o.popularidad DESC NULLS LAST, o.id
             """;
 
     static final String ASIGNAR = """

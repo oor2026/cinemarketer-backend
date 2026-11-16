@@ -26,8 +26,8 @@ final class RotacionSql {
 
     static final String INSERTAR_MISION = """
             INSERT INTO mision (titulo, descripcion, descripcion_cumplida, categoria, metrica, meta, unidad, vigencia, tipo_contenido,
-                                genero_id, saga_id, actor_id, director_id, sello_id, esfuerzo_por_paso, orden, activa, familia_rotacion, publicada_at)
-            VALUES (?, ?, ?, ?, 'VOTOS', ?, 'votos', 'PERMANENTE', 'PELICULA', ?, ?, ?, ?, ?, 1.0, 500, TRUE, ?, NOW())
+                                genero_id, saga_id, actor_id, director_id, sello_id, esfuerzo_por_paso, orden, activa, familia_rotacion, publicada_at, serie_id)
+            VALUES (?, ?, ?, ?, 'VOTOS', ?, ?, 'PERMANENTE', ?, ?, ?, ?, ?, ?, 1.0, 500, TRUE, ?, NOW(), ?)
             RETURNING id
             """;
 

@@ -11,6 +11,8 @@ public final class RotacionTextos {
     public static final int META_ACTOR = 5;
     public static final int META_DIRECTOR = 5;
     public static final int META_GENERO = 10;
+    /** Una serie pide 3 pasos sobre ella, en cualquier orden: votarla, comentarla y recomendarla. */
+    public static final int META_SERIE = 3;
 
     /** Largos que admite la base: nombre del objetivo 120, título de la misión 100 y nombre del sello 80 (se deja de margen). */
     public static final int MAX_NOMBRE = 100, MAX_TITULO = 80;
@@ -41,6 +43,7 @@ public final class RotacionTextos {
             case "SAGA" -> "Saga " + nombre;
             case "ACTOR" -> "Fan de " + nombre;
             case "DIRECTOR" -> "Cine de " + nombre;
+            case "SERIE" -> "Fan de " + nombre;
             default -> "Maratón de " + nombre.toLowerCase();
         };
     }
@@ -50,6 +53,7 @@ public final class RotacionTextos {
             case "SAGA" -> "Votá las " + meta + " películas de la saga " + nombre + ".";
             case "ACTOR" -> "Votá " + meta + " películas con " + nombre + ".";
             case "DIRECTOR" -> "Votá " + meta + " películas de " + nombre + ".";
+            case "SERIE" -> "Votá, comentá y recomendá " + nombre + ": son 3 pasos, en el orden que quieras.";
             default -> "Votá " + meta + " películas de " + nombre.toLowerCase() + ".";
         };
     }
@@ -59,12 +63,13 @@ public final class RotacionTextos {
             case "SAGA" -> "Votaste las " + meta + " películas de la saga " + nombre + ".";
             case "ACTOR" -> "Votaste " + meta + " películas con " + nombre + ".";
             case "DIRECTOR" -> "Votaste " + meta + " películas de " + nombre + ".";
+            case "SERIE" -> "Votaste, comentaste y recomendaste " + nombre + ".";
             default -> "Votaste " + meta + " películas de " + nombre.toLowerCase() + ".";
         };
     }
 
-    /** La categoría del sello (y de la misión), que define su color y su ícono. */
+    /** La categoría del sello (y de la misión), que define su color y su ícono. Las series usan la de las sagas (el ícono de capas). */
     public static String categoria(String familia) {
-        return switch (familia) { case "SAGA" -> "saga"; case "ACTOR" -> "elenco"; case "DIRECTOR" -> "autor"; default -> "genero"; };
+        return switch (familia) { case "SAGA", "SERIE" -> "saga"; case "ACTOR" -> "elenco"; case "DIRECTOR" -> "autor"; default -> "genero"; };
     }
 }
