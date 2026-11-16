@@ -3,7 +3,7 @@ package com.example.demo.domain.mision;
 /**
  * Todo el SQL de «Reclamar» (PostgreSQL). Cada constante se prueba contra una base real.
  *
- * Tablas del resto de la aplicación que se leen (solo lectura): reviews, series_reviews, comments, series_comments, publications, trivia_attempts, trivia_series_attempts, publication_comments, redemptions, users. Los nombres salen de
+ * Tablas del resto de la aplicación que se leen (solo lectura): reviews, series_reviews, comments, series_comments, publications, trivia_attempts, trivia_series_attempts, publication_comments, redemptions, users, series_recommendations. Los nombres salen de
  * las entidades Review, SeriesReview, Comment y SeriesComment.
  */
 final class HistorialSql {
@@ -50,6 +50,10 @@ final class HistorialSql {
             SELECT 'CANJE', 'PELICULA', reward_id, redemption_date
               FROM redemptions
              WHERE user_id = ? AND status <> 'CANCELLED'
+            UNION ALL
+            SELECT 'RECOMENDACION', 'SERIE', series_id, created_at
+              FROM series_recommendations
+             WHERE sender_id = ?
             UNION ALL
             SELECT 'GUSTO', CASE WHEN g.espacio >= 5 THEN 'SERIE' ELSE 'PELICULA' END, g.espacio, TIMESTAMP '2000-01-01 00:00:00'
               FROM users u

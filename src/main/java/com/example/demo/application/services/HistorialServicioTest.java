@@ -33,6 +33,7 @@ public class HistorialServicioTest {
         void intervencion(long u, long publicacion, LocalDateTime t) { eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento("INTERVENCION", "PELICULA", publicacion, t)); }
         void canje(long u, long premio, LocalDateTime t) { eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento("CANJE", "PELICULA", premio, t)); }
         void gusto(long u, int espacio) { eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento("GUSTO", espacio >= 5 ? "SERIE" : "PELICULA", espacio, LocalDateTime.of(2000, 1, 1, 0, 0))); }
+        void serie(long u, String tipo, long serieId, LocalDateTime t) { eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento(tipo, "SERIE", serieId, t)); }
         void comentario(long u, String contenido, long id, LocalDateTime t) { eventos.computeIfAbsent(u, k -> new ArrayList<>()).add(new Evento("COMENTARIO", contenido, id, t)); }
         public List<Evento> eventos(long u) { f(); return eventos.getOrDefault(u, List.of()); }
         public Map<Long, Registro> registros(long u) { f(); Map<Long, Registro> r = new HashMap<>(); for (var e : regs.entrySet()) if (e.getKey().startsWith(u + ":")) r.put(e.getValue().misionId(), e.getValue()); return r; }
@@ -447,6 +448,48 @@ public class HistorialServicioTest {
         chk(v.hm.regs.get("1:3") == null || !v.hm.regs.get("1:3").estado().equals("PENDIENTE"), "una trivia con filtro de género nunca se cumple por historial (como en vivo)");
     }
 
+    static void series() {
+        System.out.println("-- series: votar + comentar + recomendar");
+        Mundo w = new Mundo();
+        Mision alf = w.agregar(SerieFanServicioTest.fan(1, "ALF", 3000)); w.objetivo(alf, "SERIE");
+        Mision simpson = w.agregar(SerieFanServicioTest.fan(2, "Los Simpson", 3001)); w.objetivo(simpson, "SERIE");
+        Mision friends = w.agregar(SerieFanServicioTest.fan(3, "Friends", 3002)); w.objetivo(friends, "SERIE");
+        // usuario 1: lo hizo todo con ALF (la actual) antes del sistema
+        w.hm.serie(1, "VOTO", 3000, hace(9)); w.hm.serie(1, "COMENTARIO", 3000, hace(8)); w.hm.serie(1, "RECOMENDACION", 3000, hace(7));
+        w.hm.serie(1, "VOTO", 3000, hace(6));                                          // votar de nuevo no suma otro paso
+        w.hm.voto(1, "PELICULA", 3001, hace(5)); w.hm.serie(1, "VOTO", 3001, hace(5)); // los Simpson: solo 1 de 3
+        Map<String, Object> r = w.svc.completo(1, AHORA);
+        chk(contiene(lista(r, "porReclamar"), "Fan de ALF"), "los 3 pasos dados antes con ALF (la actual): se puede reclamar");
+        chk(!contiene(lista(r, "porReclamar"), "Fan de Los Simpson"), "Los Simpson, con 1 solo paso, no");
+        chk(w.svc.reclamar(1, alf.id(), AHORA) && w.mem.nivelesDeSellos(1).get(alf.sello().id()) != null, "reclama «Fan de ALF» y recibe el sello");
+        chk(!w.svc.reclamar(1, alf.id(), AHORA), "reclamar dos veces no da dos sellos");
+        // usuario 2: 2 de 3 con ALF: avance parcial, sin botón; el paso que falta lo completa en vivo
+        w.hm.serie(2, "VOTO", 3000, hace(9)); w.hm.serie(2, "COMENTARIO", 3000, hace(8));
+        w.hm.serie(2, "VOTO", 3002, hace(7)); w.hm.voto(2, "PELICULA", 3000, hace(7)); w.hm.comentario(2, "PELICULA", 3000, hace(7));    // otra serie y una película con el mismo número: no cuentan en ALF
+        Map<String, Object> r2 = w.svc.completo(2, AHORA);
+        chk(!contiene(lista(r2, "porReclamar"), "Fan de ALF") && new FilaM_(w.mem, 2, 1).progreso == 2, "2 de 3 pasos: queda como avance parcial (2), sin botón");
+        w.svc.procesar(ActividadEvento.recomendacionSerie(2, 3000L), AHORA.plusMinutes(1));
+        chk(w.mem.nivelesDeSellos(2).get(alf.sello().id()) != null, "recomendarla en vivo completa la misión");
+        // usuario 3: un paso ya contado en vivo y los tres en el historial: no se cuenta dos veces
+        w.svc.procesar(ActividadEvento.votoSerie(3, 3000L), hace(1));            // el primer contacto del usuario con las misiones es este voto en vivo
+        w.hm.serie(3, "VOTO", 3000, hace(9)); w.hm.serie(3, "COMENTARIO", 3000, hace(8)); w.hm.serie(3, "RECOMENDACION", 3000, hace(7));
+        Map<String, Object> r3 = w.svc.completo(3, AHORA);
+        chk(contiene(lista(r3, "porReclamar"), "Fan de ALF"), "un voto contado en vivo + los 3 pasos del historial = 3 pasos: se puede reclamar");
+        chk(w.svc.reclamar(3, alf.id(), AHORA) && new FilaM_(w.mem, 3, 1).progreso == 3, "y al reclamar queda en 3 (el voto no se cuenta dos veces)");
+        // usuario 4: Friends no le tocó pero ya hizo los 3 pasos; Los Simpson 2 de 3
+        w.hm.serie(4, "VOTO", 3002, hace(9)); w.hm.serie(4, "COMENTARIO", 3002, hace(8)); w.hm.serie(4, "RECOMENDACION", 3002, hace(7));
+        w.hm.serie(4, "VOTO", 3001, hace(9)); w.hm.serie(4, "COMENTARIO", 3001, hace(8));
+        Map<String, Object> r4 = w.svc.completo(4, AHORA);
+        chk(contiene(lista(r4, "porReclamar"), "Fan de Friends") && !contiene(lista(r4, "porReclamar"), "Fan de Los Simpson"), "una serie que no le tocó pero ya completó se ofrece; la de 2 de 3 no");
+        chk(w.svc.reclamar(4, friends.id(), AHORA) && w.mem.nivelesDeSellos(4).get(friends.sello().id()) != null, "la reclama y recibe su sello");
+        // lo posterior al sistema no es historial
+        Mundo v = new Mundo();
+        Mision alf2 = v.agregar(SerieFanServicioTest.fan(1, "ALF", 3000)); v.objetivo(alf2, "SERIE");
+        v.hm.serie(5, "VOTO", 3000, AHORA.plusDays(1)); v.hm.serie(5, "COMENTARIO", 3000, AHORA.plusDays(1)); v.hm.serie(5, "RECOMENDACION", 3000, AHORA.plusDays(1));
+        chk(!contiene(lista(v.svc.completo(5, AHORA), "porReclamar"), "Fan de ALF"), "lo que es posterior al momento de evaluar no cuenta como historial");
+        chk(HistorialLogica.elegible(alf), "una misión de serie puntual sí mira el historial");
+    }
+
     static void sinTmdbSiNoHaceFalta() {
         System.out.println("-- no se consulta a TMDB si ninguna misión lo necesita");
         Mundo w = new Mundo();
@@ -458,7 +501,7 @@ public class HistorialServicioTest {
 
     public static void main(String[] args) {
         logica(); escaleraCompleta(); parcialYNoDoble(); sinDobleConteo(); noMiraLoQueNoDebe(); rotativas(); rotativaAsignadaCompleta();
-        titulosDistintos(); publicaciones(); trivias(); intervenciones(); canjes(); gustos(); reclamarCasosBorde(); aislamiento(); sinTmdbSiNoHaceFalta();
+        titulosDistintos(); publicaciones(); trivias(); intervenciones(); canjes(); gustos(); series(); reclamarCasosBorde(); aislamiento(); sinTmdbSiNoHaceFalta();
         System.out.println("\nRESULTADO: " + ok + " ok, " + fal + " fallas");
         System.exit(fal == 0 ? 0 : 1);
     }
