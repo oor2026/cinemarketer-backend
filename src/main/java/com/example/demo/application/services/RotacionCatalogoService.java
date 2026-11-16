@@ -43,6 +43,7 @@ public class RotacionCatalogoService {
     static final int MIN_SAGA_ESTRENADAS = 2, MIN_PELICULAS_PERSONA = 8;
     static final long ID_GENERO_PELICULA_DE_TV = 10770;
     static final int PAGINAS_SERIES = 5, MAX_SERIES = 100;       // 5 páginas de 20 = las 100 series más populares
+    static final int MAX_SERIES_COMUNIDAD = 150;                  // series de la comunidad que se suman por corrida (las demás entran en la siguiente)
     static final long PAUSA_MS = 80;                 // un respiro entre pedido y pedido a TMDB
 
     /** Lo que pasó en una corrida. porFamilia = qué se creó / actualizó / omitió; errores = lo que no se pudo hacer. */
@@ -177,16 +178,42 @@ public class RotacionCatalogoService {
     }
 
     // ------------------------------------------------------------------------------------------------ series
-    /** Las series más populares, tal como las ordena TMDB. La popularidad se guarda: es el orden en que se le ofrecen a cada usuario. */
+    /**
+     * Las series más populares de TMDB (tal como las ordena TMDB) y, además, TODAS las que los usuarios de Cinemarketer votaron, comentaron o recomendaron
+     * (así cada uno tiene el sello de las series que de verdad ve, aunque no sean populares en el mundo). La popularidad se guarda: es el orden en que se le
+     * ofrecen a cada usuario. Si falla una de las dos fuentes, la otra igual se arma.
+     */
     private List<Objetivo> series() {
         List<Objetivo> r = new ArrayList<>();
         Set<Long> vistas = new HashSet<>();
-        for (SeriePopular s : tmdb.seriesPopulares(PAGINAS_SERIES)) {
-            if (r.size() >= MAX_SERIES) break;
-            if (vacio(s.nombre()) || !vistas.add(s.id())) continue;
-            r.add(new Objetivo("SERIE", s.id(), RotacionTextos.nombre(s.nombre()), RotacionTextos.META_SERIE, s.popularidad(), s.posterUrl(), s.fondoUrl()));
-        }
+        String error = null;
+        try {
+            for (SeriePopular s : tmdb.seriesPopulares(PAGINAS_SERIES)) {
+                if (r.size() >= MAX_SERIES) break;
+                if (vacio(s.nombre()) || !vistas.add(s.id())) continue;
+                r.add(objetivoDeSerie(s));
+            }
+        } catch (Exception e) { error = "series populares: " + e.getMessage(); log.warn("[rotación] no se pudieron obtener las series populares: {}", e.getMessage()); }
+
+        int comunidad = 0;
+        try {
+            for (Long id : datos.seriesDeLaComunidad(MAX_SERIES_COMUNIDAD)) {
+                if (id == null || vistas.contains(id)) continue;
+                SeriePopular s;
+                try { s = tmdb.serie(id); } catch (Exception e) { log.warn("[rotación] no se pudo obtener la serie {}: {}", id, e.getMessage()); continue; }
+                pausa();
+                if (s == null || vacio(s.nombre()) || !vistas.add(s.id())) continue;
+                r.add(objetivoDeSerie(s));
+                comunidad++;
+            }
+        } catch (Exception e) { log.warn("[rotación] no se pudieron sumar las series de la comunidad: {}", e.getMessage()); if (error == null) error = "series de la comunidad: " + e.getMessage(); }
+        if (r.isEmpty() && error != null) throw new IllegalStateException(error);          // si no se pudo armar nada, que figure como problema de la corrida
+        if (comunidad > 0) log.info("[rotación] series de la comunidad sumadas: {}", comunidad);
         return r;
+    }
+
+    private static Objetivo objetivoDeSerie(SeriePopular s) {
+        return new Objetivo("SERIE", s.id(), RotacionTextos.nombre(s.nombre()), RotacionTextos.META_SERIE, s.popularidad(), s.posterUrl(), s.fondoUrl());
     }
 
     // ------------------------------------------------------------------------------------------------ actores y actrices

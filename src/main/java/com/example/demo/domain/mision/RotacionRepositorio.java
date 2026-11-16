@@ -97,6 +97,9 @@ public class RotacionRepositorio implements RotacionDatos {
     public void ponerFoto(String familia, long tmdbId, String url) { jdbc.update(RotacionSql.PONER_FOTO, url, familia, tmdbId); }
 
     @Override
+    public List<Long> seriesDeLaComunidad(int max) { return jdbc.query(RotacionSql.SERIES_DE_LA_COMUNIDAD, (rs, n) -> rs.getLong(1), max); }
+
+    @Override
     public int cantidadObjetivos() {
         Integer n = jdbc.queryForObject(RotacionSql.CONTAR_OBJETIVOS, Integer.class);
         return n == null ? 0 : n;

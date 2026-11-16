@@ -45,6 +45,8 @@ public class TmdbCatalogoRotacion implements CatalogoTmdb {
         return new ArrayList<>(r.values());
     }
 
+    @Override public SeriePopular serie(long id) { return parseSerie(tmdb.getSeriesRaw(id)); }
+
     @Override public Long sagaDe(long movieId) { return parseSagaDe(tmdb.getMovieRaw(movieId)); }
 
     @Override public Saga saga(long collectionId) { return parseSaga(collectionId, tmdb.getCollection(collectionId), hoy()); }
@@ -100,6 +102,14 @@ public class TmdbCatalogoRotacion implements CatalogoTmdb {
                 r.add(new SeriePopular(id, n, numero(m.get("popularity")), imagen(m.get("poster_path"), "w342"), imagen(m.get("backdrop_path"), "w780")));
         }
         return r;
+    }
+
+    /** El detalle de una serie (id, nombre, popularidad, imágenes). null si falta el id o el nombre. */
+    static SeriePopular parseSerie(Object json) {
+        if (!(json instanceof Map<?, ?> m)) return null;
+        Long id = largo(m.get("id"));
+        if (id == null || !(m.get("name") instanceof String n) || n.isBlank()) return null;
+        return new SeriePopular(id, n, numero(m.get("popularity")), imagen(m.get("poster_path"), "w342"), imagen(m.get("backdrop_path"), "w780"));
     }
 
     /** La saga a la que pertenece una película: viene en belongs_to_collection (null si no es de ninguna). */

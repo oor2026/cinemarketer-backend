@@ -53,4 +53,7 @@ public interface CatalogoTmdb {
 
     /** Las series más populares de TMDB, de las primeras {@code paginas} páginas, de más a menos populares. Sin repetidas. */
     default List<SeriePopular> seriesPopulares(int paginas) { return List.of(); }
+
+    /** Una serie puntual por su id de TMDB (nombre, popularidad e imágenes). null si no existe o no se pudo obtener. */
+    default SeriePopular serie(long id) { return null; }
 }
