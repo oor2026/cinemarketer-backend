@@ -102,6 +102,9 @@ public class Publication {
     @Column(name = "hidden_at")
     private LocalDateTime hiddenAt;
 
+    @Column(name = "hidden_by", length = 10)
+    private String hiddenBy; // "AUTHOR" = la ocultó el propio autor; null = moderación/admin
+
     @Column(name = "points_awarded")
     private int pointsAwarded = 0;
 

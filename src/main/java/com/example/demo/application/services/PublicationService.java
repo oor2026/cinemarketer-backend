@@ -51,6 +51,10 @@ public class PublicationService {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
+    // Panel de seguimiento: registra intentos bloqueados por el filtro de palabras (transacción propia).
+    @Autowired
+    private PublicationTrackingService trackingService;
+
     public PublicationService(
             PublicationRepository publicationRepository,
             PublicationReactionRepository reactionRepository,
@@ -160,6 +164,7 @@ public class PublicationService {
         }
         for (String hashtag : hashtagsNormalizados) {
             if (bannedWordService.analizar(hashtag) == BannedWordService.MatchResult.BLOCK) {
+                trackingService.registrarBloqueo(user.getId(), "CREAR", "HASHTAGS");
                 throw new IllegalArgumentException("Los hashtags contienen palabras no permitidas por nuestras Normas de Convivencia.");
             }
         }
@@ -174,10 +179,12 @@ public class PublicationService {
 
         // Validar palabras prohibidas (título y contenido)
         if (bannedWordService.analizar(req.getTitle()) == BannedWordService.MatchResult.BLOCK) {
+            trackingService.registrarBloqueo(user.getId(), "CREAR", "TITULO");
             throw new IllegalArgumentException("El título contiene palabras no permitidas.");
         }
         BannedWordService.MatchResult moderacion = bannedWordService.analizar(req.getContent());
         if (moderacion == BannedWordService.MatchResult.BLOCK) {
+            trackingService.registrarBloqueo(user.getId(), "CREAR", "CONTENIDO");
             throw new IllegalArgumentException("El contenido contiene palabras no permitidas.");
         }
 
@@ -311,6 +318,7 @@ public class PublicationService {
             for (var o : req.getTriviaOpciones()) {
                 if (o.getTexto() == null || o.getTexto().isBlank()) continue;
                 if (bannedWordService.shouldReject(o.getTexto()) || bannedWordService.shouldPendingReview(o.getTexto())) {
+                    trackingService.registrarBloqueo(user.getId(), "CREAR", "TRIVIA");
                     throw new IllegalArgumentException("Una de las opciones de la trivia viola nuestras Normas de Convivencia.");
                 }
             }
@@ -599,10 +607,12 @@ public class PublicationService {
             throw new IllegalStateException("No podés editar una publicación oculta.");
         }
         if (bannedWordService.analizar(newContent) == BannedWordService.MatchResult.BLOCK) {
+            trackingService.registrarBloqueo(user.getId(), "EDITAR", "CONTENIDO");
             throw new IllegalArgumentException("El contenido contiene palabras no permitidas.");
         }
         if (title != null && !title.trim().isEmpty()) {
             if (bannedWordService.analizar(title) == BannedWordService.MatchResult.BLOCK) {
+                trackingService.registrarBloqueo(user.getId(), "EDITAR", "TITULO");
                 throw new IllegalArgumentException("El título contiene palabras no permitidas.");
             }
             pub.setTitle(title.trim());
@@ -715,6 +725,10 @@ public class PublicationService {
         hashtagService.decrementar(pub.getHashtags());
         pub.setHidden(true);
         pub.setHiddenAt(java.time.LocalDateTime.now());
+        // Distingue "la ocultó el autor" de "la ocultó moderación" para el Panel de seguimiento.
+        if (pub.getUser().getId().equals(user.getId())) {
+            pub.setHiddenBy("AUTHOR");
+        }
         publicationRepository.save(pub);
     }
 
@@ -1086,6 +1100,7 @@ public class PublicationService {
         Publication pub = getById(pubId);
         pub.setHidden(false);
         pub.setHiddenAt(null);
+        pub.setHiddenBy(null);
         pub.setAdminReviewed(true);
         pub.setModerationStatus(PublicationModerationStatus.APPROVED);
         publicationRepository.save(pub);
