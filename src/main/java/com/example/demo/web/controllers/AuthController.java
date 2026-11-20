@@ -43,6 +43,9 @@ public class AuthController {
     private final TokenBlacklistService tokenBlacklistService;
     private final SubscriptionService subscriptionService;
     private final com.example.demo.application.services.NombreReservadoService nombreReservadoService;
+    // Panel de seguimiento: atribución de registros que llegan desde un link compartido.
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.example.demo.application.services.GrowthTrackingService growthTrackingService;
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
@@ -74,7 +77,9 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request,
-                                      BindingResult bindingResult) {
+                                      BindingResult bindingResult,
+                                      @RequestParam(required = false) String refPub,
+                                      @RequestParam(required = false) String refKey) {
 
         // ==============================================
         // 1. MANEJAR ERRORES DE VALIDACIÓN
@@ -146,6 +151,10 @@ public class AuthController {
 
         // 5. Guardar en base de datos
         userRepository.save(user);
+
+        // Panel de seguimiento: si llegó desde un link compartido, se atribuye el registro.
+        // Nunca lanza excepciones: el alta de la cuenta no puede fallar por esto.
+        growthTrackingService.registrarRegistro(user.getId(), refPub, refKey);
 
         // 6. Enviar email de verificación
         try {

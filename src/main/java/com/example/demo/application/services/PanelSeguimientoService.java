@@ -115,7 +115,23 @@ public class PanelSeguimientoService {
                   AND s.created_at >= :desde AND s.created_at < :hasta) AS "compartidos",
               (SELECT COUNT(*) FROM user_follows f
                 WHERE f.following_id = :uid AND f.status = 'ACCEPTED'
-                  AND f.created_at >= :desde AND f.created_at < :hasta) AS "seguidoresNuevos"
+                  AND f.created_at >= :desde AND f.created_at < :hasta) AS "seguidoresNuevos",
+              (SELECT COUNT(*) FROM profile_views pv
+                WHERE pv.profile_user_id = :uid AND pv.viewer_id <> :uid
+                  AND pv.view_day BETWEEN :desdeDia AND :hastaDia) AS "visitasPerfil",
+              (SELECT COUNT(DISTINCT pv.viewer_id) FROM profile_views pv
+                WHERE pv.profile_user_id = :uid AND pv.viewer_id <> :uid
+                  AND pv.view_day BETWEEN :desdeDia AND :hastaDia) AS "visitantesPerfil",
+              (SELECT COUNT(*) FROM publication_share_visits sv JOIN publications p ON p.id = sv.publication_id
+                WHERE p.user_id = :uid AND %1$s
+                  AND sv.visit_day BETWEEN :desdeDia AND :hastaDia) AS "visitasLink",
+              (SELECT COUNT(*) FROM publication_share_signups ss JOIN publications p ON p.id = ss.publication_id
+                WHERE p.user_id = :uid AND %1$s
+                  AND ss.created_at >= :desde AND ss.created_at < :hasta) AS "registros",
+              (SELECT COUNT(*) FROM publication_share_signups ss JOIN publications p ON p.id = ss.publication_id
+                JOIN users u ON u.id = ss.new_user_id
+                WHERE p.user_id = :uid AND %1$s AND u.email_verified = true
+                  AND ss.created_at >= :desde AND ss.created_at < :hasta) AS "registrosVerificados"
             """.formatted(ACTIVA);
 
     private Map<String, Object> metricas(Long userId, Rango r) {
@@ -139,11 +155,19 @@ public class PanelSeguimientoService {
                 "SELECT CAST(CAST(MIN(created_at) + (CAST(:shift AS integer) * INTERVAL '1 second') AS date) AS text) FROM publication_views",
                 new MapSqlParameterSource("shift", actual.shiftSegundos()), String.class);
 
+        // Primer día (hora argentina) con visitas al perfil o visitas por link registradas (v1.5). Null si todavía no hay ninguna.
+        String medicionNuevaDesde = jdbc.queryForObject(
+                "SELECT CAST(CAST(MIN(t) + (CAST(:shift AS integer) * INTERVAL '1 second') AS date) AS text) FROM ("
+                        + "SELECT MIN(created_at) AS t FROM profile_views "
+                        + "UNION ALL SELECT MIN(created_at) FROM publication_share_visits) x",
+                new MapSqlParameterSource("shift", actual.shiftSegundos()), String.class);
+
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("dias", dias);
         out.put("desde", actual.desdeDia().toString());
         out.put("hasta", actual.hastaDia().toString());
         out.put("medicionDesde", medicionDesde);
+        out.put("medicionNuevaDesde", medicionNuevaDesde);
         out.put("actual", metricas(userId, actual));
         out.put("anterior", metricas(userId, anterior));
         out.put("seguidoresTotal", seguidoresTotal);
