@@ -150,7 +150,7 @@ public class AuthController {
         user.setActive(true);
 
         // 5. Guardar en base de datos
-        userRepository.save(user);
+        userRepository.save(user); 
 
         // Panel de seguimiento: si llegó desde un link compartido, se atribuye el registro.
         // Nunca lanza excepciones: el alta de la cuenta no puede fallar por esto.
