@@ -95,7 +95,13 @@ public class EmailService {
     }
 
     public void sendVerificationEmail(String to, String token) {
-        String verificationUrl = baseUrl + "/api/auth/verify?token=" + token;
+        sendVerificationEmail(to, token, null);
+    }
+
+    // volver: página a la que vuelve después de verificar e ingresar (ya validada por quien llama).
+    public void sendVerificationEmail(String to, String token, String volver) {
+        String verificationUrl = baseUrl + "/api/auth/verify?token=" + token
+                + (volver == null ? "" : "&volver=" + java.net.URLEncoder.encode(volver, java.nio.charset.StandardCharsets.UTF_8));
         String body = "<p>Hola,</p>" +
                 "<p>Gracias por registrarte en <strong>Cinemarketer</strong>. Por favor verificá tu cuenta haciendo clic en el siguiente botón:</p>" +
                 btn(verificationUrl, "Verificar mi cuenta") +

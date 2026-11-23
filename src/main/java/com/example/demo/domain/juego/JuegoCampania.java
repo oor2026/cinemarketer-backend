@@ -91,6 +91,10 @@ public class JuegoCampania {
     @Column(name = "fondo_lateral_url", length = 500)
     private String fondoLateralUrl;
 
+    // Solo para campañas archivadas: si está en true, la landing ya no muestra nada.
+    @Column(name = "landing_oculta", nullable = false)
+    private Boolean landingOculta = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -150,6 +154,8 @@ public class JuegoCampania {
     public void setBannerMobileUrl(String bannerMobileUrl) { this.bannerMobileUrl = bannerMobileUrl; }
     public String getFondoLateralUrl() { return fondoLateralUrl; }
     public void setFondoLateralUrl(String fondoLateralUrl) { this.fondoLateralUrl = fondoLateralUrl; }
+    public Boolean getLandingOculta() { return landingOculta; }
+    public void setLandingOculta(Boolean landingOculta) { this.landingOculta = landingOculta; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

@@ -259,6 +259,17 @@ public class JuegoAdminService {
         return campaniaRepository.save(c);
     }
 
+    // Una campaña archivada puede dejar de verse en público ("Parece que la campaña ya finalizó").
+    @Transactional
+    public JuegoCampania ocultarLanding(Long id, boolean oculta) {
+        JuegoCampania c = buscar(id);
+        if (!JuegoCampania.ARCHIVADA.equals(c.getEstado())) {
+            throw conflicto("Solo se puede ocultar la landing de una campaña archivada");
+        }
+        c.setLandingOculta(oculta);
+        return campaniaRepository.save(c);
+    }
+
     // Antes de generar desde TMDb: que la campaña exista y su banco se pueda tocar.
     @Transactional
     public void buscarParaGenerar(Long id) {

@@ -79,7 +79,8 @@ public class AuthController {
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request,
                                       BindingResult bindingResult,
                                       @RequestParam(required = false) String refPub,
-                                      @RequestParam(required = false) String refKey) {
+                                      @RequestParam(required = false) String refKey,
+                                      @RequestParam(required = false) String volver) {
 
         // ==============================================
         // 1. MANEJAR ERRORES DE VALIDACIÓN
@@ -158,7 +159,9 @@ public class AuthController {
 
         // 6. Enviar email de verificación
         try {
-            emailService.sendVerificationEmail(user.getEmail(), verificationToken);
+            // Si se registró desde una página (por ejemplo, una actividad), el link
+            // de verificación la lleva: así vuelve ahí aunque lo abra en otro navegador.
+            emailService.sendVerificationEmail(user.getEmail(), verificationToken, volverSeguro(volver));
         } catch (Exception e) {
 
             System.err.println("ERROR ENVIANDO MAIL: " + e.getMessage());
@@ -329,7 +332,8 @@ public class AuthController {
     }
 
     @GetMapping("/verify")
-    public ResponseEntity<String> verifyEmail(@RequestParam String token) {
+    public ResponseEntity<String> verifyEmail(@RequestParam String token,
+                                              @RequestParam(required = false) String volver) {
 
         // Buscar usuario por token
         User user = userRepository.findByVerificationToken(token)
@@ -353,7 +357,13 @@ public class AuthController {
         userRepository.save(user);
 
         // Redirigir al frontend (login)
+        // El destino va después del "#": el servidor del front redirige login.html → login
+        // y en ese salto borra lo que va después del "?", pero el "#" se conserva.
         String redirectUrl = frontendUrl + "/login.html?verified=true";
+        String destino = volverSeguro(volver);
+        if (destino != null) {
+            redirectUrl += "#volver=" + java.net.URLEncoder.encode(destino, java.nio.charset.StandardCharsets.UTF_8);
+        }
         return ResponseEntity
                 .status(HttpStatus.FOUND)
                 .header("Location", redirectUrl)
@@ -492,6 +502,15 @@ public class AuthController {
         userRepository.save(user);
 
         return ResponseEntity.ok(Map.of("message", "Contraseña restablecida correctamente."));
+    }
+
+    // Solo direcciones internas del sitio ("/actividad?c=feria"), nunca otro dominio.
+    static String volverSeguro(String volver) {
+        if (volver == null) return null;
+        String v = volver.trim();
+        if (v.length() > 300 || !v.matches("/(?![/\\\\])[A-Za-z0-9/._~?=&%@-]*")) return null;
+        if (v.matches("(?i)/(login|register)(\\.html)?([?#].*)?")) return null;
+        return v;
     }
 
     // Helper: obtener IP real del cliente (considera proxies)
