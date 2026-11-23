@@ -124,6 +124,47 @@ public class TmdbService {
     }
 
     /**
+     * Plataforma de juegos — buscador del admin. ruta = movie, tv, collection o person.
+     * Devuelve la respuesta de TMDb como Map ({ results: [...] }). Sin caché: es
+     * una búsqueda que cambia con cada letra.
+     */
+    public Object buscarParaJuegos(String ruta, String query) {
+        String path = "/search/" + ruta;
+        String url = buildUrl(path, "query", query, "include_adult", "false", "page", "1");
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    /**
+     * Plataforma de juegos — ficha de una serie como Map (nombre, estreno,
+     * temporadas, creadores, póster).
+     */
+    @Cacheable(value = "tmdbMovieDetails", key = "'tv-' + #seriesId")
+    public Object getSerieParaJuegos(Long seriesId) {
+        String path = "/tv/" + seriesId;
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    /**
+     * Plataforma de juegos — reparto de toda la serie (todas las temporadas), como Map.
+     */
+    @Cacheable(value = "tmdbCreditsMovies", key = "'tv-aggregate-' + #seriesId")
+    public Object getSerieRepartoParaJuegos(Long seriesId) {
+        String path = "/tv/" + seriesId + "/aggregate_credits";
+        String url = buildUrl(path);
+        HttpEntity<String> entity = new HttpEntity<>(createHeaders());
+        ResponseEntity<Object> response = restTemplate.exchange(
+                url, HttpMethod.GET, entity, Object.class);
+        return response.getBody();
+    }
+
+    /**
      * Buscar películas por título (SOLO búsqueda por texto)
      * Usa el endpoint /search/movie
      */
