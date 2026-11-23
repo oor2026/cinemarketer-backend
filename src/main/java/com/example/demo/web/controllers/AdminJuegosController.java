@@ -114,6 +114,13 @@ public class AdminJuegosController {
         return ResponseEntity.ok(service.archivar(id));
     }
 
+    public record LandingOcultaRequest(Boolean oculta) {}
+
+    @PutMapping("/campanias/{id}/landing-oculta")
+    public ResponseEntity<?> ocultarLanding(@PathVariable Long id, @RequestBody LandingOcultaRequest req) {
+        return ResponseEntity.ok(service.ocultarLanding(id, req != null && Boolean.TRUE.equals(req.oculta())));
+    }
+
     // ---------- Banco de preguntas ----------
 
     @GetMapping("/campanias/{id}/preguntas")

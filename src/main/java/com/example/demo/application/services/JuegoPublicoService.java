@@ -352,6 +352,9 @@ public class JuegoPublicoService {
         JuegoCampania c = campaniaRepository.findBySlug(slug == null ? "" : slug.trim().toLowerCase())
                 .filter(x -> !JuegoCampania.BORRADOR.equals(x.getEstado()))
                 .orElseThrow(() -> new JuegoException(404, "No encontramos esta actividad"));
+        if (JuegoCampania.ARCHIVADA.equals(c.getEstado()) && Boolean.TRUE.equals(c.getLandingOculta())) {
+            throw new JuegoException(410, "Parece que la campaña ya finalizó");
+        }
         adminService.sincronizarEstado(c);
         return c;
     }
