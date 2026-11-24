@@ -25,6 +25,13 @@ public class AdminJuegosImagenesController {
         this.service = service;
     }
 
+    // Va antes que "/{tipo}": Spring prioriza la ruta literal "pregunta".
+    @PostMapping("/pregunta")
+    public ResponseEntity<?> subirParaPregunta(@PathVariable Long id,
+                                               @RequestParam("image") MultipartFile archivo) {
+        return ResponseEntity.ok(Map.of("url", service.subirParaPregunta(id, archivo)));
+    }
+
     @PostMapping("/{tipo}")
     public ResponseEntity<?> subir(@PathVariable Long id, @PathVariable String tipo,
                                    @RequestParam("image") MultipartFile archivo) {

@@ -43,10 +43,7 @@ public class JuegoImagenService {
     public JuegoCampania subir(Long campaniaId, String tipo, MultipartFile archivo) {
         JuegoCampania c = campaniaEditable(campaniaId);
         validarTipo(tipo);
-        if (archivo == null || archivo.isEmpty()) throw new JuegoException(400, "No llegó ninguna imagen");
-        if (archivo.getSize() > MAX_BYTES) throw new JuegoException(400, "La imagen pesa más de 5 MB");
-        String formato = archivo.getContentType() == null ? "" : archivo.getContentType().toLowerCase();
-        if (!FORMATOS.contains(formato)) throw new JuegoException(400, "La imagen tiene que ser JPG, PNG o WEBP");
+        validarArchivo(archivo);
 
         String url;
         try {
@@ -59,6 +56,20 @@ public class JuegoImagenService {
         campaniaRepository.save(c);
         borrarDeCloudinary(anterior);
         return c;
+    }
+
+    /**
+     * Imagen de una pregunta: solo la sube y devuelve la URL. La pregunta la
+     * guarda en imagenUrl cuando el admin aprieta "Guardar" en el modal.
+     */
+    public String subirParaPregunta(Long campaniaId, MultipartFile archivo) {
+        campaniaEditable(campaniaId);
+        validarArchivo(archivo);
+        try {
+            return cloudinaryService.uploadImage(archivo, CARPETA + "/preguntas");
+        } catch (Exception e) {
+            throw new JuegoException(502, "No se pudo subir la imagen. Probá de nuevo.");
+        }
     }
 
     @Transactional
@@ -76,6 +87,13 @@ public class JuegoImagenService {
         JuegoCampania c = adminService.buscar(id);
         if (JuegoCampania.ARCHIVADA.equals(c.getEstado())) throw new JuegoException(409, "La campaña está archivada");
         return c;
+    }
+
+    private static void validarArchivo(MultipartFile archivo) {
+        if (archivo == null || archivo.isEmpty()) throw new JuegoException(400, "No llegó ninguna imagen");
+        if (archivo.getSize() > MAX_BYTES) throw new JuegoException(400, "La imagen pesa más de 5 MB");
+        String formato = archivo.getContentType() == null ? "" : archivo.getContentType().toLowerCase();
+        if (!FORMATOS.contains(formato)) throw new JuegoException(400, "La imagen tiene que ser JPG, PNG o WEBP");
     }
 
     private static void validarTipo(String tipo) {
