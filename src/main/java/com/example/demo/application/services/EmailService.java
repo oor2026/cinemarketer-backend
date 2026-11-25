@@ -303,4 +303,75 @@ public class EmailService {
                 "<p style='font-size:13px;color:#888888;'>Si el usuario no confirma en 7 días, deberás activar la suscripción manualmente.</p>";
         sendHtml("info@cinemarketer.com.ar", "⚠️ Cinemarketer Admin - Pago sin usuario asociado", body);
     }
+
+    // ---------------------------------------------------------------------------------------------
+    // Juegos (trivias con premio): aviso al ganador, confirmación del reclamo y alerta al admin.
+    // ---------------------------------------------------------------------------------------------
+
+    @Value("${app.juegos.mail-admin:info@cinemarketer.com.ar}")
+    private String mailAdminJuegos;
+
+    private String saludo(String userName) {
+        return (userName == null || userName.isBlank()) ? "<p>Hola,</p>" : "<p>Hola <strong>" + esc(userName) + "</strong>,</p>";
+    }
+
+    private String cajaPremio(String premio) {
+        if (premio == null || premio.isBlank()) return "";
+        return "<div style='background-color:#fff5f5;border-left:4px solid #e23232;padding:14px 18px;margin:20px 0;border-radius:4px;'>" +
+                "<p style='margin:0 0 4px;font-size:13px;color:#888888;'>Premio</p>" +
+                "<p style='margin:0;font-size:16px;font-weight:bold;color:#222222;'>" + esc(premio) + "</p>" +
+                "</div>";
+    }
+
+    /** Al ganador (o al suplente que hereda el premio): tiene que entrar a la actividad y reclamarlo. */
+    public void sendJuegoPremioGanadoEmail(String to, String userName, String campania, String premio,
+                                           boolean esSuplente, String reclamarHasta, String slug) {
+        String url = frontendUrl + "/actividad?c=" + java.net.URLEncoder.encode(slug == null ? "" : slug, java.nio.charset.StandardCharsets.UTF_8);
+        String nombre = esc(campania);
+        String intro = esSuplente
+                ? "<p>Estabas en la lista de suplentes de <strong>" + nombre + "</strong> y el premio pasó a vos.</p>"
+                : "<p>Ganaste el premio de <strong>" + nombre + "</strong>. ¡Felicitaciones!</p>";
+        String plazo = reclamarHasta == null
+                ? "<p>Para recibirlo, entrá a la actividad con tu cuenta y tocá <strong>Reclamar premio</strong>.</p>"
+                : "<p>Para recibirlo, entrá a la actividad con tu cuenta y tocá <strong>Reclamar premio</strong> antes del <strong>" + esc(reclamarHasta) + "</strong>.</p>";
+        String body = saludo(userName) +
+                "<p style='font-size:18px;font-weight:bold;color:#e23232;'>" + (esSuplente ? "¡El premio ahora es tuyo!" : "¡Ganaste!") + "</p>" +
+                intro +
+                cajaPremio(premio) +
+                plazo +
+                btn(url, "Reclamar mi premio") +
+                "<p style='font-size:13px;color:#888888;'>Si no lo reclamás dentro del plazo, el premio pasa al siguiente suplente, según las bases y condiciones de la actividad.</p>";
+        sendHtml(to, "Cinemarketer - " + (esSuplente ? "¡El premio ahora es tuyo!" : "¡Ganaste la trivia!"), body);
+    }
+
+    /** Al ganador, cuando toca "Reclamar premio": le confirmamos y le contamos cómo sigue. */
+    public void sendJuegoPremioReclamadoEmail(String to, String userName, String campania, String premio) {
+        String body = saludo(userName) +
+                "<p style='font-size:18px;font-weight:bold;color:#e23232;'>¡Recibimos tu reclamo!</p>" +
+                "<p>Ya registramos que reclamaste tu premio de <strong>" + esc(campania) + "</strong>.</p>" +
+                cajaPremio(premio) +
+                "<p>En los próximos días te vamos a escribir a este mail para coordinar la entrega. " +
+                "Para confirmar que sos vos, te vamos a pedir los datos de tu cuenta (nombre y DNI).</p>" +
+                "<p style='font-size:13px;color:#888888;'>¿Tenés alguna consulta? Escribinos a " +
+                "<a href='mailto:info@cinemarketer.com.ar' style='color:#e23232;'>info@cinemarketer.com.ar</a></p>";
+        sendHtml(to, "Cinemarketer - Recibimos el reclamo de tu premio", body);
+    }
+
+    /** Al admin: alguien reclamó un premio y hay que coordinar la entrega. */
+    public void sendAdminJuegoReclamoAlert(String campania, String premio, String rol, Integer puesto,
+                                           String userName, String userEmail, String dni, String telefono) {
+        String fila = "<p style='margin:0 0 8px;'><strong>%s:</strong> %s</p>";
+        String body = "<p>Hola,</p>" +
+                "<p>Un participante reclamó su premio en <strong>" + esc(campania) + "</strong>. Hay que contactarlo para coordinar la entrega.</p>" +
+                "<div style='background-color:#fff8e1;border-left:4px solid #f59e0b;padding:14px 18px;margin:20px 0;border-radius:4px;'>" +
+                String.format(fila, "Premio", esc(premio == null ? "-" : premio)) +
+                String.format(fila, "Puesto", (puesto == null ? "-" : puesto + "°") + ("SUPLENTE".equals(rol) ? " (suplente)" : "")) +
+                String.format(fila, "Nombre", esc(userName == null ? "-" : userName)) +
+                String.format(fila, "Email", esc(userEmail == null ? "-" : userEmail)) +
+                String.format(fila, "DNI", esc(dni == null || dni.isBlank() ? "-" : dni)) +
+                "<p style='margin:0;'><strong>Teléfono:</strong> " + esc(telefono == null || telefono.isBlank() ? "-" : telefono) + "</p>" +
+                "</div>" +
+                "<p>Cuando lo entregues, marcalo como <strong>Entregado</strong> en Admin → Plataforma de juegos → Ranking y ganadores.</p>";
+        sendHtml(mailAdminJuegos, "🏆 Cinemarketer Admin - Premio reclamado en " + (campania == null ? "una trivia" : campania), body);
+    }
 }
