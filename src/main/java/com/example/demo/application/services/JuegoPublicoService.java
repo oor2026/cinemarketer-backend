@@ -45,6 +45,7 @@ public class JuegoPublicoService {
     private final JuegoRespuestaRepository respuestaRepository;
     private final JuegoGanadorRepository ganadorRepository;
     private final JuegoDescalificacionRepository descalificacionRepository;
+    private final JuegoAvisosService avisos;
 
     public JuegoPublicoService(JuegoAdminService adminService,
                                JuegoRankingService rankingService,
@@ -53,7 +54,7 @@ public class JuegoPublicoService {
                                JuegoIntentoRepository intentoRepository,
                                JuegoRespuestaRepository respuestaRepository,
                                JuegoGanadorRepository ganadorRepository,
-                               JuegoDescalificacionRepository descalificacionRepository) {
+                               JuegoDescalificacionRepository descalificacionRepository, JuegoAvisosService avisos) {
         this.adminService = adminService;
         this.rankingService = rankingService;
         this.campaniaRepository = campaniaRepository;
@@ -62,6 +63,7 @@ public class JuegoPublicoService {
         this.respuestaRepository = respuestaRepository;
         this.ganadorRepository = ganadorRepository;
         this.descalificacionRepository = descalificacionRepository;
+        this.avisos = avisos;
     }
 
     // ===================================================================
@@ -340,6 +342,7 @@ public class JuegoPublicoService {
         }
         g.setEstado(JuegoGanador.RECLAMADO);
         ganadorRepository.save(g);
+        avisos.premioReclamado(c, usuario, g);
         return new MiPremio(g.getRol(), g.getEstado(), g.getReclamarHasta(), false);
     }
 
