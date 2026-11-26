@@ -64,6 +64,20 @@ public class TmdbCatalogo implements CatalogoPeliculas {
         return r;
     }
 
+    /** Las películas de una saga (la lista de la colección de TMDB, con caché). */
+    @Override public Set<Long> peliculasDeSaga(long sagaId) {
+        Set<Long> r = new HashSet<>();
+        try {
+            Object c = tmdbService.getCollection(sagaId);
+            if (c instanceof Map<?, ?> m && m.get("parts") instanceof Iterable<?> partes) {
+                for (Object p : partes) {
+                    if (p instanceof Map<?, ?> pelicula && pelicula.get("id") instanceof Number id) r.add(id.longValue());
+                }
+            }
+        } catch (Exception e) { log.warn("[misiones] no se pudieron obtener las películas de la saga {}: {}", sagaId, e.getMessage()); }
+        return r;
+    }
+
     @Override public Set<Long> elenco(long movieId) {
         Set<Long> r = new HashSet<>();
         try {

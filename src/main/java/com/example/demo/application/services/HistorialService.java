@@ -164,12 +164,19 @@ public class HistorialService {
         List<Long> titulos = ultima.entrySet().stream().sorted(Map.Entry.<Long, LocalDateTime>comparingByValue().reversed())
                 .limit(MAX_TITULOS).map(Map.Entry::getKey).toList();
 
+        // Las películas de una saga se miran SIEMPRE, aunque el usuario las haya votado hace mucho y queden fuera de las más recientes:
+        // son pocas (la lista de la colección, que viene en caché) y así una saga no depende de cuántas películas votó en total.
+        Set<Long> deSagas = new HashSet<>();
+        for (Long s : sagas) deSagas.addAll(catalogo.peliculasDeSaga(s));
+        List<Long> extras = ultima.keySet().stream().filter(deSagas::contains).filter(id -> !titulos.contains(id)).toList();
+
         Map<Long, Atributos> atributos = new HashMap<>();
         for (Long id : titulos) {
             Set<Long> g = generos ? catalogo.generos(id) : Set.of(), d = directores ? catalogo.directores(id) : Set.of(),
                     el = elenco ? catalogo.elenco(id) : Set.of(), sg = sagas.isEmpty() ? Set.of() : catalogo.sagas(id, sagas);
             atributos.put(id, new Atributos(g, d, el, sg));
         }
+        for (Long id : extras) atributos.put(id, new Atributos(Set.of(), Set.of(), Set.of(), catalogo.sagas(id, sagas)));
         evaluar(userId, comunes, sinAsignar, eventos, id -> atributos.getOrDefault(id, Atributos.VACIO), ahora);
     }
 
