@@ -31,8 +31,8 @@ public class JuegoGanador {
     @Column(name = "campania_id", nullable = false)
     private Long campaniaId;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @Column(name = "participante_id", nullable = false)
+    private Long participanteId;
 
     @Column(nullable = false)
     private Integer puesto;
@@ -73,8 +73,8 @@ public class JuegoGanador {
     public void setId(Long id) { this.id = id; }
     public Long getCampaniaId() { return campaniaId; }
     public void setCampaniaId(Long campaniaId) { this.campaniaId = campaniaId; }
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
+    public Long getParticipanteId() { return participanteId; }
+    public void setParticipanteId(Long participanteId) { this.participanteId = participanteId; }
     public Integer getPuesto() { return puesto; }
     public void setPuesto(Integer puesto) { this.puesto = puesto; }
     public String getRol() { return rol; }

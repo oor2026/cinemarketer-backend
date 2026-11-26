@@ -18,8 +18,8 @@ public class JuegoDescalificacion {
     @Column(name = "campania_id", nullable = false)
     private Long campaniaId;
 
-    @Column(name = "user_id", nullable = false)
-    private Long userId;
+    @Column(name = "participante_id", nullable = false)
+    private Long participanteId;
 
     @Column(nullable = false, length = 300)
     private String motivo;
@@ -39,8 +39,8 @@ public class JuegoDescalificacion {
     public void setId(Long id) { this.id = id; }
     public Long getCampaniaId() { return campaniaId; }
     public void setCampaniaId(Long campaniaId) { this.campaniaId = campaniaId; }
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
+    public Long getParticipanteId() { return participanteId; }
+    public void setParticipanteId(Long participanteId) { this.participanteId = participanteId; }
     public String getMotivo() { return motivo; }
     public void setMotivo(String motivo) { this.motivo = motivo; }
     public Long getAdminId() { return adminId; }

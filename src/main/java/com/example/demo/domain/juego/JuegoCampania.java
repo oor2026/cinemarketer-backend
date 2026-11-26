@@ -16,6 +16,9 @@ public class JuegoCampania {
 
     public static final String TIPO_TRIVIA = "TRIVIA";
 
+    public static final String MODO_CINEMARKETER = "CINEMARKETER";
+    public static final String MODO_SIN_REGISTRO = "SIN_REGISTRO";
+
     public static final String BORRADOR = "BORRADOR";
     public static final String PROGRAMADA = "PROGRAMADA";
     public static final String ACTIVA = "ACTIVA";
@@ -91,6 +94,16 @@ public class JuegoCampania {
     @Column(name = "fondo_lateral_url", length = 500)
     private String fondoLateralUrl;
 
+    // Pieza "Acceso": cómo se identifica el jugador.
+    //   CINEMARKETER  → con su cuenta de Cinemarketer (como siempre).
+    //   SIN_REGISTRO  → solo nombre y email, sin cuenta.
+    @Column(name = "modo_acceso", nullable = false, length = 20)
+    private String modoAcceso = MODO_CINEMARKETER;
+
+    // Solo SIN_REGISTRO: muestra el check opcional "Quiero recibir novedades de Cinemarketer".
+    @Column(name = "pedir_novedades", nullable = false)
+    private Boolean pedirNovedades = true;
+
     // Solo para campañas archivadas: si está en true, la landing ya no muestra nada.
     @Column(name = "landing_oculta", nullable = false)
     private Boolean landingOculta = false;
@@ -154,6 +167,12 @@ public class JuegoCampania {
     public void setBannerMobileUrl(String bannerMobileUrl) { this.bannerMobileUrl = bannerMobileUrl; }
     public String getFondoLateralUrl() { return fondoLateralUrl; }
     public void setFondoLateralUrl(String fondoLateralUrl) { this.fondoLateralUrl = fondoLateralUrl; }
+    public String getModoAcceso() { return modoAcceso; }
+    public void setModoAcceso(String modoAcceso) { this.modoAcceso = modoAcceso; }
+    public Boolean getPedirNovedades() { return pedirNovedades; }
+    public void setPedirNovedades(Boolean pedirNovedades) { this.pedirNovedades = pedirNovedades; }
+    public boolean sinRegistro() { return MODO_SIN_REGISTRO.equals(modoAcceso); }
+
     public Boolean getLandingOculta() { return landingOculta; }
     public void setLandingOculta(Boolean landingOculta) { this.landingOculta = landingOculta; }
     public LocalDateTime getCreatedAt() { return createdAt; }

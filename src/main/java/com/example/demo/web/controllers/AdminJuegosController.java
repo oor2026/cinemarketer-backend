@@ -32,6 +32,7 @@ import java.util.Map;
  *   POST   /api/admin/juegos/campanias/{id}/publicar
  *   POST   /api/admin/juegos/campanias/{id}/volver-a-borrador
  *   POST   /api/admin/juegos/campanias/{id}/archivar
+ *   PUT    /api/admin/juegos/campanias/{id}/landing-oculta   { "oculta": true } (solo archivadas)
  * Banco de preguntas
  *   GET    /api/admin/juegos/campanias/{id}/preguntas
  *   POST   /api/admin/juegos/campanias/{id}/preguntas
@@ -45,8 +46,8 @@ import java.util.Map;
  *   PUT    /api/admin/juegos/preguntas/{id}/dia         { "dia": "2026-12-03" } o { "dia": null }
  * Ranking y ganadores
  *   GET    /api/admin/juegos/campanias/{id}/cierre                 ranking completo + ganadores
- *   POST   /api/admin/juegos/campanias/{id}/descalificar           { "userId": 5, "motivo": "..." }
- *   DELETE /api/admin/juegos/campanias/{id}/descalificar/{userId}
+ *   POST   /api/admin/juegos/campanias/{id}/descalificar           { "participanteId": 5, "motivo": "..." }
+ *   DELETE /api/admin/juegos/campanias/{id}/descalificar/{participanteId}
  *   POST   /api/admin/juegos/campanias/{id}/ganadores/proponer
  *   POST   /api/admin/juegos/campanias/{id}/ganadores/publicar
  *   POST   /api/admin/juegos/ganadores/{id}/entregado
@@ -187,9 +188,9 @@ public class AdminJuegosController {
         return ResponseEntity.ok(cierreService.descalificar(id, req, adminId));
     }
 
-    @DeleteMapping("/campanias/{id}/descalificar/{userId}")
-    public ResponseEntity<?> rehabilitar(@PathVariable Long id, @PathVariable Long userId) {
-        return ResponseEntity.ok(cierreService.rehabilitar(id, userId));
+    @DeleteMapping("/campanias/{id}/descalificar/{participanteId}")
+    public ResponseEntity<?> rehabilitar(@PathVariable Long id, @PathVariable Long participanteId) {
+        return ResponseEntity.ok(cierreService.rehabilitar(id, participanteId));
     }
 
     @PostMapping("/campanias/{id}/ganadores/proponer")

@@ -17,6 +17,8 @@ import java.util.*;
  * Centro de actividad (lado público): la landing de una campaña y la partida.
  *
  * Reglas de la partida:
+ * - Juega un "participante": con cuenta de Cinemarketer o, si la campaña es
+ *   SIN_REGISTRO, solo con nombre y email (se identifica con un token).
  * - Un intento por persona por día. La tanda del día es la misma para todos,
  *   pero cada jugador la recibe en otro orden (y con las opciones mezcladas).
  * - La respuesta correcta nunca viaja al navegador: se compara en el servidor.
@@ -46,6 +48,7 @@ public class JuegoPublicoService {
     private final JuegoGanadorRepository ganadorRepository;
     private final JuegoDescalificacionRepository descalificacionRepository;
     private final JuegoAvisosService avisos;
+    private final JuegoParticipanteService participanteService;
 
     public JuegoPublicoService(JuegoAdminService adminService,
                                JuegoRankingService rankingService,
@@ -54,7 +57,9 @@ public class JuegoPublicoService {
                                JuegoIntentoRepository intentoRepository,
                                JuegoRespuestaRepository respuestaRepository,
                                JuegoGanadorRepository ganadorRepository,
-                               JuegoDescalificacionRepository descalificacionRepository, JuegoAvisosService avisos) {
+                               JuegoDescalificacionRepository descalificacionRepository,
+                               JuegoAvisosService avisos,
+                               JuegoParticipanteService participanteService) {
         this.adminService = adminService;
         this.rankingService = rankingService;
         this.campaniaRepository = campaniaRepository;
@@ -64,6 +69,7 @@ public class JuegoPublicoService {
         this.ganadorRepository = ganadorRepository;
         this.descalificacionRepository = descalificacionRepository;
         this.avisos = avisos;
+        this.participanteService = participanteService;
     }
 
     // ===================================================================
@@ -75,14 +81,16 @@ public class JuegoPublicoService {
                                   String premioTexto, String premioImagenUrl,
                                   int cantidadSuplentes, int diasParaReclamar,
                                   String basesCondiciones, String fondoUrl, String colorAcento,
-                                  String bannerMobileUrl, String fondoLateralUrl, String premioDescripcion) {}
+                                  String bannerMobileUrl, String fondoLateralUrl, String premioDescripcion,
+                                  String modoAcceso, boolean pedirNovedades) {}
 
     public record GanadorPublico(int puesto, String nombre, String avatar, String rol, boolean tienePremio) {}
 
     public record MiPremio(String rol, String estado, LocalDateTime reclamarHasta, boolean puedeReclamar) {}
 
     public record MiEstado(Integer posicion, int aciertos, long tiempoMs, int diasJugados,
-                           String hoy, int hoyAciertos, boolean descalificado, MiPremio premio) {}
+                           String hoy, int hoyAciertos, boolean descalificado, MiPremio premio,
+                           String nombre) {}
 
     public record Landing(CampaniaPublica campania, LocalDateTime ahora, LocalDateTime proximaTanda,
                           int diaNumero, int diasTotales, int participantes,
@@ -106,7 +114,7 @@ public class JuegoPublicoService {
     // Landing
     // ===================================================================
     @Transactional
-    public Landing landing(String slug, User usuario) {
+    public Landing landing(String slug, User usuario, String token) {
         JuegoCampania c = buscarVisible(slug);
         LocalDateTime ahora = adminService.ahora();
         List<LocalDate> dias = adminService.dias(c);
@@ -114,28 +122,35 @@ public class JuegoPublicoService {
                 ? dias.indexOf(ahora.toLocalDate()) + 1 : 0;
 
         List<Fila> filas = rankingService.calcular(c.getId());
-        Long miId = usuario == null ? null : usuario.getId();
-        List<FilaPublica> top = rankingService.top(filas, 10, miId);
+        JuegoParticipante yo = jugadorOpcional(c, usuario, token);
+        List<FilaPublica> top = rankingService.top(filas, 10, yo == null ? null : yo.getId());
         int participantes = (int) filas.stream().filter(f -> !f.descalificado()).count();
 
+        // Con cuenta, "yo" aparece apenas hay sesión (aunque todavía no haya jugado);
+        // sin registro, recién cuando se anotó (tiene token válido).
+        boolean identificado = c.sinRegistro() ? yo != null : usuario != null;
+        String miNombre = yo != null ? yo.getNombre() : (usuario != null ? usuario.getName() : null);
         return new Landing(publica(c), ahora, proximaTanda(c, ahora), diaNumero, dias.size(),
-                participantes, top, ganadoresPublicos(c), miEstado(c, usuario, filas, ahora));
+                participantes, top, ganadoresPublicos(c),
+                identificado ? miEstado(c, yo, miNombre, filas, ahora) : null);
     }
 
-    private MiEstado miEstado(JuegoCampania c, User usuario, List<Fila> filas, LocalDateTime ahora) {
-        if (usuario == null) return null;
-        Fila mia = filas.stream().filter(f -> f.userId().equals(usuario.getId())).findFirst().orElse(null);
+    private MiEstado miEstado(JuegoCampania c, JuegoParticipante yo, String nombre, List<Fila> filas, LocalDateTime ahora) {
+        if (yo == null) return new MiEstado(null, 0, 0, 0, SIN_JUGAR, 0, false, null, nombre);
+        Fila mia = filas.stream().filter(f -> f.participanteId().equals(yo.getId())).findFirst().orElse(null);
+        boolean descalificado = mia != null ? mia.descalificado()
+                : descalificacionRepository.findByCampaniaIdAndParticipanteId(c.getId(), yo.getId()).isPresent();
 
         String hoy = SIN_JUGAR;
         int hoyAciertos = 0;
         Optional<JuegoIntento> intento = intentoRepository
-                .findByCampaniaIdAndUserIdAndDia(c.getId(), usuario.getId(), ahora.toLocalDate());
+                .findByCampaniaIdAndParticipanteIdAndDia(c.getId(), yo.getId(), ahora.toLocalDate());
         if (intento.isPresent()) {
             hoy = intento.get().getTerminadoAt() != null ? TERMINADO : EN_CURSO;
             hoyAciertos = intento.get().getAciertos();
         }
 
-        MiPremio premio = ganadorRepository.findByCampaniaIdAndUserId(c.getId(), usuario.getId())
+        MiPremio premio = ganadorRepository.findByCampaniaIdAndParticipanteId(c.getId(), yo.getId())
                 .filter(g -> !JuegoGanador.PROPUESTO.equals(g.getEstado()))
                 .map(g -> new MiPremio(g.getRol(), g.getEstado(), g.getReclamarHasta(),
                         JuegoGanador.NOTIFICADO.equals(g.getEstado())
@@ -145,7 +160,7 @@ public class JuegoPublicoService {
         return new MiEstado(mia == null ? null : mia.posicion(),
                 mia == null ? 0 : mia.aciertos(), mia == null ? 0 : mia.tiempoMs(),
                 mia == null ? 0 : mia.diasJugados(), hoy, hoyAciertos,
-                mia != null && mia.descalificado(), premio);
+                descalificado, premio, nombre);
     }
 
     // Solo después de publicar. Muestra el puesto original de cada uno y quién
@@ -155,14 +170,17 @@ public class JuegoPublicoService {
             return List.of();
         }
         List<JuegoGanador> lista = ganadorRepository.findByCampaniaIdOrderByPuestoAsc(c.getId());
-        Map<Long, User> usuarios = rankingService.usuarios(lista.stream().map(JuegoGanador::getUserId).toList());
+        Map<Long, JuegoParticipante> participantes = participanteService.participantes(
+                lista.stream().map(JuegoGanador::getParticipanteId).toList());
+        Map<Long, User> usuarios = participanteService.usuariosDe(participantes.values());
         List<GanadorPublico> salida = new ArrayList<>();
         for (JuegoGanador g : lista) {
             if (JuegoGanador.DESCARTADO.equals(g.getEstado())) continue;
-            User u = usuarios.get(g.getUserId());
+            JuegoParticipante p = participantes.get(g.getParticipanteId());
+            User u = p == null || p.getUserId() == null ? null : usuarios.get(p.getUserId());
             boolean tienePremio = Set.of(JuegoGanador.NOTIFICADO, JuegoGanador.RECLAMADO, JuegoGanador.ENTREGADO)
                     .contains(g.getEstado());
-            salida.add(new GanadorPublico(g.getPuesto(), JuegoRankingService.nombrePublico(u),
+            salida.add(new GanadorPublico(g.getPuesto(), JuegoRankingService.nombrePublico(p, u),
                     JuegoRankingService.avatar(u), g.getRol(), tienePremio));
         }
         return salida;
@@ -174,22 +192,23 @@ public class JuegoPublicoService {
 
     // Empieza la partida de hoy, o la retoma si quedó a medias.
     @Transactional
-    public Partida iniciar(String slug, User usuario) {
+    public Partida iniciar(String slug, User usuario, String token) {
         JuegoCampania c = buscarVisible(slug);
         exigirEnJuego(c);
-        exigirNoDescalificado(c, usuario);
+        JuegoParticipante yo = jugador(c, usuario, token, true);
+        exigirNoDescalificado(c, yo);
         LocalDateTime ahora = adminService.ahora();
         LocalDate hoy = ahora.toLocalDate();
 
         List<JuegoPregunta> tanda = preguntaRepository.findByCampaniaIdAndDiaAsignadoOrderByOrdenEnDiaAsc(c.getId(), hoy);
         if (tanda.isEmpty()) throw new JuegoException(409, "Hoy no hay preguntas cargadas. Volvé mañana.");
 
-        JuegoIntento intento = intentoRepository.findByCampaniaIdAndUserIdAndDia(c.getId(), usuario.getId(), hoy)
+        JuegoIntento intento = intentoRepository.findByCampaniaIdAndParticipanteIdAndDia(c.getId(), yo.getId(), hoy)
                 .orElse(null);
         if (intento == null) {
             intento = new JuegoIntento();
             intento.setCampaniaId(c.getId());
-            intento.setUserId(usuario.getId());
+            intento.setParticipanteId(yo.getId());
             intento.setDia(hoy);
             intento.setIniciadoAt(ahora);
             intento.setAciertos(0);
@@ -205,7 +224,7 @@ public class JuegoPublicoService {
     }
 
     @Transactional
-    public Respuesta responder(String slug, User usuario, ResponderRequest req) {
+    public Respuesta responder(String slug, User usuario, String token, ResponderRequest req) {
         if (req == null || req.preguntaId() == null) throw new JuegoException(400, "Falta la pregunta");
         JuegoCampania c = buscarVisible(slug);
         LocalDateTime ahora = adminService.ahora();
@@ -213,8 +232,9 @@ public class JuegoPublicoService {
             throw new JuegoException(409, "La campaña ya cerró");
         }
 
+        JuegoParticipante yo = jugador(c, usuario, token, false);
         JuegoIntento intento = intentoRepository
-                .findByCampaniaIdAndUserIdAndDia(c.getId(), usuario.getId(), ahora.toLocalDate())
+                .findByCampaniaIdAndParticipanteIdAndDia(c.getId(), yo.getId(), ahora.toLocalDate())
                 .orElseThrow(() -> new JuegoException(409, "La partida de ese día ya terminó. Recargá la página."));
 
         JuegoRespuesta pendiente = respuestaRepository.findByIntentoIdOrderByOrdenAsc(intento.getId()).stream()
@@ -293,7 +313,7 @@ public class JuegoPublicoService {
 
     private Partida terminada(JuegoCampania c, JuegoIntento intento, int total, LocalDateTime ahora) {
         List<Fila> filas = rankingService.calcular(c.getId());
-        Fila mia = filas.stream().filter(f -> f.userId().equals(intento.getUserId())).findFirst().orElse(null);
+        Fila mia = filas.stream().filter(f -> f.participanteId().equals(intento.getParticipanteId())).findFirst().orElse(null);
         return new Partida(TERMINADO, null, new ResultadoDia(intento.getAciertos(), total,
                 intento.getTiempoTotalMs(), mia == null ? null : mia.posicion(),
                 mia == null ? intento.getAciertos() : mia.aciertos(),
@@ -326,9 +346,15 @@ public class JuegoPublicoService {
 
     // El ganador (o el suplente que heredó el premio) confirma que lo quiere.
     @Transactional
-    public MiPremio reclamar(String slug, User usuario) {
+    public MiPremio reclamar(String slug, User usuario, String token) {
         JuegoCampania c = buscarVisible(slug);
-        JuegoGanador g = ganadorRepository.findByCampaniaIdAndUserId(c.getId(), usuario.getId())
+        JuegoParticipante yo = jugadorOpcional(c, usuario, token);
+        if (yo == null) {
+            if (c.sinRegistro()) throw new JuegoException(401, "Anotate con el mismo nombre y email con que jugaste");
+            if (usuario == null) throw new JuegoException(401, "Ingresá a tu cuenta para reclamar tu premio");
+            throw new JuegoException(404, "No tenés un premio en esta campaña");
+        }
+        JuegoGanador g = ganadorRepository.findByCampaniaIdAndParticipanteId(c.getId(), yo.getId())
                 .orElseThrow(() -> new JuegoException(404, "No tenés un premio en esta campaña"));
         LocalDateTime ahora = adminService.ahora();
         if (JuegoGanador.RECLAMADO.equals(g.getEstado()) || JuegoGanador.ENTREGADO.equals(g.getEstado())) {
@@ -342,13 +368,40 @@ public class JuegoPublicoService {
         }
         g.setEstado(JuegoGanador.RECLAMADO);
         ganadorRepository.save(g);
-        avisos.premioReclamado(c, usuario, g);
+        avisos.premioReclamado(c, participanteService.contacto(yo.getId()), g);
         return new MiPremio(g.getRol(), g.getEstado(), g.getReclamarHasta(), false);
+    }
+
+    // ===================================================================
+    // Sin registro: anotarse con nombre y email
+    // ===================================================================
+    @Transactional
+    public JuegoParticipanteService.Anotado anotarse(String slug, JuegoParticipanteService.AnotarseRequest req) {
+        return participanteService.anotarse(buscarVisible(slug), req);
     }
 
     // ===================================================================
     // Auxiliares
     // ===================================================================
+
+    // Quién juega: sin registro, el del token; con cuenta, el participante del usuario
+    // (se crea al iniciar la primera partida).
+    private JuegoParticipante jugador(JuegoCampania c, User usuario, String token, boolean crear) {
+        if (c.sinRegistro()) {
+            JuegoParticipante p = participanteService.porToken(c, token);
+            if (p == null) throw new JuegoException(401, "Anotate con tu nombre y email para jugar");
+            return p;
+        }
+        if (usuario == null) throw new JuegoException(401, "Ingresá a tu cuenta para jugar");
+        if (crear) return participanteService.deUsuarioOCrear(c, usuario);
+        JuegoParticipante p = participanteService.deUsuario(c, usuario);
+        if (p == null) throw new JuegoException(409, "La partida de ese día ya terminó. Recargá la página.");
+        return p;
+    }
+
+    private JuegoParticipante jugadorOpcional(JuegoCampania c, User usuario, String token) {
+        return c.sinRegistro() ? participanteService.porToken(c, token) : participanteService.deUsuario(c, usuario);
+    }
 
     // Una campaña en borrador no existe para el público.
     JuegoCampania buscarVisible(String slug) {
@@ -370,8 +423,8 @@ public class JuegoPublicoService {
         }
     }
 
-    private void exigirNoDescalificado(JuegoCampania c, User usuario) {
-        if (descalificacionRepository.findByCampaniaIdAndUserId(c.getId(), usuario.getId()).isPresent()) {
+    private void exigirNoDescalificado(JuegoCampania c, JuegoParticipante yo) {
+        if (descalificacionRepository.findByCampaniaIdAndParticipanteId(c.getId(), yo.getId()).isPresent()) {
             throw new JuegoException(403, "Tu participación en esta actividad fue anulada. Escribinos a soporte si creés que es un error.");
         }
     }
@@ -394,6 +447,8 @@ public class JuegoPublicoService {
                 c.getInicio(), c.getCierre(), c.getPreguntasPorDia(), c.getSegundosPorPregunta(),
                 c.getPremioTexto(), c.getPremioImagenUrl(), c.getCantidadSuplentes(), c.getDiasParaReclamar(),
                 c.getBasesCondiciones(), c.getFondoUrl(), c.getColorAcento(),
-                c.getBannerMobileUrl(), c.getFondoLateralUrl(), c.getPremioDescripcion());
+                c.getBannerMobileUrl(), c.getFondoLateralUrl(), c.getPremioDescripcion(),
+                c.getModoAcceso() == null ? JuegoCampania.MODO_CINEMARKETER : c.getModoAcceso(),
+                Boolean.TRUE.equals(c.getPedirNovedades()));
     }
 }

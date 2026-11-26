@@ -11,5 +11,5 @@ public interface JuegoDescalificacionRepository extends JpaRepository<JuegoDesca
 
     List<JuegoDescalificacion> findByCampaniaId(Long campaniaId);
 
-    Optional<JuegoDescalificacion> findByCampaniaIdAndUserId(Long campaniaId, Long userId);
+    Optional<JuegoDescalificacion> findByCampaniaIdAndParticipanteId(Long campaniaId, Long participanteId);
 }
