@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface JuegoIntentoRepository extends JpaRepository<JuegoIntento, Long> {
 
-    Optional<JuegoIntento> findByCampaniaIdAndUserIdAndDia(Long campaniaId, Long userId, LocalDate dia);
+    Optional<JuegoIntento> findByCampaniaIdAndParticipanteIdAndDia(Long campaniaId, Long participanteId, LocalDate dia);
 
     // Todas las partidas de la campaña: con esto se arma el ranking acumulado.
     List<JuegoIntento> findByCampaniaId(Long campaniaId);

@@ -325,15 +325,16 @@ public class EmailService {
 
     /** Al ganador (o al suplente que hereda el premio): tiene que entrar a la actividad y reclamarlo. */
     public void sendJuegoPremioGanadoEmail(String to, String userName, String campania, String premio,
-                                           boolean esSuplente, String reclamarHasta, String slug) {
+                                           boolean esSuplente, String reclamarHasta, String slug, boolean conCuenta) {
         String url = frontendUrl + "/actividad?c=" + java.net.URLEncoder.encode(slug == null ? "" : slug, java.nio.charset.StandardCharsets.UTF_8);
         String nombre = esc(campania);
         String intro = esSuplente
                 ? "<p>Estabas en la lista de suplentes de <strong>" + nombre + "</strong> y el premio pasó a vos.</p>"
                 : "<p>Ganaste el premio de <strong>" + nombre + "</strong>. ¡Felicitaciones!</p>";
+        String como = conCuenta ? "con tu cuenta" : "con el mismo nombre y email con que te anotaste";
         String plazo = reclamarHasta == null
-                ? "<p>Para recibirlo, entrá a la actividad con tu cuenta y tocá <strong>Reclamar premio</strong>.</p>"
-                : "<p>Para recibirlo, entrá a la actividad con tu cuenta y tocá <strong>Reclamar premio</strong> antes del <strong>" + esc(reclamarHasta) + "</strong>.</p>";
+                ? "<p>Para recibirlo, entrá a la actividad " + como + " y tocá <strong>Reclamar premio</strong>.</p>"
+                : "<p>Para recibirlo, entrá a la actividad " + como + " y tocá <strong>Reclamar premio</strong> antes del <strong>" + esc(reclamarHasta) + "</strong>.</p>";
         String body = saludo(userName) +
                 "<p style='font-size:18px;font-weight:bold;color:#e23232;'>" + (esSuplente ? "¡El premio ahora es tuyo!" : "¡Ganaste!") + "</p>" +
                 intro +
@@ -345,13 +346,14 @@ public class EmailService {
     }
 
     /** Al ganador, cuando toca "Reclamar premio": le confirmamos y le contamos cómo sigue. */
-    public void sendJuegoPremioReclamadoEmail(String to, String userName, String campania, String premio) {
+    public void sendJuegoPremioReclamadoEmail(String to, String userName, String campania, String premio, boolean conCuenta) {
         String body = saludo(userName) +
                 "<p style='font-size:18px;font-weight:bold;color:#e23232;'>¡Recibimos tu reclamo!</p>" +
                 "<p>Ya registramos que reclamaste tu premio de <strong>" + esc(campania) + "</strong>.</p>" +
                 cajaPremio(premio) +
                 "<p>En los próximos días te vamos a escribir a este mail para coordinar la entrega. " +
-                "Para confirmar que sos vos, te vamos a pedir los datos de tu cuenta (nombre y DNI).</p>" +
+                "Para confirmar que sos vos, te vamos a pedir " +
+                (conCuenta ? "los datos de tu cuenta (nombre y DNI)" : "tu nombre completo y un documento que lo acredite") + ".</p>" +
                 "<p style='font-size:13px;color:#888888;'>¿Tenés alguna consulta? Escribinos a " +
                 "<a href='mailto:info@cinemarketer.com.ar' style='color:#e23232;'>info@cinemarketer.com.ar</a></p>";
         sendHtml(to, "Cinemarketer - Recibimos el reclamo de tu premio", body);
@@ -359,7 +361,8 @@ public class EmailService {
 
     /** Al admin: alguien reclamó un premio y hay que coordinar la entrega. */
     public void sendAdminJuegoReclamoAlert(String campania, String premio, String rol, Integer puesto,
-                                           String userName, String userEmail, String dni, String telefono) {
+                                           String userName, String userEmail, String dni, String telefono,
+                                           boolean conCuenta) {
         String fila = "<p style='margin:0 0 8px;'><strong>%s:</strong> %s</p>";
         String body = "<p>Hola,</p>" +
                 "<p>Un participante reclamó su premio en <strong>" + esc(campania) + "</strong>. Hay que contactarlo para coordinar la entrega.</p>" +
@@ -368,6 +371,7 @@ public class EmailService {
                 String.format(fila, "Puesto", (puesto == null ? "-" : puesto + "°") + ("SUPLENTE".equals(rol) ? " (suplente)" : "")) +
                 String.format(fila, "Nombre", esc(userName == null ? "-" : userName)) +
                 String.format(fila, "Email", esc(userEmail == null ? "-" : userEmail)) +
+                String.format(fila, "Acceso", conCuenta ? "Cuenta de Cinemarketer" : "Sin registro (solo nombre y email, sin verificar)") +
                 String.format(fila, "DNI", esc(dni == null || dni.isBlank() ? "-" : dni)) +
                 "<p style='margin:0;'><strong>Teléfono:</strong> " + esc(telefono == null || telefono.isBlank() ? "-" : telefono) + "</p>" +
                 "</div>" +

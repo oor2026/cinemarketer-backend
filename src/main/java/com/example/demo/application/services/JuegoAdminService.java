@@ -74,7 +74,22 @@ public class JuegoAdminService {
                                   String premioTexto, String premioImagenUrl, Long rewardId,
                                   Integer cantidadSuplentes, Integer diasParaReclamar,
                                   String basesCondiciones, String fondoUrl, String colorAcento,
-                                  String premioDescripcion) {}
+                                  String premioDescripcion,
+                                  String modoAcceso, Boolean pedirNovedades) {
+
+        // Sin los datos de acceso (pedidos viejos): se mantiene el modo actual.
+        public CampaniaRequest(String nombre, String slug, String bajada,
+                               LocalDateTime inicio, LocalDateTime cierre,
+                               Integer preguntasPorDia, Integer segundosPorPregunta,
+                               String premioTexto, String premioImagenUrl, Long rewardId,
+                               Integer cantidadSuplentes, Integer diasParaReclamar,
+                               String basesCondiciones, String fondoUrl, String colorAcento,
+                               String premioDescripcion) {
+            this(nombre, slug, bajada, inicio, cierre, preguntasPorDia, segundosPorPregunta, premioTexto,
+                    premioImagenUrl, rewardId, cantidadSuplentes, diasParaReclamar, basesCondiciones, fondoUrl,
+                    colorAcento, premioDescripcion, null, null);
+        }
+    }
 
     public record PreguntaRequest(String texto, String imagenUrl, List<String> opciones,
                                   Integer indiceCorrecta, String origen, String referenciaTmdb) {}
@@ -161,6 +176,8 @@ public class JuegoAdminService {
         validarPresentacion(req);
         exigirInicioFuturo(req.inicio());
         c.setSlug(slugValido(req.slug(), req.nombre(), null));
+        validarModoAcceso(req.modoAcceso());
+        if (req.modoAcceso() != null) c.setModoAcceso(req.modoAcceso());
         aplicarEstructura(c, req);
         aplicarPresentacion(c, req);
         return campaniaRepository.save(c);
@@ -202,6 +219,14 @@ public class JuegoAdminService {
             }
         } else if (cambiaEstructura(c, req)) {
             throw conflicto("La campaña ya empezó: no se pueden cambiar las fechas, las preguntas por día ni el tiempo por pregunta");
+        }
+        // Con o sin registro: solo en borrador, antes de que alguien se anote o juegue.
+        validarModoAcceso(req.modoAcceso());
+        if (req.modoAcceso() != null && !req.modoAcceso().equals(c.getModoAcceso())) {
+            if (!JuegoCampania.BORRADOR.equals(c.getEstado())) {
+                throw conflicto("El modo de acceso (con o sin registro) solo se cambia en borrador");
+            }
+            c.setModoAcceso(req.modoAcceso());
         }
         aplicarPresentacion(c, req);
         return campaniaRepository.save(c);
@@ -566,6 +591,12 @@ public class JuegoAdminService {
         if (color != null && !color.matches("#[0-9a-fA-F]{6}")) throw invalido("El color tiene que tener el formato #RRGGBB");
     }
 
+    private static void validarModoAcceso(String modo) {
+        if (modo != null && !JuegoCampania.MODO_CINEMARKETER.equals(modo) && !JuegoCampania.MODO_SIN_REGISTRO.equals(modo)) {
+            throw invalido("Modo de acceso desconocido");
+        }
+    }
+
     private void aplicarEstructura(JuegoCampania c, CampaniaRequest req) {
         c.setInicio(req.inicio());
         c.setCierre(req.cierre());
@@ -583,6 +614,7 @@ public class JuegoAdminService {
         if (req.diasParaReclamar() != null) c.setDiasParaReclamar(req.diasParaReclamar());
         c.setBasesCondiciones(limpio(req.basesCondiciones()));
         c.setPremioDescripcion(limpio(req.premioDescripcion()));
+        if (req.pedirNovedades() != null) c.setPedirNovedades(req.pedirNovedades());
         c.setFondoUrl(urlValida(req.fondoUrl(), "El fondo"));
         String color = limpio(req.colorAcento());
         c.setColorAcento(color == null ? null : color.toLowerCase(Locale.ROOT));

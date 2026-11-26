@@ -1,6 +1,7 @@
 package com.example.demo.application.services;
 
 import com.example.demo.application.services.JuegoAdminService.JuegoException;
+import com.example.demo.application.services.JuegoParticipanteService.Contacto;
 import com.example.demo.application.services.JuegoRankingService.Fila;
 import com.example.demo.domain.juego.*;
 import com.example.demo.domain.user.User;
@@ -33,32 +34,37 @@ public class JuegoCierreService {
     private final JuegoCampaniaRepository campaniaRepository;
     private final JuegoGanadorRepository ganadorRepository;
     private final JuegoDescalificacionRepository descalificacionRepository;
+    private final JuegoParticipanteService participanteService;
 
     public JuegoCierreService(JuegoAdminService adminService,
                               JuegoRankingService rankingService,
                               JuegoAvisosService avisos,
                               JuegoCampaniaRepository campaniaRepository,
                               JuegoGanadorRepository ganadorRepository,
-                              JuegoDescalificacionRepository descalificacionRepository) {
+                              JuegoDescalificacionRepository descalificacionRepository,
+                              JuegoParticipanteService participanteService) {
         this.adminService = adminService;
         this.rankingService = rankingService;
         this.avisos = avisos;
         this.campaniaRepository = campaniaRepository;
         this.ganadorRepository = ganadorRepository;
         this.descalificacionRepository = descalificacionRepository;
+        this.participanteService = participanteService;
     }
 
     // Para el admin: nombre completo y mail, porque tiene que poder contactarlos.
-    public record FilaAdmin(Integer posicion, Long userId, String nombre, String email, String avatar,
-                            int aciertos, long tiempoMs, int diasJugados, String motivoDescalificacion) {}
+    // conCuenta: false si se anotó sin registro (solo nombre y email).
+    public record FilaAdmin(Integer posicion, Long participanteId, String nombre, String email, String avatar,
+                            int aciertos, long tiempoMs, int diasJugados, String motivoDescalificacion,
+                            boolean conCuenta) {}
 
-    public record GanadorAdmin(Long id, int puesto, Long userId, String nombre, String email, String rol,
+    public record GanadorAdmin(Long id, int puesto, Long participanteId, String nombre, String email, String rol,
                                String estado, String motivo, LocalDateTime notificadoAt,
-                               LocalDateTime reclamarHasta) {}
+                               LocalDateTime reclamarHasta, boolean conCuenta) {}
 
     public record Cierre(String estadoCampania, List<FilaAdmin> ranking, List<GanadorAdmin> ganadores) {}
 
-    public record DescalificarRequest(Long userId, String motivo) {}
+    public record DescalificarRequest(Long participanteId, String motivo) {}
 
     public record MotivoRequest(String motivo) {}
 
@@ -73,23 +79,27 @@ public class JuegoCierreService {
         List<JuegoGanador> ganadores = ganadorRepository.findByCampaniaIdOrderByPuestoAsc(c.getId());
 
         Set<Long> ids = new HashSet<>();
-        filas.forEach(f -> ids.add(f.userId()));
-        ganadores.forEach(g -> ids.add(g.getUserId()));
-        Map<Long, User> usuarios = rankingService.usuarios(ids);
+        filas.forEach(f -> ids.add(f.participanteId()));
+        ganadores.forEach(g -> ids.add(g.getParticipanteId()));
+        Map<Long, JuegoParticipante> participantes = participanteService.participantes(ids);
+        Map<Long, User> usuarios = participanteService.usuariosDe(participantes.values());
 
         List<FilaAdmin> ranking = new ArrayList<>();
         for (Fila f : filas) {
-            User u = usuarios.get(f.userId());
-            ranking.add(new FilaAdmin(f.posicion(), f.userId(), nombre(u), u == null ? null : u.getEmail(),
+            JuegoParticipante p = participantes.get(f.participanteId());
+            User u = usuario(p, usuarios);
+            Contacto k = contacto(p, u);
+            ranking.add(new FilaAdmin(f.posicion(), f.participanteId(), k.nombre(), k.email(),
                     JuegoRankingService.avatar(u), f.aciertos(), f.tiempoMs(), f.diasJugados(),
-                    f.motivoDescalificacion()));
+                    f.motivoDescalificacion(), k.conCuenta()));
         }
         List<GanadorAdmin> lista = new ArrayList<>();
         for (JuegoGanador g : ganadores) {
-            User u = usuarios.get(g.getUserId());
-            lista.add(new GanadorAdmin(g.getId(), g.getPuesto(), g.getUserId(), nombre(u),
-                    u == null ? null : u.getEmail(), g.getRol(), g.getEstado(), g.getMotivo(),
-                    g.getNotificadoAt(), g.getReclamarHasta()));
+            JuegoParticipante p = participantes.get(g.getParticipanteId());
+            Contacto k = contacto(p, usuario(p, usuarios));
+            lista.add(new GanadorAdmin(g.getId(), g.getPuesto(), g.getParticipanteId(), k.nombre(),
+                    k.email(), g.getRol(), g.getEstado(), g.getMotivo(),
+                    g.getNotificadoAt(), g.getReclamarHasta(), k.conCuenta()));
         }
         return new Cierre(c.getEstado(), ranking, lista);
     }
@@ -100,14 +110,14 @@ public class JuegoCierreService {
     @Transactional
     public Cierre descalificar(Long campaniaId, DescalificarRequest req, Long adminId) {
         JuegoCampania c = campaniaAntesDePublicar(campaniaId);
-        if (req == null || req.userId() == null) throw new JuegoException(400, "Falta el participante");
+        if (req == null || req.participanteId() == null) throw new JuegoException(400, "Falta el participante");
         String motivo = req.motivo() == null ? "" : req.motivo().trim();
         if (motivo.isEmpty()) throw new JuegoException(400, "Escribí el motivo de la descalificación");
         if (motivo.length() > 300) throw new JuegoException(400, "El motivo puede tener hasta 300 caracteres");
-        if (descalificacionRepository.findByCampaniaIdAndUserId(c.getId(), req.userId()).isEmpty()) {
+        if (descalificacionRepository.findByCampaniaIdAndParticipanteId(c.getId(), req.participanteId()).isEmpty()) {
             JuegoDescalificacion d = new JuegoDescalificacion();
             d.setCampaniaId(c.getId());
-            d.setUserId(req.userId());
+            d.setParticipanteId(req.participanteId());
             d.setMotivo(motivo);
             d.setAdminId(adminId);
             d.setCreatedAt(adminService.ahora());
@@ -118,9 +128,9 @@ public class JuegoCierreService {
     }
 
     @Transactional
-    public Cierre rehabilitar(Long campaniaId, Long userId) {
+    public Cierre rehabilitar(Long campaniaId, Long participanteId) {
         JuegoCampania c = campaniaAntesDePublicar(campaniaId);
-        descalificacionRepository.findByCampaniaIdAndUserId(c.getId(), userId)
+        descalificacionRepository.findByCampaniaIdAndParticipanteId(c.getId(), participanteId)
                 .ifPresent(descalificacionRepository::delete);
         borrarPropuesta(c);
         return cierre(c.getId());
@@ -148,7 +158,7 @@ public class JuegoCierreService {
         for (Fila f : elegibles) {
             JuegoGanador g = new JuegoGanador();
             g.setCampaniaId(c.getId());
-            g.setUserId(f.userId());
+            g.setParticipanteId(f.participanteId());
             g.setPuesto(puesto);
             g.setRol(puesto == 1 ? JuegoGanador.GANADOR : JuegoGanador.SUPLENTE);
             g.setEstado(JuegoGanador.PROPUESTO);
@@ -253,16 +263,16 @@ public class JuegoCierreService {
         g.setNotificadoAt(ahora);
         g.setReclamarHasta(ahora.plusDays(c.getDiasParaReclamar()));
         ganadorRepository.save(g);
-        User u = rankingService.usuarios(List.of(g.getUserId())).get(g.getUserId());
-        if (u != null) avisos.premioGanado(c, u, g);
+        Contacto k = participanteService.contacto(g.getParticipanteId());
+        if (k != null) avisos.premioGanado(c, k, g);
     }
 
     private void borrarPropuesta(JuegoCampania c) {
         for (JuegoGanador g : ganadorRepository.findByCampaniaIdOrderByPuestoAsc(c.getId())) {
             ganadorRepository.delete(g);
         }
-        // Se borra ya en la base: si no, al volver a guardar al mismo usuario
-        // chocaría con la restricción única (campania_id, user_id).
+        // Se borra ya en la base: si no, al volver a guardar al mismo participante
+        // chocaría con la restricción única (campania_id, participante_id).
         ganadorRepository.flush();
     }
 
@@ -282,7 +292,12 @@ public class JuegoCierreService {
         return ganadorRepository.findById(id).orElseThrow(() -> new JuegoException(404, "No existe ese ganador"));
     }
 
-    private static String nombre(User u) {
-        return u == null ? "(usuario borrado)" : u.getName();
+    private static User usuario(JuegoParticipante p, Map<Long, User> usuarios) {
+        return p == null || p.getUserId() == null ? null : usuarios.get(p.getUserId());
+    }
+
+    private static Contacto contacto(JuegoParticipante p, User u) {
+        if (p == null) return new Contacto("(participante borrado)", null, null, null, false);
+        return JuegoParticipanteService.contacto(p, u);
     }
 }
