@@ -80,6 +80,14 @@ public class SagasUniverso {
                 ids.add(id);
             }
         }
+        if (saga.coleccion() == null && poster == null) {      // saga armada a mano: no tiene imagen propia, usa la de su primera película
+            for (Long id : saga.peliculas()) {
+                if (!ids.contains(id)) continue;
+                CatalogoTmdb.Imagenes img;
+                try { img = tmdb.imagenesDePelicula(id); } catch (Exception e) { img = null; }
+                if (img != null && img.posterUrl() != null) { poster = img.posterUrl(); fondo = img.fondoUrl(); break; }
+            }
+        }
         return new Universo(ids, poster, fondo);
     }
 

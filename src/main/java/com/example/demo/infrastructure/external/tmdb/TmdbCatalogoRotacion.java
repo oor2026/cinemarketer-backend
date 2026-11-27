@@ -53,6 +53,11 @@ public class TmdbCatalogoRotacion implements CatalogoTmdb {
 
     @Override public Set<Long> peliculasEstrenadasDeColeccion(long collectionId) { return parseEstrenadasDeColeccion(tmdb.getCollection(collectionId), hoy()); }
 
+    @Override public Imagenes imagenesDePelicula(long movieId) {
+        Object json = tmdb.getMovieRaw(movieId);
+        return json instanceof Map<?, ?> m ? new Imagenes(imagen(m.get("poster_path"), "w342"), imagen(m.get("backdrop_path"), "w780")) : null;
+    }
+
     @Override public Boolean peliculaEstrenada(long movieId) { return parsePeliculaEstrenada(tmdb.getMovieRaw(movieId), hoy()); }
 
     @Override public List<Persona> actoresPopulares(int paginas) {

@@ -63,6 +63,12 @@ public interface CatalogoTmdb {
      */
     default java.util.Set<Long> peliculasEstrenadasDeColeccion(long collectionId) { return null; }
 
+    /** Las imágenes de TMDB de una película: el póster (para el sello) y la imagen de fondo ancha (para el detalle). */
+    record Imagenes(String posterUrl, String fondoUrl) {}
+
+    /** Las imágenes de una película, o null si no se pudieron obtener. Las sagas armadas a mano usan las de su primera película. */
+    default Imagenes imagenesDePelicula(long movieId) { return null; }
+
     /** true si esa película ya se estrenó y tiene póster, false si no, null si no se pudo saber (error de red o respuesta rara). */
     default Boolean peliculaEstrenada(long movieId) { return null; }
 }
