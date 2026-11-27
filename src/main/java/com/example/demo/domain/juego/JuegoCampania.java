@@ -67,6 +67,10 @@ public class JuegoCampania {
     @Column(name = "reward_id")
     private Long rewardId;
 
+    // Cuántos se llevan el premio: los primeros N del ranking.
+    @Column(name = "cantidad_ganadores", nullable = false)
+    private Integer cantidadGanadores = 1;
+
     @Column(name = "cantidad_suplentes", nullable = false)
     private Integer cantidadSuplentes = 2;
 
@@ -151,6 +155,8 @@ public class JuegoCampania {
     public void setPremioImagenUrl(String premioImagenUrl) { this.premioImagenUrl = premioImagenUrl; }
     public Long getRewardId() { return rewardId; }
     public void setRewardId(Long rewardId) { this.rewardId = rewardId; }
+    public Integer getCantidadGanadores() { return cantidadGanadores; }
+    public void setCantidadGanadores(Integer cantidadGanadores) { this.cantidadGanadores = cantidadGanadores; }
     public Integer getCantidadSuplentes() { return cantidadSuplentes; }
     public void setCantidadSuplentes(Integer cantidadSuplentes) { this.cantidadSuplentes = cantidadSuplentes; }
     public Integer getDiasParaReclamar() { return diasParaReclamar; }

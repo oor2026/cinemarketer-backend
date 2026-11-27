@@ -148,7 +148,7 @@ public class JuegoCierreService {
         }
         List<Fila> elegibles = rankingService.calcular(c.getId()).stream()
                 .filter(f -> !f.descalificado() && f.aciertos() > 0)
-                .limit(1 + c.getCantidadSuplentes())
+                .limit(ganadores(c) + c.getCantidadSuplentes())
                 .toList();
         if (elegibles.isEmpty()) throw new JuegoException(409, "No hay participantes con aciertos");
 
@@ -160,7 +160,7 @@ public class JuegoCierreService {
             g.setCampaniaId(c.getId());
             g.setParticipanteId(f.participanteId());
             g.setPuesto(puesto);
-            g.setRol(puesto == 1 ? JuegoGanador.GANADOR : JuegoGanador.SUPLENTE);
+            g.setRol(puesto <= ganadores(c) ? JuegoGanador.GANADOR : JuegoGanador.SUPLENTE);
             g.setEstado(JuegoGanador.PROPUESTO);
             g.setCreatedAt(ahora);
             ganadorRepository.save(g);
@@ -181,7 +181,7 @@ public class JuegoCierreService {
 
         LocalDateTime ahora = adminService.ahora();
         for (JuegoGanador g : lista) {
-            if (g.getPuesto() == 1) {
+            if (JuegoGanador.GANADOR.equals(g.getRol())) {
                 notificar(c, g, ahora);
             } else {
                 g.setEstado(JuegoGanador.EN_ESPERA);
@@ -290,6 +290,10 @@ public class JuegoCierreService {
 
     private JuegoGanador buscarGanador(Long id) {
         return ganadorRepository.findById(id).orElseThrow(() -> new JuegoException(404, "No existe ese ganador"));
+    }
+
+    private static int ganadores(JuegoCampania c) {
+        return c.getCantidadGanadores() == null ? 1 : c.getCantidadGanadores();
     }
 
     private static User usuario(JuegoParticipante p, Map<Long, User> usuarios) {

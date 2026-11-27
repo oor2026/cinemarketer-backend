@@ -75,7 +75,21 @@ public class JuegoAdminService {
                                   Integer cantidadSuplentes, Integer diasParaReclamar,
                                   String basesCondiciones, String fondoUrl, String colorAcento,
                                   String premioDescripcion,
-                                  String modoAcceso, Boolean pedirNovedades) {
+                                  String modoAcceso, Boolean pedirNovedades,
+                                  Integer cantidadGanadores) {
+
+        // Sin la cantidad de ganadores (pedidos viejos): se mantiene la actual.
+        public CampaniaRequest(String nombre, String slug, String bajada,
+                               LocalDateTime inicio, LocalDateTime cierre,
+                               Integer preguntasPorDia, Integer segundosPorPregunta,
+                               String premioTexto, String premioImagenUrl, Long rewardId,
+                               Integer cantidadSuplentes, Integer diasParaReclamar,
+                               String basesCondiciones, String fondoUrl, String colorAcento,
+                               String premioDescripcion, String modoAcceso, Boolean pedirNovedades) {
+            this(nombre, slug, bajada, inicio, cierre, preguntasPorDia, segundosPorPregunta, premioTexto,
+                    premioImagenUrl, rewardId, cantidadSuplentes, diasParaReclamar, basesCondiciones, fondoUrl,
+                    colorAcento, premioDescripcion, modoAcceso, pedirNovedades, null);
+        }
 
         // Sin los datos de acceso (pedidos viejos): se mantiene el modo actual.
         public CampaniaRequest(String nombre, String slug, String bajada,
@@ -87,7 +101,7 @@ public class JuegoAdminService {
                                String premioDescripcion) {
             this(nombre, slug, bajada, inicio, cierre, preguntasPorDia, segundosPorPregunta, premioTexto,
                     premioImagenUrl, rewardId, cantidadSuplentes, diasParaReclamar, basesCondiciones, fondoUrl,
-                    colorAcento, premioDescripcion, null, null);
+                    colorAcento, premioDescripcion, null, null, null);
         }
     }
 
@@ -227,6 +241,11 @@ public class JuegoAdminService {
                 throw conflicto("El modo de acceso (con o sin registro) solo se cambia en borrador");
             }
             c.setModoAcceso(req.modoAcceso());
+        }
+        // Con la campaña cerrada ya se arma (o se publicó) la lista de ganadores.
+        if (req.cantidadGanadores() != null && !req.cantidadGanadores().equals(c.getCantidadGanadores())
+                && (JuegoCampania.CERRADA.equals(c.getEstado()) || JuegoCampania.PUBLICADA.equals(c.getEstado()))) {
+            throw conflicto("La cantidad de ganadores no se cambia con la campaña cerrada");
         }
         aplicarPresentacion(c, req);
         return campaniaRepository.save(c);
@@ -585,6 +604,7 @@ public class JuegoAdminService {
         largo(req.premioDescripcion(), 3000, "La descripción del premio");
         urlValida(req.premioImagenUrl(), "La imagen del premio");
         urlValida(req.fondoUrl(), "El fondo");
+        if (req.cantidadGanadores() != null) entre(req.cantidadGanadores(), 1, 20, "La cantidad de ganadores");
         if (req.cantidadSuplentes() != null) entre(req.cantidadSuplentes(), 0, 5, "La cantidad de suplentes");
         if (req.diasParaReclamar() != null) entre(req.diasParaReclamar(), 1, 60, "Los días para reclamar");
         String color = limpio(req.colorAcento());
@@ -610,6 +630,7 @@ public class JuegoAdminService {
         c.setPremioTexto(limpio(req.premioTexto()));
         c.setPremioImagenUrl(urlValida(req.premioImagenUrl(), "La imagen del premio"));
         c.setRewardId(req.rewardId());
+        if (req.cantidadGanadores() != null) c.setCantidadGanadores(req.cantidadGanadores());
         if (req.cantidadSuplentes() != null) c.setCantidadSuplentes(req.cantidadSuplentes());
         if (req.diasParaReclamar() != null) c.setDiasParaReclamar(req.diasParaReclamar());
         c.setBasesCondiciones(limpio(req.basesCondiciones()));
