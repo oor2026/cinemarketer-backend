@@ -370,18 +370,12 @@ public class User {
     }
 
     /**
-     * Actualiza el nivel basándose en los puntos históricos canjeados.
-     * El nivel es una insignia acumulativa — nunca baja.
+     * @deprecated Sistema 1 (solo por puntos). Ya no promueve: los niveles los
+     * decide únicamente LevelCalculatorService (requisitos por capa), aplicado
+     * por LevelUpdateScheduler. Se deja como no-op para no tocar los puntos de llamada.
      */
+    @Deprecated
     public boolean updateLevelBasedOnPoints() {
-        UserLevel newLevel = UserLevel.getLevelByPoints(this.totalRedeemedPoints);
-        // El nivel solo sube, nunca baja
-        if (newLevel.ordinal() > this.level.ordinal()) {
-            this.level = newLevel;
-            this.levelUpdatedAt = LocalDateTime.now();
-            this.updatedAt = LocalDateTime.now();
-            return true;
-        }
         return false;
     }
 
