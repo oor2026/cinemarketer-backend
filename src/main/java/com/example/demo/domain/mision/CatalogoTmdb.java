@@ -56,4 +56,13 @@ public interface CatalogoTmdb {
 
     /** Una serie puntual por su id de TMDB (nombre, popularidad e imágenes). null si no existe o no se pudo obtener. */
     default SeriePopular serie(long id) { return null; }
+
+    /**
+     * Los ids de las películas de una colección que ya se estrenaron, tienen póster y no son para adultos (las mismas que muestra el asistente).
+     * null si no se pudo consultar: quien llama no debe tocar lo que ya tenía guardado.
+     */
+    default java.util.Set<Long> peliculasEstrenadasDeColeccion(long collectionId) { return null; }
+
+    /** true si esa película ya se estrenó y tiene póster, false si no, null si no se pudo saber (error de red o respuesta rara). */
+    default Boolean peliculaEstrenada(long movieId) { return null; }
 }

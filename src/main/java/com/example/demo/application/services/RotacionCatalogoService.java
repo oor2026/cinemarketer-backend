@@ -8,6 +8,7 @@ import com.example.demo.domain.mision.RotacionDatos.Resultado;
 import com.example.demo.domain.mision.RotacionTextos;
 import com.example.demo.domain.mision.SagasFijas;
 import com.example.demo.domain.mision.SagasFijas.SagaFija;
+import com.example.demo.domain.mision.SagasCatalogo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,8 +23,8 @@ import java.util.function.Supplier;
  *
  * Criterios (todos ajustables acá):
  *   · GÉNERO: todos los de TMDB menos «Película de TV». Meta 10.
- *   · SAGA: SOLO las sagas armadas de Cinemarketer (SagasFijas, las mismas del asistente del feed), no las que salgan en TMDB. Tiene que
- *     tener al menos 2 películas ya estrenadas. La meta es la cantidad de películas ESTRENADAS de la colección (sin tope).
+ *   · SAGA: SOLO las sagas de sagas.json (las mismas del asistente del feed, incluidas las armadas a mano), no las que salgan en TMDB. Tiene que
+ *     tener al menos 2 películas ya estrenadas. La meta es la cantidad de películas ESTRENADAS de la saga según sagas.json (sin tope).
  *   · ACTOR/ACTRIZ: de las personas populares que actúan, las que tienen al menos 8 películas estrenadas (para que la meta de 5 sea
  *     alcanzable). Sin personas para adultos. Meta 5.
  *   · DIRECTOR: los que más aparecen entre las películas populares, con al menos 8 películas dirigidas. Meta 5.
@@ -61,8 +62,25 @@ public class RotacionCatalogoService {
     private final RotacionDatos datos;
     private final long pausaMs;
     private final List<SagaFija> sagasFijas;
+    private final SagasUniverso universo;               // null = el comportamiento anterior (SagasFijas + colección de TMDB): solo en las pruebas viejas
+
+    private SagasSuspensionService suspension;          // si está, después de actualizar las sagas se suspenden solos los sellos de quien no votó todas
+
+    @Autowired(required = false)
+    void usarSuspension(SagasSuspensionService suspension) { this.suspension = suspension; }
+
+    /** Control automático: quien tiene el sello de una saga sin haber votado todas sus películas lo pierde (suspendido). Nunca rompe la actualización. */
+    private void controlarSellosDeSagas() {
+        if (suspension == null || universo == null) return;
+        try { log.info("[rotación] control de sellos de saga: {}", suspension.aplicar()); }
+        catch (Exception e) { log.warn("[rotación] no se pudo controlar los sellos de saga: {}", e.getMessage()); }
+    }
 
     @Autowired
+    public RotacionCatalogoService(CatalogoTmdb tmdb, RotacionDatos datos, SagasUniverso universo) {
+        this(tmdb, datos, PAUSA_MS, SagasFijas.TODAS, universo);
+    }
+
     public RotacionCatalogoService(CatalogoTmdb tmdb, RotacionDatos datos) { this(tmdb, datos, PAUSA_MS, SagasFijas.TODAS); }
 
     /** Para las pruebas: sin pausas y con unas pocas sagas fijas de ejemplo (ids 100, 200, 300 y 400). */
@@ -71,10 +89,15 @@ public class RotacionCatalogoService {
     }
 
     RotacionCatalogoService(CatalogoTmdb tmdb, RotacionDatos datos, long pausaMs, List<SagaFija> sagasFijas) {
+        this(tmdb, datos, pausaMs, sagasFijas, null);
+    }
+
+    RotacionCatalogoService(CatalogoTmdb tmdb, RotacionDatos datos, long pausaMs, List<SagaFija> sagasFijas, SagasUniverso universo) {
         this.tmdb = tmdb;
         this.datos = datos;
         this.pausaMs = pausaMs;
         this.sagasFijas = List.copyOf(sagasFijas);
+        this.universo = universo;
     }
 
     public int cantidadObjetivos() { return datos.cantidadObjetivos(); }
@@ -97,6 +120,7 @@ public class RotacionCatalogoService {
         familia("SERIE", porFamilia, errores, this::series);
         completarFotos("ACTOR");
         completarFotos("DIRECTOR");
+        controlarSellosDeSagas();
         return new Resumen(porFamilia, errores);
     }
 
@@ -108,6 +132,7 @@ public class RotacionCatalogoService {
         Map<String, Resultado> porFamilia = new LinkedHashMap<>();
         List<String> errores = new ArrayList<>();
         familia("SAGA", porFamilia, errores, this::sagas);
+        controlarSellosDeSagas();
         return new Resumen(porFamilia, errores);
     }
 
@@ -166,6 +191,7 @@ public class RotacionCatalogoService {
 
     // ------------------------------------------------------------------------------------------------ sagas
     private List<Objetivo> sagas() {
+        if (universo != null) return sagasDeSagasJson();
         List<Objetivo> r = new ArrayList<>();
         for (SagaFija fija : sagasFijas) {
             Saga s;
@@ -173,6 +199,22 @@ public class RotacionCatalogoService {
             pausa();
             if (s == null || s.estrenadas() < MIN_SAGA_ESTRENADAS) continue;
             r.add(new Objetivo("SAGA", fija.id(), RotacionTextos.nombre(fija.nombre()), s.estrenadas(), 0, s.posterUrl(), s.fondoUrl()));       // la meta es la cantidad de estrenadas, sin tope
+        }
+        return r;
+    }
+
+    /**
+     * Las sagas de sagas.json, todas (con colección de TMDB o armadas a mano). Por cada una arma y guarda su universo de películas (saga_pelicula)
+     * y la meta es cuántas son. Si no se pudo consultar una saga, se saltea y queda como estaba (nunca se achica por un error de red).
+     */
+    private List<Objetivo> sagasDeSagasJson() {
+        List<Objetivo> r = new ArrayList<>();
+        for (SagasCatalogo.Saga s : universo.sagas()) {
+            SagasUniverso.Universo u;
+            try { u = universo.actualizar(s); } catch (Exception ex) { log.warn("[rotación] no se pudo armar la saga {}: {}", s.id(), ex.getMessage()); continue; }
+            pausa();
+            if (u == null || u.peliculas().size() < MIN_SAGA_ESTRENADAS) continue;
+            r.add(new Objetivo("SAGA", s.id(), RotacionTextos.nombre(s.nombre()), u.peliculas().size(), 0, u.posterUrl(), u.fondoUrl()));
         }
         return r;
     }

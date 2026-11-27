@@ -2,6 +2,7 @@ package com.example.demo.infrastructure.external.tmdb;
 
 import com.example.demo.application.dtos.external.tmdb.TmdbMovieDto;
 import com.example.demo.domain.mision.CatalogoPeliculas;
+import com.example.demo.domain.mision.SagasPeliculasDatos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -20,8 +21,12 @@ public class TmdbCatalogo implements CatalogoPeliculas {
 
     private static final Logger log = LoggerFactory.getLogger(TmdbCatalogo.class);
     private final TmdbService tmdbService;
+    private final SagasPeliculasDatos sagasDatos;
 
-    public TmdbCatalogo(TmdbService tmdbService) { this.tmdbService = tmdbService; }
+    public TmdbCatalogo(TmdbService tmdbService, SagasPeliculasDatos sagasDatos) {
+        this.tmdbService = tmdbService;
+        this.sagasDatos = sagasDatos;
+    }
 
     @Override public Set<Long> generos(long movieId) {
         Set<Long> r = new HashSet<>();
@@ -48,10 +53,16 @@ public class TmdbCatalogo implements CatalogoPeliculas {
     /** Cuántos del reparto cuentan como «elenco principal»: así un cameo no suma para una misión de actor o actriz. */
     private static final int ELENCO_PRINCIPAL = 10;
 
-    /** Una saga es una colección de TMDB. Se mira su lista de películas (getCollection tiene caché) y se ve si esta película está. */
+    /**
+     * Las sagas son las de sagas.json (el universo del asistente), ya guardadas en saga_pelicula: no se consulta a TMDB. Solo si una saga todavía
+     * no tiene su universo guardado (los primeros minutos después de desplegar) se mira, como antes, la colección de TMDB.
+     */
     @Override public Set<Long> sagas(long movieId, Collection<Long> candidatas) {
         Set<Long> r = new HashSet<>();
+        try { r.addAll(sagasDatos.sagasDe(movieId, candidatas)); }
+        catch (Exception e) { log.warn("[misiones] no se pudieron leer las sagas de la película {}: {}", movieId, e.getMessage()); }
         for (Long saga : candidatas) {
+            if (r.contains(saga) || universoGuardado(saga)) continue;
             try {
                 Object c = tmdbService.getCollection(saga);
                 if (c instanceof Map<?, ?> m && m.get("parts") instanceof Iterable<?> partes) {
@@ -64,9 +75,17 @@ public class TmdbCatalogo implements CatalogoPeliculas {
         return r;
     }
 
-    /** Las películas de una saga (la lista de la colección de TMDB, con caché). */
+    private boolean universoGuardado(long saga) {
+        try { return !sagasDatos.peliculas(saga).isEmpty(); } catch (Exception e) { return false; }
+    }
+
+    /** Las películas de una saga: las guardadas de sagas.json; si todavía no hay, la lista de la colección de TMDB (con caché). */
     @Override public Set<Long> peliculasDeSaga(long sagaId) {
         Set<Long> r = new HashSet<>();
+        try {
+            Set<Long> guardadas = sagasDatos.peliculas(sagaId);
+            if (!guardadas.isEmpty()) return guardadas;
+        } catch (Exception e) { log.warn("[misiones] no se pudieron leer las películas guardadas de la saga {}: {}", sagaId, e.getMessage()); }
         try {
             Object c = tmdbService.getCollection(sagaId);
             if (c instanceof Map<?, ?> m && m.get("parts") instanceof Iterable<?> partes) {

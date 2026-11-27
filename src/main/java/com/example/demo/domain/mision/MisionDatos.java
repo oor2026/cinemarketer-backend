@@ -44,4 +44,31 @@ public interface MisionDatos {
     /** Saca un objetivo DESCARTADO del historial del usuario (para que vuelva a poder sortearse). */
     void quitarAsignacion(long userId, long objetivoId);
     int porDescubrir(long userId);
+
+    // ---- sagas (universo de sagas.json, tabla saga_pelicula)
+    /**
+     * Cuántas películas DISTINTAS de esa saga votó el usuario (votos vigentes). -1 si la saga todavía no tiene su universo guardado
+     * o si esta implementación no lo sabe: entonces la misión cuenta como antes.
+     */
+    default int votadasDeSaga(long userId, long sagaId) { return -1; }
+
+    /** Los ids de las sagas que ya tienen su universo de películas guardado (saga_pelicula). Las que todavía no, siguen con el conteo anterior. */
+    default Set<Long> sagasConUniverso() { return Set.of(); }
+
+    /** Por cada saga con universo guardado, cuántas películas distintas votó el usuario (solo las que votó al menos una). */
+    default Map<Long, Integer> votadasPorSaga(long userId) { return Map.of(); }
+
+    /** Un sello de saga que alguien tiene y para el que todavía le faltan películas por votar. */
+    record SelloIncompleto(long userId, long selloId, long misionId, long sagaId, String sello, int nivel, LocalDateTime ganadoAt, int meta, int votadas) {}
+
+    /** Todos los sellos de saga que tienen usuarios con menos películas votadas que las que pide hoy la saga. */
+    default List<SelloIncompleto> sellosDeSagaIncompletos() { return List.of(); }
+
+    /**
+     * Suspende el sello: lo archiva y lo saca de los sellos del usuario, y reabre su misión con el avance real. true si lo tenía.
+     * No toca la rotación (de eso se ocupa MisionService).
+     */
+    default boolean suspenderSelloDeSaga(long userId, long selloId, long misionId, int nivel, int votadas, int meta, LocalDateTime ahora) {
+        throw new UnsupportedOperationException();
+    }
 }

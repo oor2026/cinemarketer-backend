@@ -109,6 +109,7 @@ public class MisionService {
         Fila f = datos.filaParaActualizar(e.userId(), m.id(), MisionLogica.ciclo(m.vigencia(), ctx.hoy()), ahora);
         if ("CUMPLIDA".equals(f.estado())) return;
         int nuevo = siguienteAvance(e, m, f, ctx);
+        if (nuevo == -2) return;                                        // saga: ya quedó el mismo avance
         if (nuevo < 0) return;
         nuevo = Math.min(nuevo, m.meta());
         if (nuevo >= m.meta()) {
@@ -121,9 +122,16 @@ public class MisionService {
         }
     }
 
+    /** Misión de una saga rotativa (las de sagas.json): su avance se calcula con los votos, no se va sumando de a uno. */
+    private static boolean esDeSaga(Mision m) { return "SAGA".equals(m.familia()) && m.sagaId() != null && !m.esEscalera(); }
+
     /** El avance que deja esta actividad en esa fila; -1 si no suma (un título que ya estaba contado). */
     private int siguienteAvance(ActividadEvento e, Mision m, Fila f, Contexto ctx) {
         if ("RACHA_DIAS".equals(m.metrica())) return MisionLogica.racha(ctx.diasActivos(), ctx.hoy());
+        if (esDeSaga(m)) {                  // saga: el avance NO es «uno más»: es cuántas películas distintas de la saga votó el usuario (sagas.json)
+            int votadas = datos.votadasDeSaga(e.userId(), m.sagaId());
+            if (votadas >= 0) return votadas == f.progreso() ? -2 : votadas;
+        }
         if (m.cuentaDistintos()) {          // un título (o, en una misión de serie, un paso) que ya estaba contado no suma otra vez
             Long clave = MisionLogica.claveDistinta(m, e);
             if (clave == null || !datos.contarTitulo(f.id(), clave)) return -1;
@@ -393,6 +401,25 @@ public class MisionService {
         boolean ok = historial.reclamar(userId, misionId, ahora);
         if (ok) preparar(userId, ahora);                          // si era la misión actual de una familia, pasa la siguiente
         return ok;
+    }
+
+    /**
+     * Sello de saga suspendido: la saga sumó una película que el usuario todavía no votó. Se le saca el sello (queda archivado), su misión vuelve
+     * a estar en curso con el avance real («falta 1») y pasa a ser su misión ACTUAL de saga. Cuando vote lo que falta, la cumple de nuevo y
+     * recupera el sello con la fecha nueva. false si ya no tenía ese sello.
+     */
+    @Transactional
+    public boolean suspenderSelloDeSaga(long userId, long selloId, long misionId, int nivel, int votadas, int meta) {
+        LocalDateTime ahora = LocalDateTime.now(AR);
+        if (!datos.suspenderSelloDeSaga(userId, selloId, misionId, nivel, votadas, meta, ahora)) return false;
+        Asignacion a = datos.asignaciones(userId).stream().filter(x -> x.misionId() == misionId).findFirst().orElse(null);
+        if (a != null && !a.estado().equals("ACTUAL") && !a.estado().equals("SIGUIENTE")) {
+            datos.cambiarEstadoObjetivo(userId, a.objetivoId(), "DESCARTADO", ahora);       // se pasa por «descartada» para reusar restaurar(): ella ordena actual y siguiente
+            restaurar(userId, misionId, ahora);
+        } else {
+            preparar(userId, ahora);
+        }
+        return true;
     }
 
     /** Lo que el historial del usuario aporta al abrir sus misiones. Si falla, las misiones funcionan igual, solo que sin «Reclamar». */

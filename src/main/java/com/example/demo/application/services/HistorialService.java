@@ -95,18 +95,26 @@ public class HistorialService {
     private Revision revisar(long userId, List<Mision> misiones, Contexto ctx, LocalDateTime ahora) {
         Map<Long, Registro> registros = historial.registros(userId);
 
-        List<Mision> sinTmdb = new ArrayList<>(), conTmdb = new ArrayList<>();
+
+
+        Set<Long> conUniverso = datos.sagasConUniverso();
+        List<Mision> sinTmdb = new ArrayList<>(), conTmdb = new ArrayList<>(), sagasEnJuego = new ArrayList<>();
         for (Mision m : misiones) {
             if (!HistorialLogica.elegible(m) || MisionLogica.estado(m, ctx) != Estado.EN_CURSO) continue;
+            if (esDeSaga(m, conUniverso)) { sagasEnJuego.add(m); continue; }                          // las sagas se evalúan aparte, con sus votos (sagas.json)
             Registro r = registros.get(m.id());
             if (r != null && !"IGNORADO".equals(r.estado())) continue;                 // ya evaluada
             (m.necesitaTmdb() ? conTmdb : sinTmdb).add(m);
         }
-        List<Mision> sinAsignar = new ArrayList<>();
-        for (Mision m : historial.rotativasParaEvaluar(userId, ahora.minus(REPASO))) if (HistorialLogica.elegible(m)) sinAsignar.add(m);
+        List<Mision> sinAsignar = new ArrayList<>(), sagasLibres = new ArrayList<>();
+        for (Mision m : historial.rotativasParaEvaluar(userId, ahora.minus(REPASO))) {
+            if (!HistorialLogica.elegible(m)) continue;
+            (esDeSaga(m, conUniverso) ? sagasLibres : sinAsignar).add(m);
+        }
 
         boolean cambio = false;
-        if (!sinTmdb.isEmpty()) cambio = evaluar(userId, sinTmdb, List.of(), historial.eventos(userId), id -> Atributos.VACIO, ahora);
+        if (!sagasEnJuego.isEmpty() || !sagasLibres.isEmpty()) cambio = evaluarSagas(userId, sagasEnJuego, sagasLibres, registros, ahora);
+        if (!sinTmdb.isEmpty()) cambio |= evaluar(userId, sinTmdb, List.of(), historial.eventos(userId), id -> Atributos.VACIO, ahora);
 
         List<Mision> aparte = new ArrayList<>(conTmdb);
         aparte.addAll(sinAsignar);
@@ -121,6 +129,45 @@ public class HistorialService {
         return new Revision(pendientes(userId, misiones), cambio);
     }
 
+    /**
+     * Misión de una saga rotativa cuyo universo de películas (sagas.json) ya está guardado: su avance es cuántas películas de la saga votó el usuario.
+     * Si el universo todavía no se guardó (los primeros minutos después de desplegar), sigue el camino de siempre.
+     */
+    private boolean esDeSaga(Mision m, Set<Long> conUniverso) {
+        return "SAGA".equals(m.familia()) && m.sagaId() != null && !m.esEscalera() && conUniverso.contains(m.sagaId());
+    }
+
+    /**
+     * Las sagas no usan el historial por fecha ni consultan a TMDB: el avance es siempre cuántas películas DISTINTAS de la saga (las de sagas.json)
+     * votó el usuario, sin tope de películas. Se recalcula cada vez que abre sus misiones, así también se corrige solo cualquier avance viejo.
+     *  - enJuego (su saga actual y la siguiente): el avance queda igual a lo votado; si ya votó todas, se ofrece «Reclamar».
+     *  - libres (sagas que no le tocaron): si ya votó todas, se ofrece «Reclamar»; si no, se ignoran (se vuelven a mirar cada 6 horas).
+     * Lo ya reclamado no se toca. true si cambió el avance de alguna misión.
+     */
+    private boolean evaluarSagas(long userId, List<Mision> enJuego, List<Mision> libres, Map<Long, Registro> registros, LocalDateTime ahora) {
+        Map<Long, Integer> votadas = datos.votadasPorSaga(userId);
+        boolean cambio = false;
+        for (Mision m : enJuego) {
+            Registro r = registros.get(m.id());
+            if (r != null && "RECLAMADO".equals(r.estado())) continue;
+            int v = votadas.getOrDefault(m.sagaId(), 0);
+            if (v >= m.meta()) {
+                if (r == null || !"PENDIENTE".equals(r.estado())) historial.reevaluar(userId, m.id(), "PENDIENTE", m.meta(), ahora);
+                continue;
+            }
+            if (v > 0) {
+                Fila f = datos.filaParaActualizar(userId, m.id(), "P", ahora);
+                if (!"CUMPLIDA".equals(f.estado()) && f.progreso() != v) { datos.actualizarProgreso(f.id(), v, ahora); cambio = true; }
+            }
+            if (r == null || !"APLICADO".equals(r.estado()) || r.base() != v) historial.reevaluar(userId, m.id(), "APLICADO", v, ahora);
+        }
+        for (Mision m : libres) {
+            int v = votadas.getOrDefault(m.sagaId(), 0);
+            historial.guardar(userId, m.id(), m.meta() > 0 && v >= m.meta() ? "PENDIENTE" : "IGNORADO", v, ahora);
+        }
+        return cambio;
+    }
+
     /** Cuántas cosas tiene para reclamar (lo pide el feed liviano). */
     public int cantidadParaReclamar(long userId) { return historial.contarPendientes(userId); }
 
@@ -133,7 +180,18 @@ public class HistorialService {
         List<Long> faltan = ids.stream().filter(id -> !porId.containsKey(id)).toList();
         historial.misionesPorIds(faltan).forEach(m -> porId.put(m.id(), m));
         List<Reclamable> r = new ArrayList<>();
-        for (Long id : ids) { Mision m = porId.get(id); if (m != null) r.add(new Reclamable(m, regs.get(id).base())); }
+        Map<Long, Integer> votadas = null;
+        Set<Long> conUniverso = datos.sagasConUniverso();
+        for (Long id : ids) {
+            Mision m = porId.get(id);
+            if (m == null) continue;
+            if (esDeSaga(m, conUniverso)) {          // un «Reclamar» de saga viejo se revisa con los votos de hoy: la saga pudo sumar una película
+                if (votadas == null) votadas = datos.votadasPorSaga(userId);
+                int v = votadas.getOrDefault(m.sagaId(), 0);
+                if (v < m.meta()) { historial.reevaluar(userId, m.id(), "IGNORADO", v, LocalDateTime.now(java.time.ZoneId.of("America/Argentina/Buenos_Aires"))); continue; }
+            }
+            r.add(new Reclamable(m, regs.get(id).base()));
+        }
         return r;
     }
 
@@ -241,6 +299,11 @@ public class HistorialService {
         Mision m = datos.misionesActivas(userId).stream().filter(x -> x.id() == misionId).findFirst().orElse(null);
         if (m == null) m = historial.misionesPorIds(List.of(misionId)).stream().findFirst().orElse(null);
         if (m == null || !HistorialLogica.elegible(m)) return false;
+
+        if ("SAGA".equals(m.familia()) && m.sagaId() != null) {   // la saga pudo sumar una película desde que se ofreció: sin todas votadas no hay sello
+            int v = datos.votadasDeSaga(userId, m.sagaId());
+            if (v >= 0 && v < m.meta()) return false;
+        }
 
         Integer tiene = datos.nivelesDeSellos(userId).get(m.sello().id());
         if (!historial.marcarReclamado(userId, misionId, ahora)) return false;          // la marca va primero: dos toques seguidos no otorgan dos veces

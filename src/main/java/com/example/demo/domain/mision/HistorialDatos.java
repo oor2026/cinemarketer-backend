@@ -32,6 +32,12 @@ public interface HistorialDatos {
     /** Guarda lo evaluado. Una fila PENDIENTE o RECLAMADO nunca se pisa; una IGNORADO sí. */
     void guardar(long userId, long misionId, String estado, int base, LocalDateTime ahora);
 
+    /**
+     * Como guardar, pero pisa también lo ya evaluado (APLICADO, PENDIENTE o IGNORADO). Solo una RECLAMADO queda como está. Lo usan las sagas, cuyo
+     * estado se recalcula cada vez con los votos del usuario.
+     */
+    default void reevaluar(long userId, long misionId, String estado, int base, LocalDateTime ahora) { guardar(userId, misionId, estado, base, ahora); }
+
     /** true si estaba PENDIENTE y pasó a RECLAMADO (false si ya lo estaba: no se otorga dos veces). */
     boolean marcarReclamado(long userId, long misionId, LocalDateTime ahora);
 

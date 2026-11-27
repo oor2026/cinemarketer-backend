@@ -126,4 +126,53 @@ final class MisionSql {
             """;
 
     static final String QUITAR_ASIGNACION = "DELETE FROM usuario_objetivo WHERE user_id = ? AND objetivo_id = ? AND estado = 'DESCARTADO'";
+
+    // ---- sagas: el avance sale de los votos del usuario y del universo de la saga (saga_pelicula). Mismo criterio de voto que «Reclamar».
+    /** Parámetros: user_id, saga_id (dos veces). Devuelve -1 si la saga no tiene películas guardadas. */
+    static final String VOTADAS_DE_SAGA = """
+            SELECT CASE WHEN EXISTS (SELECT 1 FROM saga_pelicula WHERE saga_id = ?) THEN
+                        (SELECT COUNT(DISTINCT r.target_id)
+                           FROM reviews r JOIN saga_pelicula sp ON sp.movie_id = r.target_id AND sp.saga_id = ?
+                          WHERE r.user_id = ? AND r.review_type = 'MOVIE' AND r.vote_type IS NOT NULL AND COALESCE(r.active, TRUE))
+                   ELSE -1 END
+            """;
+
+    static final String SAGAS_CON_UNIVERSO = "SELECT DISTINCT saga_id FROM saga_pelicula";
+
+    static final String VOTADAS_POR_SAGA = """
+            SELECT sp.saga_id, COUNT(DISTINCT r.target_id) AS votadas
+            FROM reviews r JOIN saga_pelicula sp ON sp.movie_id = r.target_id
+            WHERE r.user_id = ? AND r.review_type = 'MOVIE' AND r.vote_type IS NOT NULL AND COALESCE(r.active, TRUE)
+            GROUP BY sp.saga_id
+            """;
+
+    /** Quienes tienen el sello de una saga con menos películas votadas que la meta de hoy (solo sagas con universo guardado). */
+    static final String SELLOS_DE_SAGA_INCOMPLETOS = """
+            SELECT us.user_id, us.sello_id, us.nivel, us.ganado_at, m.id AS mision_id, m.saga_id, m.meta, s.nombre AS sello, v.votadas
+            FROM usuario_sello us
+                 JOIN mision m ON m.sello_id = us.sello_id AND m.familia_rotacion = 'SAGA' AND m.saga_id IS NOT NULL AND m.activa
+                 JOIN sello s ON s.id = us.sello_id
+                 CROSS JOIN LATERAL (SELECT COUNT(DISTINCT r.target_id) AS votadas
+                                       FROM reviews r JOIN saga_pelicula sp ON sp.movie_id = r.target_id AND sp.saga_id = m.saga_id
+                                      WHERE r.user_id = us.user_id AND r.review_type = 'MOVIE' AND r.vote_type IS NOT NULL AND COALESCE(r.active, TRUE)) v
+            WHERE v.votadas < m.meta
+              AND EXISTS (SELECT 1 FROM saga_pelicula WHERE saga_id = m.saga_id)
+            ORDER BY m.id, us.user_id
+            """;
+
+    static final String ARCHIVAR_SELLO = """
+            INSERT INTO usuario_sello_suspendido (user_id, sello_id, mision_id, nivel, ganado_at, suspendido_at, votadas, meta)
+            SELECT user_id, sello_id, ?, nivel, ganado_at, ?, ?, ? FROM usuario_sello WHERE user_id = ? AND sello_id = ?
+            """;
+
+    static final String QUITAR_SELLO = "DELETE FROM usuario_sello WHERE user_id = ? AND sello_id = ?";
+
+    /** La misión vuelve a estar en curso con el avance real (siempre por debajo de la meta). */
+    static final String REABRIR_MISION = """
+            UPDATE usuario_mision SET estado = 'EN_CURSO', progreso = ?, cumplida_at = NULL, updated_at = ?
+            WHERE user_id = ? AND mision_id = ? AND ciclo = 'P'
+            """;
+
+    /** Para que el historial vuelva a evaluar la misión (si el usuario ya la había reclamado, no la ve como reclamada otra vez). */
+    static final String BORRAR_HISTORIAL = "DELETE FROM usuario_historial WHERE user_id = ? AND mision_id = ?";
 }

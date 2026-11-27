@@ -51,6 +51,10 @@ public class TmdbCatalogoRotacion implements CatalogoTmdb {
 
     @Override public Saga saga(long collectionId) { return parseSaga(collectionId, tmdb.getCollection(collectionId), hoy()); }
 
+    @Override public Set<Long> peliculasEstrenadasDeColeccion(long collectionId) { return parseEstrenadasDeColeccion(tmdb.getCollection(collectionId), hoy()); }
+
+    @Override public Boolean peliculaEstrenada(long movieId) { return parsePeliculaEstrenada(tmdb.getMovieRaw(movieId), hoy()); }
+
     @Override public List<Persona> actoresPopulares(int paginas) {
         Map<Long, Persona> r = new LinkedHashMap<>();
         for (int p = 1; p <= paginas; p++) {
@@ -127,6 +131,31 @@ public class TmdbCatalogoRotacion implements CatalogoTmdb {
             if (pid != null && !Boolean.TRUE.equals(p.get("adult")) && estrenada(p.get("release_date"), hoy)) estrenadas.add(pid);
         }
         return new Saga(id, nombre, estrenadas.size(), imagen(m.get("poster_path"), "w342"), imagen(m.get("backdrop_path"), "w780"));
+    }
+
+    /**
+     * Las películas de una colección que ya se estrenaron, con póster y que no son para adultos (el asistente solo muestra las que tienen póster
+     * y fecha). null si la respuesta no es una colección: así una caída de TMDB no se confunde con «la saga quedó vacía».
+     */
+    static Set<Long> parseEstrenadasDeColeccion(Object json, LocalDate hoy) {
+        if (!(json instanceof Map<?, ?> m) || !(m.get("parts") instanceof Iterable<?>)) return null;
+        Set<Long> r = new LinkedHashSet<>();
+        for (Map<?, ?> p : lista(json, "parts")) {
+            Long id = largo(p.get("id"));
+            if (id != null && estrenadaConPoster(p, hoy)) r.add(id);
+        }
+        return r;
+    }
+
+    /** Una película suelta: true si ya se estrenó y tiene póster, false si no. null si la respuesta no es una película (no se pudo saber). */
+    static Boolean parsePeliculaEstrenada(Object json, LocalDate hoy) {
+        if (!(json instanceof Map<?, ?> m) || largo(m.get("id")) == null) return null;
+        return estrenadaConPoster(m, hoy);
+    }
+
+    private static boolean estrenadaConPoster(Map<?, ?> pelicula, LocalDate hoy) {
+        return !Boolean.TRUE.equals(pelicula.get("adult")) && estrenada(pelicula.get("release_date"), hoy)
+                && pelicula.get("poster_path") instanceof String s && !s.isBlank();
     }
 
     /** La URL de una imagen de TMDB (https). null si no tiene: la aplicación usa entonces el ícono de la categoría. */
