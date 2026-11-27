@@ -93,6 +93,34 @@ public class MisionRepositorio implements MisionDatos {
 
     @Override public int porDescubrir(long userId) { Integer n = jdbc.queryForObject(MisionSql.POR_DESCUBRIR, Integer.class, userId); return n == null ? 0 : n; }
 
+    // ---- sagas
+    @Override public int votadasDeSaga(long userId, long sagaId) {
+        Integer n = jdbc.queryForObject(MisionSql.VOTADAS_DE_SAGA, Integer.class, sagaId, sagaId, userId);
+        return n == null ? -1 : n;
+    }
+
+    @Override public Set<Long> sagasConUniverso() { return new HashSet<>(jdbc.query(MisionSql.SAGAS_CON_UNIVERSO, (rs, n) -> rs.getLong(1))); }
+
+    @Override public Map<Long, Integer> votadasPorSaga(long userId) {
+        Map<Long, Integer> r = new HashMap<>();
+        jdbc.query(MisionSql.VOTADAS_POR_SAGA, (rs, n) -> r.put(rs.getLong("saga_id"), rs.getInt("votadas")), userId);
+        return r;
+    }
+
+    @Override public List<SelloIncompleto> sellosDeSagaIncompletos() {
+        return jdbc.query(MisionSql.SELLOS_DE_SAGA_INCOMPLETOS, (rs, n) -> new SelloIncompleto(rs.getLong("user_id"), rs.getLong("sello_id"), rs.getLong("mision_id"),
+                rs.getLong("saga_id"), rs.getString("sello"), rs.getInt("nivel"), fecha(rs.getTimestamp("ganado_at")), rs.getInt("meta"), rs.getInt("votadas")));
+    }
+
+    @Override public boolean suspenderSelloDeSaga(long userId, long selloId, long misionId, int nivel, int votadas, int meta, LocalDateTime ahora) {
+        Timestamp t = Timestamp.valueOf(ahora);
+        jdbc.update(MisionSql.ARCHIVAR_SELLO, misionId, t, votadas, meta, userId, selloId);
+        if (jdbc.update(MisionSql.QUITAR_SELLO, userId, selloId) == 0) return false;
+        jdbc.update(MisionSql.REABRIR_MISION, Math.min(votadas, meta - 1), t, userId, misionId);
+        jdbc.update(MisionSql.BORRAR_HISTORIAL, userId, misionId);
+        return true;
+    }
+
     // ---- rotación personal
     private static final RowMapper<Asignacion> ASIGNACION = (rs, n) -> new Asignacion(rs.getLong("id"), rs.getLong("objetivo_id"), rs.getLong("mision_id"), rs.getString("familia"), rs.getString("estado"), rs.getString("nombre"));
 

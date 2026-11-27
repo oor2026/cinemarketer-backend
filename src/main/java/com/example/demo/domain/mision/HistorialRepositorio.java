@@ -43,6 +43,10 @@ public class HistorialRepositorio implements HistorialDatos {
         jdbc.update(HistorialSql.GUARDAR, userId, misionId, estado, base, Timestamp.valueOf(ahora));
     }
 
+    @Override public void reevaluar(long userId, long misionId, String estado, int base, LocalDateTime ahora) {
+        jdbc.update(HistorialSql.REEVALUAR, userId, misionId, estado, base, Timestamp.valueOf(ahora));
+    }
+
     @Override public boolean marcarReclamado(long userId, long misionId, LocalDateTime ahora) {
         return jdbc.update(HistorialSql.MARCAR_RECLAMADO, Timestamp.valueOf(ahora), userId, misionId) > 0;
     }

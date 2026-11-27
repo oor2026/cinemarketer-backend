@@ -1,0 +1,670 @@
+{
+  "version": 1,
+  "sagas": [
+    {
+      "id": 10,
+      "nombre": "Star Wars",
+      "coleccion": 10,
+      "peliculas": [
+        330459,
+        348350
+      ]
+    },
+    {
+      "id": 84,
+      "nombre": "Indiana Jones",
+      "coleccion": 84,
+      "peliculas": []
+    },
+    {
+      "id": 119,
+      "nombre": "El Señor de los Anillos",
+      "coleccion": 119,
+      "peliculas": []
+    },
+    {
+      "id": -5,
+      "nombre": "El Hobbit",
+      "coleccion": null,
+      "peliculas": [
+        49051,
+        57158,
+        122917
+      ]
+    },
+    {
+      "id": 151,
+      "nombre": "Star Trek",
+      "coleccion": 151,
+      "peliculas": [
+        193,
+        199,
+        200,
+        201,
+        13475,
+        54138,
+        188927
+      ]
+    },
+    {
+      "id": 528,
+      "nombre": "Terminator",
+      "coleccion": 528,
+      "peliculas": []
+    },
+    {
+      "id": 656,
+      "nombre": "Saw",
+      "coleccion": 656,
+      "peliculas": []
+    },
+    {
+      "id": 748,
+      "nombre": "X-Men",
+      "coleccion": 748,
+      "peliculas": []
+    },
+    {
+      "id": -2,
+      "nombre": "Wolverine",
+      "coleccion": null,
+      "peliculas": [
+        2080,
+        76170,
+        263115
+      ]
+    },
+    {
+      "id": 230,
+      "nombre": "El Padrino",
+      "coleccion": 230,
+      "peliculas": []
+    },
+    {
+      "id": 263,
+      "nombre": "Batman - El Caballero de la Noche",
+      "coleccion": 263,
+      "peliculas": []
+    },
+    {
+      "id": 264,
+      "nombre": "Volver al Futuro",
+      "coleccion": 264,
+      "peliculas": []
+    },
+    {
+      "id": 295,
+      "nombre": "Piratas del Caribe",
+      "coleccion": 295,
+      "peliculas": []
+    },
+    {
+      "id": 304,
+      "nombre": "Ocean's",
+      "coleccion": 304,
+      "peliculas": [
+        402900
+      ]
+    },
+    {
+      "id": 328,
+      "nombre": "Jurassic Park",
+      "coleccion": 328,
+      "peliculas": []
+    },
+    {
+      "id": 1575,
+      "nombre": "Rocky",
+      "coleccion": 1575,
+      "peliculas": []
+    },
+    {
+      "id": -3,
+      "nombre": "Creed",
+      "coleccion": null,
+      "peliculas": [
+        312221,
+        480530,
+        677179
+      ]
+    },
+    {
+      "id": 2150,
+      "nombre": "Shrek",
+      "coleccion": 2150,
+      "peliculas": []
+    },
+    {
+      "id": -7,
+      "nombre": "El gato con botas",
+      "coleccion": null,
+      "peliculas": [
+        417859,
+        315162
+      ]
+    },
+    {
+      "id": 2344,
+      "nombre": "Matrix",
+      "coleccion": 2344,
+      "peliculas": []
+    },
+    {
+      "id": 8650,
+      "nombre": "Transformers",
+      "coleccion": 8650,
+      "peliculas": [
+        667538,
+        698687
+      ]
+    },
+    {
+      "id": 9485,
+      "nombre": "Rápidos y Furiosos",
+      "coleccion": 9485,
+      "peliculas": []
+    },
+    {
+      "id": 9735,
+      "nombre": "Viernes 13",
+      "coleccion": 9735,
+      "peliculas": [
+        13207
+      ]
+    },
+    {
+      "id": 10194,
+      "nombre": "Toy Story",
+      "coleccion": 10194,
+      "peliculas": []
+    },
+    {
+      "id": 12263,
+      "nombre": "El Exorcista",
+      "coleccion": 12263,
+      "peliculas": []
+    },
+    {
+      "id": 1241,
+      "nombre": "Harry Potter",
+      "coleccion": 1241,
+      "peliculas": []
+    },
+    {
+      "id": -6,
+      "nombre": "Animales Fantásticos",
+      "coleccion": null,
+      "peliculas": [
+        259316,
+        338952,
+        338953
+      ]
+    },
+    {
+      "id": 87359,
+      "nombre": "Misión Imposible",
+      "coleccion": 87359,
+      "peliculas": []
+    },
+    {
+      "id": 404609,
+      "nombre": "John Wick",
+      "coleccion": 404609,
+      "peliculas": []
+    },
+    {
+      "id": -19,
+      "nombre": "James Bond",
+      "coleccion": null,
+      "peliculas": [
+        646,
+        657,
+        658,
+        660,
+        667,
+        668,
+        681,
+        253,
+        682,
+        691,
+        698,
+        699,
+        700,
+        36670,
+        707,
+        708,
+        709,
+        710,
+        714,
+        36643,
+        36669,
+        36557,
+        10764,
+        37724,
+        206647,
+        370172
+      ]
+    },
+    {
+      "id": -20,
+      "nombre": "Bourne",
+      "coleccion": null,
+      "peliculas": [
+        2501,
+        2502,
+        2503,
+        49040,
+        324668
+      ]
+    },
+    {
+      "id": -21,
+      "nombre": "Rambo",
+      "coleccion": null,
+      "peliculas": [
+        1368,
+        1369,
+        1370,
+        7555,
+        522938
+      ]
+    },
+    {
+      "id": -22,
+      "nombre": "Depredador",
+      "coleccion": null,
+      "peliculas": [
+        106,
+        169,
+        395,
+        440,
+        34851,
+        346910
+      ]
+    },
+    {
+      "id": -23,
+      "nombre": "RoboCop",
+      "coleccion": null,
+      "peliculas": [
+        5548,
+        5549,
+        5550,
+        97020
+      ]
+    },
+    {
+      "id": -24,
+      "nombre": "Arma mortal",
+      "coleccion": null,
+      "peliculas": [
+        941,
+        942,
+        943,
+        944
+      ]
+    },
+    {
+      "id": -25,
+      "nombre": "Hombres de negro",
+      "coleccion": null,
+      "peliculas": [
+        607,
+        608,
+        41154,
+        479455
+      ]
+    },
+    {
+      "id": -26,
+      "nombre": "Búsqueda implacable",
+      "coleccion": null,
+      "peliculas": [
+        8681,
+        82675,
+        260346
+      ]
+    },
+    {
+      "id": -27,
+      "nombre": "Los Mercenarios",
+      "coleccion": null,
+      "peliculas": [
+        27578,
+        76163,
+        138103,
+        299054
+      ]
+    },
+    {
+      "id": -28,
+      "nombre": "Bad Boys",
+      "coleccion": null,
+      "peliculas": [
+        9737,
+        8961,
+        38700,
+        573435
+      ]
+    },
+    {
+      "id": -29,
+      "nombre": "Top Gun",
+      "coleccion": null,
+      "peliculas": [
+        744,
+        361743
+      ]
+    },
+    {
+      "id": 8091,
+      "nombre": "Alien",
+      "coleccion": 8091,
+      "peliculas": [
+        70981,
+        126889,
+        945961,
+        395,
+        440
+      ]
+    },
+    {
+      "id": 91361,
+      "nombre": "Halloween",
+      "coleccion": 91361,
+      "peliculas": [
+        2082,
+        24150
+      ]
+    },
+    {
+      "id": 2602,
+      "nombre": "Scream",
+      "coleccion": 2602,
+      "peliculas": []
+    },
+    {
+      "id": 313086,
+      "nombre": "El Conjuro",
+      "coleccion": 313086,
+      "peliculas": []
+    },
+    {
+      "id": -1,
+      "nombre": "Annabelle",
+      "coleccion": null,
+      "peliculas": [
+        250546,
+        396422,
+        521029
+      ]
+    },
+    {
+      "id": -4,
+      "nombre": "La Monja",
+      "coleccion": null,
+      "peliculas": [
+        439079,
+        968051
+      ]
+    },
+    {
+      "id": 17255,
+      "nombre": "Resident Evil",
+      "coleccion": 17255,
+      "peliculas": [
+        460458,
+        1423191
+      ]
+    },
+    {
+      "id": 8945,
+      "nombre": "Mad Max",
+      "coleccion": 8945,
+      "peliculas": []
+    },
+    {
+      "id": 1570,
+      "nombre": "Duro de Matar",
+      "coleccion": 1570,
+      "peliculas": []
+    },
+    {
+      "id": 8580,
+      "nombre": "Karate Kid",
+      "coleccion": 8580,
+      "peliculas": []
+    },
+    {
+      "id": 8581,
+      "nombre": "Pesadilla en la Calle Elm",
+      "coleccion": 8581,
+      "peliculas": [
+        6466,
+        23437
+      ]
+    },
+    {
+      "id": 228446,
+      "nombre": "Insidious",
+      "coleccion": 228446,
+      "peliculas": []
+    },
+    {
+      "id": -8,
+      "nombre": "Chucky",
+      "coleccion": null,
+      "peliculas": [
+        10585,
+        11186,
+        11187,
+        11932,
+        11249,
+        167032,
+        393345,
+        533642
+      ]
+    },
+    {
+      "id": -9,
+      "nombre": "La Purga",
+      "coleccion": null,
+      "peliculas": [
+        158015,
+        238636,
+        316727,
+        442249,
+        602223
+      ]
+    },
+    {
+      "id": -10,
+      "nombre": "Actividad Paranormal",
+      "coleccion": null,
+      "peliculas": [
+        23827,
+        41436,
+        59429,
+        72571,
+        82990,
+        227348,
+        146301,
+        609972
+      ]
+    },
+    {
+      "id": -11,
+      "nombre": "Sé lo que hicisteis",
+      "coleccion": null,
+      "peliculas": [
+        3597,
+        3600,
+        3602,
+        1083433
+      ]
+    },
+    {
+      "id": -12,
+      "nombre": "Evil Dead",
+      "coleccion": null,
+      "peliculas": [
+        764,
+        765,
+        766,
+        109428,
+        713704,
+        1212763
+      ]
+    },
+    {
+      "id": -13,
+      "nombre": "It (Eso)",
+      "coleccion": null,
+      "peliculas": [
+        346364,
+        474350
+      ]
+    },
+    {
+      "id": -14,
+      "nombre": "Un lugar en silencio",
+      "coleccion": null,
+      "peliculas": [
+        447332,
+        520763,
+        762441
+      ]
+    },
+    {
+      "id": -15,
+      "nombre": "Terrifier",
+      "coleccion": null,
+      "peliculas": [
+        420634,
+        663712,
+        1034541
+      ]
+    },
+    {
+      "id": -16,
+      "nombre": "El aro",
+      "coleccion": null,
+      "peliculas": [
+        2671,
+        9669,
+        9674,
+        565,
+        10320,
+        140441,
+        257527,
+        382602,
+        14564,
+        583132
+      ]
+    },
+    {
+      "id": -17,
+      "nombre": "La masacre de Texas",
+      "coleccion": null,
+      "peliculas": [
+        30497,
+        16337,
+        25018,
+        16780,
+        9373,
+        10781,
+        76617,
+        300665,
+        632727
+      ]
+    },
+    {
+      "id": -18,
+      "nombre": "Hellraiser",
+      "coleccion": null,
+      "peliculas": [
+        9003,
+        9064,
+        11569,
+        8766,
+        12597,
+        11246,
+        17455,
+        12699,
+        70584,
+        444149,
+        338947
+      ]
+    },
+    {
+      "id": 2980,
+      "nombre": "Cazafantasmas",
+      "coleccion": 2980,
+      "peliculas": [
+        43074
+      ]
+    },
+    {
+      "id": 495527,
+      "nombre": "Jumanji",
+      "coleccion": 495527,
+      "peliculas": []
+    },
+    {
+      "id": 131635,
+      "nombre": "Los Juegos del Hambre",
+      "coleccion": 131635,
+      "peliculas": [
+        695721
+      ]
+    },
+    {
+      "id": 8354,
+      "nombre": "La Era de Hielo",
+      "coleccion": 8354,
+      "peliculas": []
+    },
+    {
+      "id": 86066,
+      "nombre": "Mi Villano Favorito",
+      "coleccion": 86066,
+      "peliculas": [
+        211672,
+        438148,
+        1315772
+      ]
+    },
+    {
+      "id": 14740,
+      "nombre": "Madagascar",
+      "coleccion": 14740,
+      "peliculas": [
+        270946
+      ]
+    },
+    {
+      "id": 8864,
+      "nombre": "Destino Final",
+      "coleccion": 8864,
+      "peliculas": []
+    },
+    {
+      "id": 33514,
+      "nombre": "Crepúsculo",
+      "coleccion": 33514,
+      "peliculas": []
+    },
+    {
+      "id": 52984,
+      "nombre": "La Búsqueda",
+      "coleccion": 52984,
+      "peliculas": []
+    },
+    {
+      "id": 391860,
+      "nombre": "Kingsman",
+      "coleccion": 391860,
+      "peliculas": []
+    }
+  ]
+}

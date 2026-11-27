@@ -33,6 +33,16 @@ public class RotacionCatalogoScheduler {
     @Scheduled(cron = "0 0 4 1 * *", zone = "America/Argentina/Buenos_Aires")
     public void mensual() { correr("mensual"); }
 
+    /** Todos los días a las 4:30 revisa las sagas y suspende solos los sellos de quien no votó todas las películas. */
+    @Scheduled(cron = "0 30 4 * * *", zone = "America/Argentina/Buenos_Aires")
+    public void diario() {
+        try {
+            log.info("[rotación] sagas (control diario): {}", servicio.refrescarSagas().texto());
+        } catch (Exception e) {
+            log.error("[rotación] falló el control diario de sagas: {}", e.getMessage());
+        }
+    }
+
     @EventListener(ApplicationReadyEvent.class)
     public void alIniciar() {
         CompletableFuture.runAsync(this::arranque, CompletableFuture.delayedExecutor(2, TimeUnit.MINUTES));

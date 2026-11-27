@@ -75,6 +75,14 @@ final class HistorialSql {
              WHERE usuario_historial.estado = 'IGNORADO'
             """;
 
+    static final String REEVALUAR = """
+            INSERT INTO usuario_historial (user_id, mision_id, estado, base, calculado_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (user_id, mision_id) DO UPDATE
+               SET estado = EXCLUDED.estado, base = EXCLUDED.base, calculado_at = EXCLUDED.calculado_at
+             WHERE usuario_historial.estado <> 'RECLAMADO'
+            """;
+
     static final String MARCAR_RECLAMADO = """
             UPDATE usuario_historial SET estado = 'RECLAMADO', reclamado_at = ?
             WHERE user_id = ? AND mision_id = ? AND estado = 'PENDIENTE'
