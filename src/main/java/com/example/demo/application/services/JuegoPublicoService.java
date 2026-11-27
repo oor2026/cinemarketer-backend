@@ -82,7 +82,7 @@ public class JuegoPublicoService {
                                   int cantidadSuplentes, int diasParaReclamar,
                                   String basesCondiciones, String fondoUrl, String colorAcento,
                                   String bannerMobileUrl, String fondoLateralUrl, String premioDescripcion,
-                                  String modoAcceso, boolean pedirNovedades) {}
+                                  String modoAcceso, boolean pedirNovedades, int cantidadGanadores) {}
 
     public record GanadorPublico(int puesto, String nombre, String avatar, String rol, boolean tienePremio) {}
 
@@ -449,6 +449,7 @@ public class JuegoPublicoService {
                 c.getBasesCondiciones(), c.getFondoUrl(), c.getColorAcento(),
                 c.getBannerMobileUrl(), c.getFondoLateralUrl(), c.getPremioDescripcion(),
                 c.getModoAcceso() == null ? JuegoCampania.MODO_CINEMARKETER : c.getModoAcceso(),
-                Boolean.TRUE.equals(c.getPedirNovedades()));
+                Boolean.TRUE.equals(c.getPedirNovedades()),
+                c.getCantidadGanadores() == null ? 1 : c.getCantidadGanadores());
     }
 }
